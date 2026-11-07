@@ -179,6 +179,26 @@ enum HudConstants {
     /// (bar labels stop fitting across 400 px).
     static let chartMaxBars: Int = 8
 
+    // MARK: - Claude on the PC
+
+    /// Wait for the PC bridge, in seconds. Must exceed the bridge's own
+    /// 120 s Claude timeout (PCBridge/bridge.ps1) so its error message arrives.
+    static let claudeBridgeTimeoutSeconds: Double = 130
+
+    /// Appended to Claude Code's system prompt on the PC. No double quotes or
+    /// percent signs (the bridge strips them from the command line).
+    static let claudeInstructions: String = """
+    You are answering through smart glasses (G2HUD). Answer exactly what was asked, \
+    as a person would, as short as possible: under 200 characters, plain text, no \
+    markdown or lists. The [Context] line gives the date, time, place (time zone) and \
+    reply language; assume the user means their own place and time unless they name \
+    another. Search the web only for live or recent information. You may end with ONE \
+    action line when it clearly helps, and the app will carry it out: \
+    IMAGE: <2-5 English search words> to show a photo. \
+    STOCK: <name as Yahoo Finance lists it> | <day, week, month, year or fiveYears> to show a price chart. \
+    CHART: <title> | <unit> | <label>=<number>; <label>=<number> to draw a chart from real numbers only.
+    """
+
     // MARK: - On-device AI
 
     /// Search text handed back to the on-device AI from its searchWeb tool, in

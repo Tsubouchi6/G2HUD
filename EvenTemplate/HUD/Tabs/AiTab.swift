@@ -1,10 +1,13 @@
 // AiTab.swift
 //
-// Lens tab: plain-text chat with the on-device AI. Questions show as
-// "> question" lines, answers below, newest at the bottom. The AI may search,
-// draw charts, or show pictures by itself through its tools (AiTools).
+// Lens tab: plain-text AI chat. Questions show as "> question" lines, answers
+// below, newest at the bottom.
+//   1. Claude through the PC bridge, when set up in Settings (ClaudeOnPC).
+//   2. Otherwise, or when the PC can't be reached: the iPhone's on-device AI,
+//      tagged "(iPhone AI)" if Claude was supposed to answer.
+// Both may search, draw charts, or show pictures by themselves.
 //
-// Public API: AiTab(ai:settings:)  — LensTab with id "ai"; ask(_ question:)
+// Public API: AiTab(ai:claude:settings:)  — LensTab with id "ai"; ask(_ question:)
 
 import Foundation
 
@@ -17,12 +20,14 @@ final class AiTab: LensTab {
     var onChange: (() -> Void)?
 
     private let ai: OnDeviceAI
+    private let claude: ClaudeOnPC
     private let settings: HudSettings
     private var lines: [String] = []
     private static let maxLines = 200
 
-    init(ai: OnDeviceAI, settings: HudSettings) {
+    init(ai: OnDeviceAI, claude: ClaudeOnPC, settings: HudSettings) {
         self.ai = ai
+        self.claude = claude
         self.settings = settings
     }
 
@@ -33,20 +38,32 @@ final class AiTab: LensTab {
     // MARK: - Asking
 
     func ask(_ question: String) {
-        if ai.availabilityMessage != nil {
-            append(["> \(question)", HudText.t(.aiUnavailable)])
-            return
-        }
         append(["> \(question)", "..."])
         Task {
-            let answer: String
-            do {
-                answer = try await ai.ask(question, language: settings.language)
-            } catch {
-                answer = HudText.t(.aiError, error.localizedDescription)
-            }
+            let answer = await answer(question)
             if lines.last == "..." { lines.removeLast() }
             append([answer])
+        }
+    }
+
+    /// Claude first (if set up), the iPhone AI as fallback.
+    private func answer(_ question: String) async -> String {
+        var claudeFailure: Error?
+        if claude.isConfigured {
+            do {
+                return try await claude.ask(question)
+            } catch {
+                claudeFailure = error
+            }
+        }
+        if ai.availabilityMessage != nil {
+            return claudeFailure.map { HudText.t(.aiError, $0.localizedDescription) } ?? HudText.t(.aiUnavailable)
+        }
+        do {
+            let local = try await ai.ask(question, language: settings.language)
+            return claudeFailure == nil ? local : "\(HudText.t(.iphoneAiTag)) \(local)"
+        } catch {
+            return HudText.t(.aiError, error.localizedDescription)
         }
     }
 

@@ -60,6 +60,8 @@ enum HudText {
         case tavilyKeyPlaceholder, noSearchKey, offlineTag
         case savedConversations, noConversations, saveConversations, saveConversationsFooter
         case findingImage, imageNotFound
+        case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
+        case checkConnection, connectionOk, iphoneAiTag
     }
 
     // MARK: - Table (ja, en, pt)
@@ -156,6 +158,16 @@ enum HudText {
         .offlineTag: ("(オフライン)", "(offline)", "(offline)"),
         .savedConversations: ("保存した会話", "Saved conversations", "Conversas salvas"),
         .findingImage: ("画像を探しています...", "Finding a picture...", "Procurando uma imagem..."),
+        .claudeHeader: ("Claude (PC経由)", "Claude (through your PC)", "Claude (pelo PC)"),
+        .useClaudeOnPC: ("AIタブでClaudeを使う", "Use Claude in the AI tab", "Usar Claude na aba IA"),
+        .pcUrlPlaceholder: ("PCのアドレス (https://...ts.net)", "PC address (https://...ts.net)", "Endereço do PC (https://...ts.net)"),
+        .pcTokenPlaceholder: ("トークン (token.txt)", "Token (token.txt)", "Token (token.txt)"),
+        .claudeFooter: ("PCで start-bridge.cmd を起動し、TailscaleをPCとiPhoneで同じアカウントにログイン。Claudeのプランを使用 (APIキー不要)。PCがオフの時はiPhoneのAIが答えます。",
+                        "Run start-bridge.cmd on the PC and sign in to Tailscale on the PC and iPhone with the same account. Uses your Claude plan (no API key). When the PC is off, the iPhone AI answers.",
+                        "Rode start-bridge.cmd no PC e entre no Tailscale no PC e no iPhone com a mesma conta. Usa seu plano do Claude (sem chave de API). Com o PC desligado, a IA do iPhone responde."),
+        .checkConnection: ("接続を確認", "Check connection", "Verificar conexão"),
+        .connectionOk: ("PCに接続OK", "Connected to the PC", "Conectado ao PC"),
+        .iphoneAiTag: ("(iPhone AI)", "(iPhone AI)", "(IA do iPhone)"),
         .imageNotFound: ("画像が見つからない", "No picture found", "Nenhuma imagem encontrada"),
         .noConversations: ("まだありません", "None yet", "Nenhuma ainda"),
         .saveConversations: ("会話を保存", "Save conversations", "Salvar conversas"),

@@ -14,6 +14,7 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 | `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners, pictures), `LensPusher` (rate-limited sends), `LensTab` protocol |
 | `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind |
 | `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily, offline on-device AI fallback), on-device AI + its tools (`AiTools`: searchWeb, stockChart, drawChart, showPicture), charts (Yahoo Finance stocks, Swift Charts renderer) |
+| `PCBridge/` | PC side of the Claude link: `bridge.ps1` (runs `claude -p` for the app), `start-bridge.cmd` |
 | `EvenTemplate/HUD/Voice/` | `VoiceCommandRouter` (wake word -> key phrases -> AI) and `VoicePhrases` tables |
 | `EvenTemplate/HUD/Input/` | Touchpad/ring mapping, head-tilt detection |
 | `EvenTemplate/HUD/Screens/` | Phone UI: HUD (preview + typed commands), Captions (+ saved conversations), Settings |
@@ -38,6 +39,23 @@ in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
 | 5時にロット確認 | remind me at 5 to check | me lembra às 5 de conferir | reminder |
 | 最後のメモを消して | delete last note | apagar última nota | asks yes/no first |
 | anything else | anything else | qualquer outra coisa | on-device AI. It knows the date, time, and time zone, and decides by itself to search the web, show a stock chart (Yahoo, free), draw a chart from real numbers, or show a picture. e.g. 今何時 / 猫の写真見せて / トヨタの株価 / 日本の人口のグラフ |
+
+## Claude through your PC
+
+The AI tab asks Claude on your PC (your Claude plan, no API key: `claude -p`
+signed in with a plan draws from its usage limits). When the PC is off or
+unreachable, the iPhone's on-device AI answers instead, tagged "(iPhone AI)".
+
+One-time setup:
+1. On the PC, install Claude Code (PowerShell): `irm https://claude.ai/install.ps1 | iex`, then run `claude` once and log in.
+2. Install Tailscale (tailscale.com, free) on the PC and the iPhone, signed in with the same account.
+3. Double-click `PCBridge/start-bridge.cmd`. The window shows the token (also saved in `PCBridge/token.txt`). Keep it open.
+4. In a PowerShell window on the PC: `tailscale serve --bg 8765`. It prints an `https://<pc-name>.<tailnet>.ts.net` address (if it asks to enable HTTPS, allow it).
+5. In the app: Settings > Claude (through your PC): paste the address and the token, tap Check connection.
+
+To start the bridge automatically: press Win+R, type `shell:startup`, and put a shortcut to `start-bridge.cmd` there. `tailscale serve --bg` stays on by itself.
+
+The bridge (`PCBridge/bridge.ps1`) listens on 127.0.0.1 only; Claude runs in an empty `PCBridge/work` folder and may only use WebSearch and WebFetch.
 
 ## Building (no Mac needed)
 

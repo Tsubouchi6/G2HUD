@@ -8,7 +8,7 @@
 //
 // Public API:
 //   HudController(session:)
-//   settings, captions, lens, notes, reminders, tilt, conversations   (exposed parts)
+//   settings, captions, lens, notes, reminders, tilt, conversations, claude   (exposed parts)
 //   start() async / stop() async
 //   runTyped(_ command: String)      // phone test box: runs like a spoken command
 
@@ -27,6 +27,7 @@ final class HudController: ObservableObject {
     let reminders: ReminderService
     let tilt: HeadTiltDetector
     let conversations: ConversationLog
+    let claude: ClaudeOnPC
 
     private let search: WebSearchService
     private let router: VoiceCommandRouter
@@ -46,7 +47,25 @@ final class HudController: ObservableObject {
 
         let ai = OnDeviceAI()
         let search = WebSearchService(settings: settings, ai: ai)
-        let aiTab = AiTab(ai: ai, settings: settings)
+        let charts = ChartService()
+
+        // Charts and pictures from either AI go on the lens.
+        let showChart: @MainActor @Sendable (RenderedChart) -> Void = { [weak lens] chart in
+            lens?.showImage(chart.png, caption: chart.caption)
+        }
+        let showPicture: @MainActor @Sendable (String, String) -> Void = { [weak lens] terms, caption in
+            lens?.showBanner(HudText.t(.findingImage), seconds: HudConstants.searchTimeoutSeconds)
+            Task {
+                if let data = await search.findImage(terms) {
+                    lens?.showImage(data, caption: caption)
+                } else {
+                    lens?.showBanner(HudText.t(.imageNotFound))
+                }
+            }
+        }
+        ai.tools = AiTools.make(search: search, charts: charts, showChart: showChart, showPicture: showPicture)
+        let claude = ClaudeOnPC(settings: settings, charts: charts, showChart: showChart, showPicture: showPicture)
+        let aiTab = AiTab(ai: ai, claude: claude, settings: settings)
         let searchTab = SearchTab(service: search)
         let calcTab = CalcTab()
         lens.setTabs([
@@ -66,23 +85,7 @@ final class HudController: ObservableObject {
         self.tilt = tilt
         self.conversations = conversations
         self.search = search
-
-        // The AI's tools put charts and pictures on the lens.
-        ai.tools = AiTools.make(
-            search: search,
-            charts: ChartService(),
-            showChart: { [weak lens] chart in lens?.showImage(chart.png, caption: chart.caption) },
-            showPicture: { [weak lens] terms, caption in
-                lens?.showBanner(HudText.t(.findingImage), seconds: HudConstants.searchTimeoutSeconds)
-                Task {
-                    if let data = await search.findImage(terms) {
-                        lens?.showImage(data, caption: caption)
-                    } else {
-                        lens?.showBanner(HudText.t(.imageNotFound))
-                    }
-                }
-            }
-        )
+        self.claude = claude
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
             reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab

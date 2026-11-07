@@ -1,10 +1,10 @@
 // SettingsScreen.swift
 //
-// HUD settings: API keys, voice options, test mode, touch and head-tilt
+// HUD settings: Claude PC link (with a connection check), API keys, voice options, test mode, touch and head-tilt
 // controls (with live angles + calibration), and managing notes/reminders.
 //
-// Public API: SettingsScreen (SwiftUI view; needs HudSettings, HeadTiltDetector,
-// NotesStore, ReminderService in the environment).
+// Public API: SettingsScreen (SwiftUI view; needs HudController, HudSettings,
+// HeadTiltDetector, NotesStore, ReminderService, CaptionController in the environment).
 
 import SwiftUI
 
@@ -12,11 +12,15 @@ struct SettingsScreen: View {
 
     // MARK: - Dependencies
 
+    @EnvironmentObject private var hud: HudController
     @EnvironmentObject private var settings: HudSettings
     @EnvironmentObject private var tilt: HeadTiltDetector
     @EnvironmentObject private var notes: NotesStore
     @EnvironmentObject private var reminders: ReminderService
     @EnvironmentObject private var captions: CaptionController
+
+    @State private var connectionResult: String?
+    @State private var isCheckingConnection = false
 
     // MARK: - Body
 
@@ -24,6 +28,7 @@ struct SettingsScreen: View {
         NavigationView {
             Form {
                 voiceSection
+                claudeSection
                 searchSection
                 controlsSection
                 headTiltSection
@@ -52,6 +57,33 @@ struct SettingsScreen: View {
             Text(HudText.t(.voice))
         } footer: {
             Text(HudText.t(.voiceFooter) + "\n\n" + HudText.t(.saveConversationsFooter))
+        }
+    }
+
+    private var claudeSection: some View {
+        Section {
+            Toggle(HudText.t(.useClaudeOnPC), isOn: $settings.useClaudeOnPC)
+            TextField(HudText.t(.pcUrlPlaceholder), text: $settings.pcBridgeUrl)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            SecureField(HudText.t(.pcTokenPlaceholder), text: $settings.pcBridgeToken)
+            Button(HudText.t(.checkConnection)) {
+                isCheckingConnection = true
+                Task {
+                    let error = await hud.claude.checkConnection()
+                    connectionResult = error ?? HudText.t(.connectionOk)
+                    isCheckingConnection = false
+                }
+            }
+            .disabled(isCheckingConnection || settings.pcBridgeUrl.isEmpty)
+            if let connectionResult {
+                Text(connectionResult).font(.footnote)
+            }
+        } header: {
+            Text(HudText.t(.claudeHeader))
+        } footer: {
+            Text(HudText.t(.claudeFooter))
         }
     }
 

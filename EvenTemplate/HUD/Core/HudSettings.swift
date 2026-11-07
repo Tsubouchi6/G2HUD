@@ -6,6 +6,8 @@
 // Public API (all @Published, auto-saved):
 //   language: HudLanguage        // speech + commands + lens + HUD screens
 //   tavilyApiKey: String         // web search (with AI answer)
+//   useClaudeOnPC: Bool          // AI tab asks Claude through the PC bridge (falls back to the iPhone AI)
+//   pcBridgeUrl, pcBridgeToken: String  // Tailscale address of the PC bridge + its token.txt
 //   requireWakeWord: Bool        // commands need the wake word first
 //   saveConversations: Bool      // keep transcripts of each HUD session
 //   usePhoneMic: Bool            // testing without glasses
@@ -29,6 +31,9 @@ final class HudSettings: ObservableObject {
         }
     }
     @Published var tavilyApiKey: String { didSet { save(tavilyApiKey, Key.tavilyApiKey) } }
+    @Published var useClaudeOnPC: Bool { didSet { save(useClaudeOnPC, Key.useClaudeOnPC) } }
+    @Published var pcBridgeUrl: String { didSet { save(pcBridgeUrl, Key.pcBridgeUrl) } }
+    @Published var pcBridgeToken: String { didSet { save(pcBridgeToken, Key.pcBridgeToken) } }
     @Published var requireWakeWord: Bool { didSet { save(requireWakeWord, Key.requireWakeWord) } }
     @Published var saveConversations: Bool { didSet { save(saveConversations, Key.saveConversations) } }
     @Published var usePhoneMic: Bool { didSet { save(usePhoneMic, Key.usePhoneMic) } }
@@ -44,6 +49,9 @@ final class HudSettings: ObservableObject {
         static let language = "g2hud_language"
         static let legacyCaptionLanguage = "g2hud_caption_language"
         static let tavilyApiKey = "g2hud_tavily_api_key"
+        static let useClaudeOnPC = "g2hud_use_claude_on_pc"
+        static let pcBridgeUrl = "g2hud_pc_bridge_url"
+        static let pcBridgeToken = "g2hud_pc_bridge_token"
         static let requireWakeWord = "g2hud_require_wake_word"
         static let saveConversations = "g2hud_save_conversations"
         static let usePhoneMic = "g2hud_use_phone_mic"
@@ -60,6 +68,9 @@ final class HudSettings: ObservableObject {
             ?? defaults.string(forKey: Key.legacyCaptionLanguage).flatMap(HudLanguage.init(legacyLocaleId:))
             ?? .japanese
         tavilyApiKey = defaults.string(forKey: Key.tavilyApiKey) ?? ""
+        useClaudeOnPC = defaults.object(forKey: Key.useClaudeOnPC) as? Bool ?? true
+        pcBridgeUrl = defaults.string(forKey: Key.pcBridgeUrl) ?? ""
+        pcBridgeToken = defaults.string(forKey: Key.pcBridgeToken) ?? ""
         requireWakeWord = defaults.object(forKey: Key.requireWakeWord) as? Bool ?? true
         saveConversations = defaults.object(forKey: Key.saveConversations) as? Bool ?? true
         usePhoneMic = defaults.object(forKey: Key.usePhoneMic) as? Bool ?? false

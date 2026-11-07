@@ -1,8 +1,8 @@
 // OnDeviceAI.swift
 //
 // Apple's on-device language model (Foundation Models, iOS 26+). Free and
-// offline. Every question carries the current context (date, time, time
-// zone, reply language), so obvious things like "what time is it" are
+// offline. Every question carries the current context (AiContext: date, time,
+// time zone, reply language), so obvious things like "what time is it" are
 // answered directly. For what it can't know it calls its tools (AiTools:
 // web search, stock chart, chart, picture) by its own judgement.
 // Keeps one conversation so follow-ups work, and starts a fresh one when the
@@ -45,7 +45,7 @@ final class OnDeviceAI {
     // MARK: - Asking
 
     func ask(_ question: String, language: HudLanguage) async throws -> String {
-        let prompt = "\(Self.contextLine(language: language))\n\(question)"
+        let prompt = "\(AiContext.line(language: language))\n\(question)"
         do {
             return try await respond(prompt)
         } catch LanguageModelSession.GenerationError.exceededContextWindowSize(_) {
@@ -70,7 +70,7 @@ final class OnDeviceAI {
         that you can't know without the web. Plain text only.
         """
         let session = LanguageModelSession(instructions: instructions)
-        let response = try await session.respond(to: "\(Self.contextLine(language: language))\n\(query)")
+        let response = try await session.respond(to: "\(AiContext.line(language: language))\n\(query)")
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -84,7 +84,7 @@ final class OnDeviceAI {
         the question names another. Keep numbers exactly. Plain text only.
         """
         let session = LanguageModelSession(instructions: instructions)
-        let prompt = "\(Self.contextLine(language: language))\nQuestion: \(query)\n\nAnswer: \(answer)"
+        let prompt = "\(AiContext.line(language: language))\nQuestion: \(query)\n\nAnswer: \(answer)"
         let response = try await session.respond(to: prompt)
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -96,15 +96,5 @@ final class OnDeviceAI {
         self.session = session
         let response = try await session.respond(to: prompt)
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    /// "[Context: Saturday 2026-11-07 15:18, time zone Asia/Tokyo. Reply in Portuguese.]"
-    /// Sent with every question so the answer always uses the real now.
-    private static func contextLine(language: HudLanguage) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "EEEE yyyy-MM-dd HH:mm"
-        let now = formatter.string(from: Date())
-        return "[Context: \(now), time zone \(TimeZone.current.identifier). Reply in \(language.englishName).]"
     }
 }
