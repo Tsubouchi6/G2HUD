@@ -71,6 +71,16 @@ final class VoiceCommandRouter {
             return
         }
 
+        // Still listening after "Neo": this phrase is a command (or a goodbye).
+        if window.isOpen {
+            if VoicePhrases.matches(text, VoicePhrases.endConversationWords) {
+                window.close()
+            } else {
+                runInWindow(text)
+            }
+            return
+        }
+
         // Starts with "new" etc. (often a misheard "Neo"): a pause after it, or
         // the AI judging from context, decides whether it's a command.
         if let alike = VoicePhrases.soundAlikeWake(text) {
@@ -86,16 +96,6 @@ final class VoiceCommandRouter {
                         runInWindow(alike.rest)
                     }
                 }
-            }
-            return
-        }
-
-        // Still listening after "Neo": this phrase is a command (or a goodbye).
-        if window.isOpen {
-            if VoicePhrases.matches(text, VoicePhrases.endConversationWords) {
-                window.close()
-            } else {
-                runInWindow(text)
             }
             return
         }
