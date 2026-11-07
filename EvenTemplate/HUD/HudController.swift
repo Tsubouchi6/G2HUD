@@ -134,14 +134,14 @@ final class HudController: ObservableObject {
             },
             calculate: { [weak calcTab] expression in calcTab?.calculate(expression) ?? "" },
             convert: { [weak calcTab] value, from, to in await calcTab?.convert(value, from: from, to: to) ?? "" },
+            openTab: { [weak lens, weak savedTab] id in
+                if id == "saved" { savedTab?.showList() }  // the list, not a previously opened item
+                return lens?.select(id: id) ?? false
+            },
             setLanguage: { which, code in
                 guard let language = HudLanguage(rawValue: code) else { return false }
                 if which == "hearing" { settings.hearingLanguage = language } else { settings.language = language }
                 return true
-            },
-            openTab: { [weak lens, weak savedTab] id in
-                if id == "saved" { savedTab?.showList() }  // the list, not a previously opened item
-                return lens?.select(id: id) ?? false
             }
         )
         ai.tools = AiTools.make(search: search, charts: charts, actions: actions)
