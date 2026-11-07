@@ -263,6 +263,10 @@ enum HudConstants {
     /// it is redrawn. Source: design choice (about two city blocks each way).
     static let navMiniMapRadiusMeters: Double = 200
     static let navMiniMapUserYFraction: CGFloat = 0.62
+    /// Zoomed out, the map slides toward the path ahead but keeps the user at
+    /// least this share of the half-width / half-height inside the edge.
+    /// Design choice: room for the user's arrow (about 16 px of 100-200).
+    static let navUserEdgeMargin: Double = 0.15
     static let navMiniMapRefreshSeconds: Double = 2
 
     /// Apple Maps street background: this many times the map's size (so it can be

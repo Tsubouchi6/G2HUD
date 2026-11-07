@@ -382,14 +382,8 @@ final class Navigator: ObservableObject {
                 return MapFrame(center: here.coordinate, radiusMeters: radius,
                                 anchorYFraction: HudConstants.navMiniMapUserYFraction)
             }
-            // 0 at the normal zoom, 1 at the zoom that fits the whole path (log scale, like the zoom steps).
-            let share = fit.radiusMeters > near ? min(log(radius / near) / log(fit.radiusMeters / near), 1) : 1
-            let center = CLLocationCoordinate2D(
-                latitude: here.coordinate.latitude + (fit.center.latitude - here.coordinate.latitude) * share,
-                longitude: here.coordinate.longitude + (fit.center.longitude - here.coordinate.longitude) * share
-            )
-            let anchor = HudConstants.navMiniMapUserYFraction + (0.5 - HudConstants.navMiniMapUserYFraction) * CGFloat(share)
-            return MapFrame(center: center, radiusMeters: radius, anchorYFraction: anchor)
+            return MapFrame(center: Self.slide(from: here.coordinate, toward: fit.center, radius: radius),
+                            radiusMeters: radius, anchorYFraction: 0.5)
         }
         if focusOnPlace {
             return MapFrame(center: target, radiusMeters: viewRadiusMeters ?? near, anchorYFraction: 0.5)
@@ -397,6 +391,27 @@ final class Navigator: ObservableObject {
         let fit = placeFit ?? MapFrame.fit([here.coordinate, target])
         return MapFrame(center: fit?.center ?? target, radiusMeters: viewRadiusMeters ?? fit?.radiusMeters ?? near,
                         anchorYFraction: 0.5)
+    }
+
+    /// Middle of a zoomed-out map: moved from the user toward the middle of the
+    /// path ahead, but only as far as keeps the user on the map with a
+    /// navUserEdgeMargin share of the half-width / half-height to spare. (Moving
+    /// by a fixed share of the way cut the user off: the map is half as tall as
+    /// wide, so a path heading north left the frame's reach in a few steps.)
+    private static func slide(from user: CLLocationCoordinate2D, toward goal: CLLocationCoordinate2D,
+                              radius: Double) -> CLLocationCoordinate2D {
+        let metersPerDegreeLat = 111_320.0
+        let metersPerDegreeLon = 111_320.0 * cos(user.latitude * .pi / 180)
+        let east = (goal.longitude - user.longitude) * metersPerDegreeLon
+        let north = (goal.latitude - user.latitude) * metersPerDegreeLat
+        let keep = 1 - HudConstants.navUserEdgeMargin
+        let maxEast = radius * keep           // half-width in meters
+        let maxNorth = radius / 2 * keep      // half-height (400x200 map)
+        var scale = 1.0
+        if abs(east) > maxEast { scale = min(scale, maxEast / abs(east)) }
+        if abs(north) > maxNorth { scale = min(scale, maxNorth / abs(north)) }
+        return CLLocationCoordinate2D(latitude: user.latitude + north * scale / metersPerDegreeLat,
+                                      longitude: user.longitude + east * scale / metersPerDegreeLon)
     }
 
     /// Fit for the user plus the path still ahead (from the route point nearest
