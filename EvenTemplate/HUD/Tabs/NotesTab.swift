@@ -29,6 +29,6 @@ final class NotesTab: LensTab {
         guard !store.notes.isEmpty else {
             return LensPage(lines: [HudText.t(.notesHint)], anchor: .top)
         }
-        return LensPage(lines: store.notes.map { "・\($0.text)" }, anchor: .top)
+        return LensPage(lines: store.notes.map { "◆ \($0.text)" }, anchor: .top)
     }
 }

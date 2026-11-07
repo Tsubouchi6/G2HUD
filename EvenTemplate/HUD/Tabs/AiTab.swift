@@ -1,7 +1,8 @@
 // AiTab.swift
 //
-// Lens tab: plain-text AI chat. Questions show as "> question" lines, answers
-// below, newest at the bottom.
+// Lens tab: plain-text AI chat. Questions show as "› question" lines, answers
+// indented below them, newest at the bottom. (Stored as "> question", the
+// format saved chats use.)
 //   1. Claude through the PC bridge, when set up in Settings (ClaudeOnPC).
 //   2. Otherwise, or when the PC can't be reached: the iPhone's on-device AI,
 //      tagged "(iPhone AI)" if Claude was supposed to answer.
@@ -53,7 +54,14 @@ final class AiTab: LensTab {
     }
 
     func page() -> LensPage {
-        LensPage(lines: lines.isEmpty ? [HudText.t(.aiHint)] : lines, anchor: .bottom, picture: picture)
+        guard !lines.isEmpty else { return LensPage(lines: [HudText.t(.aiHint)], anchor: .bottom) }
+        return LensPage(lines: lines.map(Self.display), anchor: .bottom, picture: picture)
+    }
+
+    /// "> question" -> "› question"; answers indented (every paragraph) under it.
+    private static func display(_ line: String) -> String {
+        if line.hasPrefix("> ") { return "› " + line.dropFirst(2) }
+        return "  " + line.replacingOccurrences(of: "\n", with: "\n  ")
     }
 
     // MARK: - Asking

@@ -31,6 +31,11 @@ enum HudConstants {
     static let statusBarX: Int = lensWidthPx - statusBarWidthPx
     static let statusBarY: Int = lensHeightPx - statusBarHeightPx
     static let lensContentHeightPx: Int = lensHeightPx - statusBarHeightPx
+    /// Tab bar: the empty left part of the bottom row, beside the status bar.
+    /// Shows "2/8 AI" (which tab, of how many) or the open item's title.
+    static let tabBarWidthPx: Int = statusBarX
+    /// Width of the tab bar in half-width units (same px-per-unit as a full line).
+    static let tabBarUnits: Int = lensLineUnits * tabBarWidthPx / lensWidthPx
     /// Tab lines above the status bar (248 px / ~28.8 px per line).
     static let lensContentLines: Int = 8
     /// Status bar refresh, in seconds (the listening dot blinks at this rate).

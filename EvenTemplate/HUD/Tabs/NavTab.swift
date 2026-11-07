@@ -74,7 +74,6 @@ final class NavTab: LensTab {
             var lines = [turnLine(progress)]
             if let after = progress.turnAfter { lines.append(HudText.t(.navThen, after)) }
             lines += [
-                "──",
                 HudText.t(.navRemaining, Self.distance(progress.remainingMeters), progress.remainingMinutes),
                 "→ \(progress.destinationName)",
             ]

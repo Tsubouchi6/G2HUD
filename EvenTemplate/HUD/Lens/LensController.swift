@@ -7,7 +7,7 @@
 //
 // Public API:
 //   LensController(pusher:)
-//   @Published activeIndex: Int, previewText: String, previewPicture: Data?, isActive: Bool
+//   @Published activeIndex: Int, previewText: String, previewPicture: Data?, tabBarText: String, isActive: Bool
 //   tabs: [LensTab]
 //   setTabs(_:)
 //   activate() / deactivate()
@@ -39,6 +39,8 @@ final class LensController: ObservableObject {
     @Published private(set) var previewPictureSpot: LensPictureSpot = .bottom
     /// Status bar text (bottom-right corner of every screen), set by LensStatus.
     @Published private(set) var statusText = ""
+    /// Tab bar text (bottom-left of every screen): "2/8 AI" or the page's header.
+    @Published private(set) var tabBarText = ""
     @Published private(set) var isActive = false
     @Published private(set) var image: LensImage?
 
@@ -202,7 +204,11 @@ final class LensController: ObservableObject {
         if let banner { lines.insert(banner, at: 0) }
         let text = lines.joined(separator: "\n")
 
+        let position = "\(activeIndex + 1)/\(tabs.count)"
+        let tabBar = LensTextLayout.truncate("\(position) \(page.header ?? tab.title)", units: HudConstants.tabBarUnits)
+
         previewText = text
+        tabBarText = tabBar
         previewPicture = picture
         previewPictureSpot = spot
         // While a full-lens picture is up, keep it; the text is pushed when it's dismissed.
@@ -213,6 +219,7 @@ final class LensController: ObservableObject {
             textBox: picture == nil ? fullText : spot.textBox,
             picture: picture,
             pictureBox: picture == nil ? nil : spot.pictureBox,
+            tabBar: tabBar,
             status: statusText
         ))
     }
@@ -231,9 +238,10 @@ final class LensController: ObservableObject {
         switchTo(((activeIndex + delta) % tabs.count + tabs.count) % tabs.count)
     }
 
+    /// The tab bar shows the new tab's name, so no banner (it would cover a line).
     private func switchTo(_ index: Int) {
         activeIndex = index
-        showBanner("◀ \(tabs[index].title) ▶")
+        render()
     }
 
     private func scrollActive(by count: Int, towardsOlder: Bool) {

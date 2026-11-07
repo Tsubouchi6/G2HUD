@@ -86,15 +86,18 @@ struct HudScreen: View {
 
     private var previewSection: some View {
         Section(HudText.t(.lensPreview)) {
-            // Tab content on top, status bar in the bottom-right corner, like on the lens.
+            // Tab content on top, tab bar and status bar in the bottom row, like on the lens.
             VStack(alignment: .leading, spacing: 4) {
                 lensContent
                 Spacer(minLength: 0)
-                if !lens.statusText.isEmpty {
+                // Bottom row: tab bar left, status bar right.
+                HStack {
+                    Text(lens.tabBarText)
+                    Spacer(minLength: 8)
                     Text(lens.statusText)
-                        .font(.system(size: 12, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
+                .font(.system(size: 12, design: .monospaced))
+                .lineLimit(1)
             }
             .font(.system(size: 13, design: .monospaced))
             .foregroundColor(Self.lensGreen)

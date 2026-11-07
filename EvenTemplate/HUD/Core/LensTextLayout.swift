@@ -3,6 +3,8 @@
 // Estimates how text wraps on the lens so tabs can scroll by whole lines.
 // The firmware wraps text itself and exposes no font metrics, so widths are
 // approximated: ASCII = 1 unit, everything else (kana, kanji) = 2 units.
+// Lines starting with spaces or a marker ("› ", "◆ ", "1. ", "→ ") keep wrapped
+// lines indented under the text (hanging indent), so items stay readable.
 //
 // Public API:
 //   LensTextLayout.wrap(_ text: String) -> [String]
@@ -49,6 +51,7 @@ enum LensTextLayout {
     }
 
     private static func wrapLine(_ line: String, limit: Int) -> [String] {
+        let indent = String(repeating: " ", count: min(hangingIndent(of: line), limit / 2))
         var result: [String] = []
         var current = ""
         for character in line {
@@ -56,17 +59,18 @@ enum LensTextLayout {
                 if character == " " {
                     // The break falls on a space: drop it.
                     result.append(current)
-                    current = ""
+                    current = indent
                     continue
                 }
-                if let lastSpace = current.lastIndex(of: " "), lastSpace != current.startIndex {
+                if let lastSpace = current.lastIndex(of: " "), current[..<lastSpace].contains(where: { $0 != " " }),
+                   lastSpace >= current.index(current.startIndex, offsetBy: indent.count) {
                     // Move the unfinished word to the next line.
                     result.append(String(current[..<lastSpace]))
-                    current = String(current[current.index(after: lastSpace)...])
+                    current = indent + String(current[current.index(after: lastSpace)...])
                 } else {
                     // One word longer than a line, or no spaces (Japanese): hard break.
                     result.append(current)
-                    current = ""
+                    current = indent
                 }
             }
             current.append(character)
@@ -74,6 +78,22 @@ enum LensTextLayout {
         result.append(current)
         return result
     }
+
+    /// Width of the leading spaces plus a list marker ("› ", "◆ ", "12. ", "→ ").
+    private static func hangingIndent(of line: String) -> Int {
+        let spaces = line.prefix { $0 == " " }
+        let rest = line.dropFirst(spaces.count)
+        if let first = rest.first, listMarkers.contains(first), rest.dropFirst().first == " " {
+            return spaces.count + units(of: first) + 1
+        }
+        let digits = rest.prefix { $0.isASCII && $0.isNumber }
+        if !digits.isEmpty, rest.dropFirst(digits.count).hasPrefix(". ") {
+            return spaces.count + digits.count + 2
+        }
+        return spaces.count
+    }
+
+    private static let listMarkers: Set<Character> = ["›", "◆", "・", "→", "▸"]
 
     /// Cuts `text` to at most `units` wide, adding "…" when cut.
     static func truncate(_ text: String, units limit: Int) -> String {

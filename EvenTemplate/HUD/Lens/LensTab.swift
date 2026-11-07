@@ -4,7 +4,7 @@
 // LensController decides what part of it is visible and sends it to the glasses.
 //
 // Public API:
-//   struct LensPage { lines, anchor, picture, pictureSpot }
+//   struct LensPage { lines, anchor, picture, pictureSpot, header }
 //   enum LensPictureSpot: bottom (chat) / top (navigation map) / corner (nav arrow) — boxes in lens px
 //   protocol LensTab
 //     id, title, voiceNames
@@ -22,6 +22,9 @@ struct LensPage {
     /// so a chart or photo sits in the conversation like a message.
     var picture: Data? = nil
     var pictureSpot: LensPictureSpot = .bottom
+    /// Title shown in the tab bar (bottom-left) instead of the tab's name, e.g. the
+    /// search query or the open Saved item, so it doesn't take a text line.
+    var header: String? = nil
 }
 
 /// Where a page's picture goes and where its text goes around it.

@@ -33,7 +33,7 @@ final class RemindTab: LensTab {
         let lines = service.reminders.enumerated().map { index, reminder in
             let time = Self.timeText(reminder.dueAt, now: now)
             let countdown = index == 0 ? "  (\(Self.countdownText(reminder.dueAt, now: now)))" : ""
-            return "\(time) \(reminder.text)\(countdown)"
+            return "◆ \(time)  \(reminder.text)\(countdown)"
         }
         return LensPage(lines: lines, anchor: .top)
     }

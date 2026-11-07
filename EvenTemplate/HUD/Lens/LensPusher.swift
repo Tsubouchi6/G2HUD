@@ -1,9 +1,9 @@
 // LensPusher.swift
 //
 // The only place that sends HUD content to the glasses. Every screen is one
-// scene frame (template DeviceManager "scene" event) with up to three
+// scene frame (template DeviceManager "scene" event) with up to four
 // elements: the tab's text, an optional picture (chat picture / nav map),
-// and the status bar in the bottom-right corner. Each element carries a
+// the tab bar in the bottom-left corner, and the status bar in the bottom-right. Each element carries a
 // change mark, so the G2 code only re-sends what changed (G2.applySceneFrame
 // skips "unchanged"; the slow picture isn't re-sent when only the time ticks).
 // Pushes are rate-limited to `HudConstants.lensPushIntervalMs`; the newest wins.
@@ -13,16 +13,17 @@
 //   show(LensFrame)                          // throttled; the newest frame always wins
 //   showImage(tiles:caption:)               // full-lens picture tiles + caption (legacy layout)
 //   clear()                                 // blank the lens immediately
-//   struct LensFrame { text, textBox, picture, pictureBox, status }
+//   struct LensFrame { text, textBox, picture, pictureBox, tabBar, status }
 
 import Foundation
 
-/// One screen: the tab's text in `textBox`, an optional picture, and the status bar.
+/// One screen: the tab's text in `textBox`, an optional picture, the tab bar and the status bar.
 struct LensFrame: Equatable {
     var text: String
     var textBox: LensPictureSpot.Box
     var picture: Data?
     var pictureBox: LensPictureSpot.Box?
+    var tabBar: String
     var status: String
 }
 
@@ -115,6 +116,8 @@ final class LensPusher {
         var elements: [[String: Any]] = [
             Self.element(id: "content", type: "text", box: frame.textBox,
                          change: change(previous?.text == frame.text), payload: ["text": frame.text]),
+            Self.element(id: "tabbar", type: "text", box: Self.tabBarBox,
+                         change: change(previous?.tabBar == frame.tabBar), payload: ["text": frame.tabBar]),
             Self.element(id: "status", type: "text", box: Self.statusBox,
                          change: change(previous?.status == frame.status), payload: ["text": frame.status]),
         ]
@@ -131,6 +134,11 @@ final class LensPusher {
         let sdk = session.sdk
         Task { try? await sdk.displayEvent(DisplayEventRequest(values: ["view": "main", "scene": scene])) }
     }
+
+    private static let tabBarBox = LensPictureSpot.Box(
+        x: 0, y: HudConstants.statusBarY,
+        width: HudConstants.tabBarWidthPx, height: HudConstants.statusBarHeightPx
+    )
 
     private static let statusBox = LensPictureSpot.Box(
         x: HudConstants.statusBarX, y: HudConstants.statusBarY,

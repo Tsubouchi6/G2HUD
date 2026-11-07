@@ -71,7 +71,7 @@ final class SavedTab: LensTab {
     // MARK: - Page
 
     func page() -> LensPage {
-        if let opened { return LensPage(lines: detailLines(opened), anchor: .top) }
+        if let opened { return LensPage(lines: detailLines(opened), anchor: .top, header: opened.item.title) }
         guard !items.isEmpty else { return LensPage(lines: [HudText.t(.savedHint)], anchor: .top) }
         let list = items.enumerated().map { index, item in
             let tag: String
@@ -86,7 +86,7 @@ final class SavedTab: LensTab {
     }
 
     private func detailLines(_ opened: OpenItem) -> [String] {
-        var result = [opened.item.title, "──"]
+        var result: [String] = []  // the title is in the tab bar
         if opened.translating { result.append(HudText.t(.translating)) }
         if opened.translationFailed { result.append(HudText.t(.translationFailed)) }
         for (index, line) in opened.lines.enumerated() {
