@@ -1,7 +1,13 @@
 // Navigator.swift
 //
-// Follows a route as the user moves: which step they're on, distance to the
-// next turn, distance and time left, re-routing when off the route, arrival.
+// The Nav tab's brain, in two modes:
+//   directions — follows a route as the user moves: which step they're on,
+//                distance to the next turn, distance and time left, re-routing
+//                when off the route, arrival. The map is centered on the user.
+//   place      — "where is the nearest X": the user and X both fit on the map,
+//                with the walking route between them; no turn-by-turn.
+// Zoom in/out halves/doubles the map's reach: around the user in directions,
+// around the place in place mode (zoom out from there widens again).
 // Step i's instruction describes the turn at the START of step i, so the
 // "next turn" is step i+1's instruction, reached at the end of step i.
 //
@@ -11,13 +17,15 @@
 //     compass turns the arrows (phone held like a map).
 //   @Published state: NavState
 //   @Published minimal: Bool                 // one line at the top, nothing else
-//   @Published miniMap: Data?                // G2-style map PNG, 400x200 (MiniMapRenderer)
+//   @Published miniMap: Data?                // map PNG, 400x200 (MiniMapRenderer)
 //   @Published mapStatus: String             // phone-only: whether the Apple Maps background loaded
-//   start(destination:mode:)                 // finds the nearest match, routes, follows (map view)
+//   start(destination:mode:)                 // directions to the nearest match (map view)
+//   showPlace(_ query:)                      // where the nearest match is, with the user
+//   zoom(in:)                                // halve / double the map's reach
 //   stop()
-//   showMap()                                // back to the full view with the mini-map
+//   showMap()                                // back to the view with the map
 //   onArrived: ((String) -> Void)?
-//   enum NavState, struct NavProgress
+//   enum NavState, struct NavProgress, struct PlaceInfo
 
 import CoreLocation
 import Foundation
@@ -38,10 +46,17 @@ struct NavProgress {
     let rerouting: Bool
 }
 
+struct PlaceInfo {
+    let name: String
+    let walkingMeters: Double
+    let walkingMinutes: Int
+}
+
 enum NavState {
     case idle
     case finding(String)
     case active(NavProgress)
+    case place(PlaceInfo)
     case arrived(String)
     case failed(String)
 }
@@ -65,6 +80,7 @@ final class Navigator: ObservableObject {
     private let useCompass: () -> Bool
     private var headingDegrees: Double?
 
+    private var isPlaceMode = false
     private var destination: MKMapItem?
     private var destinationName = ""
     private var mode: DirectionsMode = .walking
@@ -77,7 +93,14 @@ final class Navigator: ObservableObject {
     private var lastRerouteAt = Date.distantPast
     private var isRerouting = false
     private var miniMapDrawnAt = Date.distantPast
-    /// Apple Maps street picture around the user, refetched after moving away.
+
+    /// Map reach: meters from the center to the map's side edge. nil = default
+    /// (directions) or fit-both (place). Zoom sets it.
+    private var viewRadiusMeters: Double?
+    /// Place mode after "zoom in": the map centers on the place instead of fitting both.
+    private var focusOnPlace = false
+
+    /// Apple Maps street picture, refetched after moving away or zooming.
     private var background: StreetBackground?
     private var isFetchingBackground = false
 
@@ -90,10 +113,50 @@ final class Navigator: ObservableObject {
 
     // MARK: - Control
 
-    /// Always starts with the map; the one-line view only when asked (showMap / minimal).
+    /// Directions; always starts with the map (the one-line view only when asked).
     func start(destination query: String, mode: DirectionsMode) {
+        begin(query: query, mode: mode, placeMode: false)
+    }
+
+    /// "Where is the nearest X": the place and the user both on the map.
+    func showPlace(_ query: String) {
+        begin(query: query, mode: .walking, placeMode: true)
+    }
+
+    func stop() {
+        location.stopUpdates()
+        heading.stop()
+        headingDegrees = nil
+        route = nil
+        destination = nil
+        miniMap = nil
+        background = nil
+        viewRadiusMeters = nil
+        focusOnPlace = false
+        state = .idle
+    }
+
+    func showMap() {
+        minimal = false
+    }
+
+    /// Halves (in) or doubles (out) the map's reach, within navZoomMin/MaxMeters.
+    /// In place mode, zooming in centers on the place.
+    func zoom(in zoomIn: Bool) {
+        guard let here = lastLocation, route != nil else { return }
+        minimal = false
+        let current = viewRadiusMeters ?? currentFrame(at: here).radiusMeters
+        let next = zoomIn ? current / 2 : current * 2
+        viewRadiusMeters = min(max(next, HudConstants.navZoomMinMeters), HudConstants.navZoomMaxMeters)
+        if isPlaceMode, zoomIn { focusOnPlace = true }
+        miniMapDrawnAt = .distantPast
+        drawMiniMap(at: here)
+    }
+
+    private func begin(query: String, mode: DirectionsMode, placeMode: Bool) {
         stop()
         self.mode = mode
+        isPlaceMode = placeMode
         minimal = false
         state = .finding(query)
         Task {
@@ -109,21 +172,6 @@ final class Navigator: ObservableObject {
                 state = .failed(error.localizedDescription)
             }
         }
-    }
-
-    func stop() {
-        location.stopUpdates()
-        heading.stop()
-        headingDegrees = nil
-        route = nil
-        destination = nil
-        miniMap = nil
-        background = nil
-        state = .idle
-    }
-
-    func showMap() {
-        minimal = false
     }
 
     // MARK: - Route
@@ -152,29 +200,33 @@ final class Navigator: ObservableObject {
         guard route != nil, let destination else { return }
         lastLocation = here
 
-        let target = destination.placemark.coordinate
-        if here.distance(from: CLLocation(latitude: target.latitude, longitude: target.longitude)) <= HudConstants.navArrivalMeters {
-            location.stopUpdates()
-            heading.stop()
-            state = .arrived(destinationName)
-            onArrived?(destinationName)
-            return
+        if !isPlaceMode {
+            let target = destination.placemark.coordinate
+            if here.distance(from: CLLocation(latitude: target.latitude, longitude: target.longitude)) <= HudConstants.navArrivalMeters {
+                location.stopUpdates()
+                heading.stop()
+                state = .arrived(destinationName)
+                onArrived?(destinationName)
+                return
+            }
+            // Advance past every step end we've reached.
+            while stepIndex < stepEnds.count - 1,
+                  here.distance(from: stepEnds[stepIndex]) <= HudConstants.navStepAdvanceMeters {
+                stepIndex += 1
+            }
+            if isOffRoute(here) { reroute(from: here) }
         }
-
-        // Advance past every step end we've reached.
-        while stepIndex < stepEnds.count - 1,
-              here.distance(from: stepEnds[stepIndex]) <= HudConstants.navStepAdvanceMeters {
-            stepIndex += 1
-        }
-
-        if isOffRoute(here) { reroute(from: here) }
         publishProgress(at: here)
     }
 
     /// Phone compass moved: redraw the arrow.
     private func turned(to degrees: Double) {
         headingDegrees = degrees
-        if let here = lastLocation, case .active = state { publishProgress(at: here) }
+        guard let here = lastLocation else { return }
+        switch state {
+        case .active, .place: publishProgress(at: here)
+        default: break
+        }
     }
 
     private func isOffRoute(_ here: CLLocation) -> Bool {
@@ -193,32 +245,61 @@ final class Navigator: ObservableObject {
         }
     }
 
-    /// Redraws the mini-map at most every navMiniMapRefreshSeconds (each new
-    /// picture takes the glasses 0.5-2 s to receive).
+    // MARK: - Map
+
+    /// What the map shows: its center, its reach, and where the center sits.
+    private func currentFrame(at here: CLLocation) -> MapFrame {
+        guard isPlaceMode, let target = destination?.placemark.coordinate else {
+            return MapFrame(
+                center: here.coordinate,
+                radiusMeters: viewRadiusMeters ?? HudConstants.navMiniMapRadiusMeters,
+                anchorYFraction: HudConstants.navMiniMapUserYFraction
+            )
+        }
+        if focusOnPlace {
+            return MapFrame(center: target, radiusMeters: viewRadiusMeters ?? HudConstants.navMiniMapRadiusMeters, anchorYFraction: 0.5)
+        }
+        // Fit both: center between them, reach to cover both plus a margin
+        // (the map is half as tall as wide, so north-south distance counts double).
+        let user = here.coordinate
+        let middle = CLLocationCoordinate2D(latitude: (user.latitude + target.latitude) / 2,
+                                            longitude: (user.longitude + target.longitude) / 2)
+        let eastWest = CLLocation(latitude: middle.latitude, longitude: user.longitude)
+            .distance(from: CLLocation(latitude: middle.latitude, longitude: target.longitude)) / 2
+        let northSouth = CLLocation(latitude: user.latitude, longitude: middle.longitude)
+            .distance(from: CLLocation(latitude: target.latitude, longitude: middle.longitude)) / 2
+        let fit = max(eastWest, northSouth * 2) * HudConstants.navPlaceFitMargin
+        return MapFrame(center: middle, radiusMeters: viewRadiusMeters ?? max(fit, HudConstants.navZoomMinMeters), anchorYFraction: 0.5)
+    }
+
+    /// Redraws the map at most every navMiniMapRefreshSeconds (each new picture
+    /// takes the glasses 0.5-2 s to receive).
     private func drawMiniMap(at here: CLLocation) {
         guard Date().timeIntervalSince(miniMapDrawnAt) >= HudConstants.navMiniMapRefreshSeconds,
               let destination
         else { return }
         miniMapDrawnAt = Date()
-        fetchBackgroundIfNeeded(around: here)
+        let frame = currentFrame(at: here)
+        fetchBackgroundIfNeeded(for: frame)
         miniMap = MiniMapRenderer.png(
-            background: background,
+            background: background?.matches(frame) == true ? background : nil,
+            frame: frame,
             route: routePoints.map(\.coordinate),
             user: here.coordinate,
-            nextTurn: stepIndex < stepEnds.count - 1 ? stepEnds[stepIndex].coordinate : nil,
+            nextTurn: !isPlaceMode && stepIndex < stepEnds.count - 1 ? stepEnds[stepIndex].coordinate : nil,
             destination: destination.placemark.coordinate,
             headingDegrees: useCompass() ? headingDegrees : nil
         )
     }
 
-    /// Gets the Apple Maps street picture when there is none yet or the user
-    /// has moved navBackgroundRefetchMeters from its center. Redraws when it arrives.
-    private func fetchBackgroundIfNeeded(around here: CLLocation) {
-        if let background, here.distance(from: background.center) < HudConstants.navBackgroundRefetchMeters { return }
+    /// Gets the Apple Maps street picture when there is none for this zoom yet,
+    /// or the map center has moved too far from its middle. Redraws when it arrives.
+    private func fetchBackgroundIfNeeded(for frame: MapFrame) {
+        if let background, background.covers(frame) { return }
         guard !isFetchingBackground else { return }
         isFetchingBackground = true
         Task {
-            if let fresh = await StreetBackground.make(around: here, route: routePoints.map(\.coordinate)) {
+            if let fresh = await StreetBackground.make(for: frame, route: routePoints.map(\.coordinate)) {
                 background = fresh
                 mapStatus = "Apple Maps"
                 miniMapDrawnAt = .distantPast
@@ -232,6 +313,17 @@ final class Navigator: ObservableObject {
 
     private func publishProgress(at here: CLLocation) {
         guard let route, !steps.isEmpty else { return }
+        drawMiniMap(at: here)
+
+        if isPlaceMode {
+            state = .place(PlaceInfo(
+                name: destinationName,
+                walkingMeters: route.distance,
+                walkingMinutes: max(Int((route.expectedTravelTime / 60).rounded(.up)), 1)
+            ))
+            return
+        }
+
         let toStepEnd = here.distance(from: stepEnds[stepIndex])
         let laterSteps = steps.dropFirst(stepIndex + 1).reduce(0) { $0 + $1.distance }
         let remaining = toStepEnd + laterSteps
@@ -243,7 +335,6 @@ final class Navigator: ObservableObject {
             let bearing = HeadingService.bearing(from: here.coordinate, to: stepEnds[stepIndex].coordinate)
             relative = (bearing - headingDegrees + 360).truncatingRemainder(dividingBy: 360)
         }
-        drawMiniMap(at: here)
         state = .active(NavProgress(
             destinationName: destinationName,
             remainingMeters: remaining,
@@ -255,4 +346,14 @@ final class Navigator: ObservableObject {
             rerouting: isRerouting
         ))
     }
+}
+
+/// What the map shows: `center` drawn at `anchorYFraction` of the height
+/// (horizontally centered), with `radiusMeters` from there to the side edge.
+struct MapFrame {
+    let center: CLLocationCoordinate2D
+    let radiusMeters: Double
+    let anchorYFraction: CGFloat
+
+    var metersPerPixel: Double { radiusMeters / (Double(HudConstants.navMapWidthPx) / 2) }
 }

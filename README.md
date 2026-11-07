@@ -42,6 +42,8 @@ in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
 | (ナビ tab) シンプル / 詳しく / 地図 | simple / full / map | simples / completo / mapa | one-line view / full view / route map picture |
 | 3万×12 / 4800+10% / 足して5 / ルート2 | twelve times three / plus 5 / square root of 2 | dois mais dois / mais 5 | Calc tab: 万/億, number words, phone-style %, follow-ups from the last answer, √ |
 | 4800円の15%のチップは？ / 5キロは何マイル？ / 100ドルは何円？ | 15% tip on 4800 / 5 km in miles / 100 USD in yen | gorjeta de 15% em 4800 / 100 dólares em reais | AI writes the formula, the calculator computes exactly; units (Apple) and currency (live Yahoo rate) |
+| 一番近いコンビニはどこ？ / ズームイン / ズームアウト | where's the nearest convenience store / zoom in / zoom out | onde fica a loja mais perto / aproximar / afastar | map with you and the place together; zoom around you (directions) or the place |
+| ネオ → (follow-ups with no wake word) → ありがとう | Neo → follow-ups → thanks | Neo → … → obrigado | keeps listening after Neo; closes after 5 s of silence or 10 s without a reply to an answer |
 | この会話を保存して | save this chat | salva essa conversa | AI saves the AI chat (any wording) to the 履歴/Saved tab |
 | 履歴 → 2番 → 翻訳して / 英語に翻訳 → 一覧 | saved → number 2 → translate / translate to Portuguese → list | salvos → número 2 → traduz → lista | Saved tab: open, translate line by line (Apple Translation, on-device), back |
 | 最後のメモを消して | delete last note | apagar última nota | asks yes/no first |

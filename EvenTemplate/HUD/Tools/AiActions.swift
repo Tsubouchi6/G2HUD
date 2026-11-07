@@ -12,7 +12,8 @@
 //   stopListening() -> Bool        — ends and keeps the clip (false = nothing was being saved)
 //   startDirections(destination, mode) — nearest match, turn-by-turn with the map in the Nav tab
 //   stopDirections() -> Bool       — ends navigation (false = none running)
-//   directionsView(view) -> Bool   — "map" / "full" / "minimal" (false = no navigation running)
+//   showPlace(query)               — "where is the nearest X": X and the user together on the map
+//   directionsView(view) -> Bool   — "map" / "minimal" / "zoomIn" / "zoomOut" (false = no map running)
 //   calculate(expression) -> String              — exact result line, also in the Calc tab
 //   convert(value, from, to) async -> String     — units or live currency, also in the Calc tab
 
@@ -26,6 +27,7 @@ struct AiActions: Sendable {
     let stopListening: @MainActor @Sendable () -> Bool
     let startDirections: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode) -> Void
     let stopDirections: @MainActor @Sendable () -> Bool
+    let showPlace: @MainActor @Sendable (_ query: String) -> Void
     let directionsView: @MainActor @Sendable (_ view: String) -> Bool
     let calculate: @MainActor @Sendable (_ expression: String) -> String
     let convert: @MainActor @Sendable (_ value: Double, _ from: String, _ to: String) async -> String

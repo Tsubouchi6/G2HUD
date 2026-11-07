@@ -142,9 +142,13 @@ enum HudConstants {
     /// Source: observed ("Neo" -> "new"); add others the Captions tab shows.
     static let wakeSoundAlikes: [String] = ["new", "neil", "nil", "nio", "knee", "neal"]
 
-    /// After saying only the wake word, the next sentence counts as a command
-    /// if it starts within this many seconds.
-    static let commandWindowSeconds: Double = 8
+    /// Listening after "Neo" (ListeningWindow): closes after this much silence
+    /// (after "Neo" or an instant action), or this long without a response after
+    /// an answer appears; paused while the user talks. Source: user's choice.
+    static let listenSilenceSeconds: Double = 5
+    static let listenAfterReplySeconds: Double = 10
+    /// The "Yes?" indicator stays up at most this long (the window normally closes first).
+    static let listenIndicatorSeconds: Double = 120
 
     /// A destructive command waits this long for "はい/yes", in seconds.
     static let confirmWindowSeconds: Double = 10
@@ -216,6 +220,14 @@ enum HudConstants {
     static let navBackgroundRoadBrightness: CGFloat = 0.5
     static let navBackgroundMinRouteSamples: Int = 5
     static let navBackgroundMinContrast: Double = 12
+
+    /// Map zoom: reach (meters from the middle to the side edge) stays within
+    /// these, halving / doubling per "zoom in" / "zoom out"; "where is X" fits
+    /// both points with this much extra margin. Source: design choice
+    /// (50 m = a few buildings; 10 km = a city district).
+    static let navZoomMinMeters: Double = 50
+    static let navZoomMaxMeters: Double = 10_000
+    static let navPlaceFitMargin: Double = 1.3
 
     /// Nearest-place search: try these radii in order until something is found,
     /// in meters (500, 1000, ... 5000), with results restricted to the area
@@ -339,6 +351,9 @@ enum HudConstants {
     and shows walking or driving turn-by-turn in the Nav tab, always starting with a \
     street map plus the next turn and distance. Only if the user asks for no map or \
     a clear screen, switch the view to minimal (one line at the top); map brings it back. \
+    Show place: for where is / show me where / how far is, shows the nearest match and \
+    the user together on the map with the walking distance, without turn-by-turn. \
+    Zoom: zoom in / out the map (around the user in directions, around the place after show place). \
     For nearest, give just the kind of place (convenience store), not the word nearest. \
     8. Calculator: computes a formula exactly (+ - * / ^ ( ) %, phone-style percent) and \
     lists it in the Calc tab. Use it for ANY math instead of computing yourself: turn \
@@ -370,7 +385,8 @@ enum HudConstants {
     Save chat: SAVE: <short title>. \
     Listen: LISTEN: <short title>, and LISTEN_STOP to end it. \
     Directions: DIRECTIONS: <place as a map search> | <walking or driving>, DIRECTIONS_STOP \
-    to end them, DIRECTIONS_VIEW: <map or minimal> to switch the view. \
+    to end them, DIRECTIONS_VIEW: <map, minimal, zoomin or zoomout> for the view. \
+    Show place: PLACE: <place as a map search>. \
     Calculator: CALC: <formula>, and the exact result is added to your answer, so don't \
     compute it yourself. Convert: CONVERT: <value> | <from unit or currency> | <to>.
     """
@@ -389,7 +405,7 @@ enum HudConstants {
     HOW TO USE AN ABILITY: call its tool. Web search = searchWeb, stock chart = \
     stockChart, chart = drawChart, picture = showPicture, save chat = saveChat, \
     listen = startListening / stopListening, directions = startDirections / \
-    stopDirections / directionsView, calculator = calculate, convert = convert. After a tool, \
+    stopDirections / directionsView (also zoom), show place = showPlace, calculator = calculate, convert = convert. After a tool, \
     reply with one short sentence.
     """
 }

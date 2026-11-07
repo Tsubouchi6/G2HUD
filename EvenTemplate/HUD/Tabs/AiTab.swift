@@ -13,6 +13,7 @@
 // The chat on screen is what "save this chat" saves (AiChatArchive).
 //
 // Public API: AiTab(ai:settings:archive:)  — LensTab with id "ai"; ask(_ question:)
+//   onAnswered: (() -> Void)?      // an answer appeared
 //   claude: ClaudeOnPC?            // set by HudController (built after the tab, since its
 //                                  // actions put pictures into this tab)
 //   addPicture(_ png:, caption:)   // png must be chatPictureWidthPx x chatPictureHeightPx
@@ -29,6 +30,8 @@ final class AiTab: LensTab {
 
     private let ai: OnDeviceAI
     var claude: ClaudeOnPC?
+    /// Called when an answer appears (the listening window gives 10 s to respond).
+    var onAnswered: (() -> Void)?
     private let settings: HudSettings
     private var lines: [String] = []
     /// The current answer's picture; cleared when the next question is asked.
@@ -62,6 +65,7 @@ final class AiTab: LensTab {
             let answer = await answer(question)
             if lines.last == "..." { lines.removeLast() }
             append([answer])
+            onAnswered?()
         }
     }
 

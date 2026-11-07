@@ -4,6 +4,7 @@
 // the on-device AI's offline answer when Tavily is unavailable), then result titles.
 //
 // Public API: SearchTab(service:)  — LensTab with id "search"; search(_ query:)
+//   onFinished: (() -> Void)?   // results or an error appeared
 
 import Foundation
 
@@ -14,6 +15,8 @@ final class SearchTab: LensTab {
     var title: String { HudText.t(.tabSearch) }
     let voiceNames = ["検索", "けんさく", "サーチ", "search", "google", "グーグル", "pesquisa", "busca"]
     var onChange: (() -> Void)?
+    /// Called when results (or an error) appear.
+    var onFinished: (() -> Void)?
 
     private let service: WebSearchService
     private var lines: [String] = []
@@ -39,6 +42,7 @@ final class SearchTab: LensTab {
             } catch {
                 show([HudText.t(.searchLabel, query), error.localizedDescription])
             }
+            onFinished?()
         }
     }
 

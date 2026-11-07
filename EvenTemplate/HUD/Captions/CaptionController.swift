@@ -12,6 +12,7 @@
 //   @Published livePhrase: String       // in-progress phrase (may still change)
 //   @Published errorMessage: String?
 //   onFinalPhrase: ((String) -> Void)?
+//   onSpeaking: (() -> Void)?                // partial speech (the user is talking now)
 //   engineName: String
 //   recorder: RawAudioRecorder
 //   start() async / stop() async / clearTranscript()
@@ -32,6 +33,7 @@ final class CaptionController: ObservableObject {
     @Published private(set) var errorMessage: String?
 
     var onFinalPhrase: ((String) -> Void)?
+    var onSpeaking: (() -> Void)?
     let recorder = RawAudioRecorder()
     private(set) var engineName = "Apple (on-device)"
 
@@ -128,6 +130,7 @@ final class CaptionController: ObservableObject {
             }
         } else {
             livePhrase = update.text
+            if !update.text.trimmingCharacters(in: .whitespaces).isEmpty { onSpeaking?() }
         }
     }
 

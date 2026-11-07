@@ -1,6 +1,6 @@
 // NavTab.swift
 //
-// Lens tab: turn-by-turn directions from Navigator. Two views:
+// Lens tab: turn-by-turn directions, or "where is X", from Navigator. Two views:
 //   full    — map (400x200, MiniMapRenderer: Apple Maps streets, north-up, route,
 //             user arrow; the biggest picture the glasses take) with two lines under it: next turn; distance/time · destination
 //   minimal — one line at the top ("120m 左折 ..."), the rest of the lens clear
@@ -33,11 +33,16 @@ final class NavTab: LensTab {
 
     func page() -> LensPage {
         if navigator.minimal { return LensPage(lines: minimalLines(), anchor: .top) }
-        // Full view: the map as big as the glasses allow, only two lines under it.
-        guard case .active(let progress) = navigator.state, let miniMap = navigator.miniMap else {
+        // Map view: the map as big as the glasses allow, only two lines under it.
+        guard let miniMap = navigator.miniMap else { return LensPage(lines: fullLines(), anchor: .top) }
+        switch navigator.state {
+        case .active(let progress):
+            return LensPage(lines: mapLines(progress), anchor: .top, picture: miniMap, pictureSpot: .top)
+        case .place(let place):
+            return LensPage(lines: placeLines(place), anchor: .top, picture: miniMap, pictureSpot: .top)
+        default:
             return LensPage(lines: fullLines(), anchor: .top)
         }
-        return LensPage(lines: mapLines(progress), anchor: .top, picture: miniMap, pictureSpot: .top)
     }
 
     // MARK: - Views
@@ -52,6 +57,8 @@ final class NavTab: LensTab {
             return [message]
         case .arrived(let name):
             return [HudText.t(.navArrived, name)]
+        case .place(let place):
+            return placeLines(place)
         case .active(let progress):
             // Next turn first (biggest need), then the overview, like the G2 Navigate screen.
             var lines = [turnLine(progress)]
@@ -74,11 +81,22 @@ final class NavTab: LensTab {
         return [LensTextLayout.truncate(turnLine(progress), units: units), LensTextLayout.truncate(overview, units: units)]
     }
 
+    /// "Where is X": the place, then how far on foot.
+    private func placeLines(_ place: PlaceInfo) -> [String] {
+        let units = HudConstants.lensLineUnits
+        return [
+            LensTextLayout.truncate("◎ \(place.name)", units: units),
+            HudText.t(.navPlaceWalk, Self.distance(place.walkingMeters), place.walkingMinutes),
+        ]
+    }
+
     /// A single line at the top; everything else on the lens stays empty.
     private func minimalLines() -> [String] {
         switch navigator.state {
         case .active(let progress):
             return [LensTextLayout.truncate(turnLine(progress), units: HudConstants.lensLineUnits)]
+        case .place(let place):
+            return [LensTextLayout.truncate("◎ \(place.name) · \(Self.distance(place.walkingMeters))", units: HudConstants.lensLineUnits)]
         case .arrived(let name):
             return [HudText.t(.navArrived, name)]
         case .finding(let query):

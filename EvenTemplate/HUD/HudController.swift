@@ -112,12 +112,17 @@ final class HudController: ObservableObject {
                 }
                 return false
             },
+            showPlace: { [weak lens] query in
+                navigator.showPlace(query)
+                lens?.select(id: "nav")
+            },
             directionsView: { [weak lens] view in
                 if case .idle = navigator.state { return false }
-                switch view {
-                case "map": navigator.showMap()
+                switch view.lowercased() {
                 case "minimal": navigator.minimal = true
-                default: navigator.minimal = false
+                case "zoomin": navigator.zoom(in: true)
+                case "zoomout": navigator.zoom(in: false)
+                default: navigator.showMap()
                 }
                 lens?.select(id: "nav")
                 return true
@@ -165,11 +170,21 @@ final class HudController: ObservableObject {
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 
         captions.onFinalPhrase = { [weak self] phrase in
-            self?.conversations.append(phrase)
-            // "Listen to this" clips keep only what others say, not "Neo ..." commands.
-            if VoicePhrases.stripWakeWord(VoicePhrases.normalize(phrase)) == nil { self?.listening.append(phrase) }
-            self?.router.handle(phrase: phrase)
+            guard let self else { return }
+            self.conversations.append(phrase)
+            // "Listen to this" clips keep only what others say, not commands to Neo.
+            let isCommand = self.router.window.isOpen || VoicePhrases.stripWakeWord(VoicePhrases.normalize(phrase)) != nil
+            if !isCommand { self.listening.append(phrase) }
+            self.router.handle(phrase: phrase)
         }
+        // Listening window after "Neo": pause while talking, 10 s after an answer, indicator on the lens.
+        captions.onSpeaking = { [weak self] in self?.router.userIsSpeaking() }
+        aiTab.onAnswered = { [weak self] in self?.router.replyShown() }
+        searchTab.onFinished = { [weak self] in self?.router.replyShown() }
+        router.window.onOpen = { [weak lens] in
+            lens?.showBanner(HudText.t(.wakeAck), seconds: HudConstants.listenIndicatorSeconds)
+        }
+        router.window.onClose = { [weak lens] in lens?.hideBanner() }
         // Redraw the lens in the new language (next tick, after the value is stored).
         languageSubscription = settings.$language
             .dropFirst()
@@ -195,6 +210,7 @@ final class HudController: ObservableObject {
         await captions.stop()
         conversations.endSession()
         listening.endSession()
+        router.window.close()
         lens.deactivate()
     }
 

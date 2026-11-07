@@ -1,7 +1,10 @@
 // VoiceCommandRouter.swift
 //
 // Turns finished speech phrases into actions. Cheapest path first:
-//   1. Wake word ("Neo ...") marks a command; other speech is just captions.
+//   1. Wake word ("Neo ...") marks a command and opens a listening window
+//      (ListeningWindow): follow-ups need no wake word until the user stays
+//      quiet (5 s, or 10 s after an answer) or says thanks / that's all.
+//      Other speech is just captions.
 //      Sentences starting with a sound-alike ("new ...") count when followed by
 //      a pause (comma) or when the on-device AI judges they were said to it.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI: tab
@@ -44,8 +47,10 @@ final class VoiceCommandRouter {
     // MARK: - State
 
     private let context: VoiceCommandContext
-    /// Set after a bare wake word: the next phrase is a command until this time.
-    private var commandWindowEnds: Date?
+    /// Open after "Neo": follow-ups need no wake word until it closes (ListeningWindow).
+    let window = ListeningWindow()
+    /// Set while running a command that will answer later (AI, search).
+    private var awaitingReply = false
     private var pendingConfirmation: (prompt: String, action: @MainActor () -> Void, expires: Date)?
 
     init(context: VoiceCommandContext) {
@@ -61,12 +66,8 @@ final class VoiceCommandRouter {
         if resolveConfirmation(text) { return }
 
         if let command = VoicePhrases.stripWakeWord(text) {
-            if command.isEmpty {
-                commandWindowEnds = Date().addingTimeInterval(HudConstants.commandWindowSeconds)
-                context.lens.showBanner(HudText.t(.wakeAck), seconds: HudConstants.commandWindowSeconds)
-            } else {
-                run(command: command)
-            }
+            window.open()
+            if !command.isEmpty { runInWindow(command) }
             return
         }
 
@@ -74,27 +75,51 @@ final class VoiceCommandRouter {
         // the AI judging from context, decides whether it's a command.
         if let alike = VoicePhrases.soundAlikeWake(text) {
             if alike.rest.isEmpty {
-                commandWindowEnds = Date().addingTimeInterval(HudConstants.commandWindowSeconds)
-                context.lens.showBanner(HudText.t(.wakeAck), seconds: HudConstants.commandWindowSeconds)
+                window.open()
             } else if alike.pausedAfter {
-                run(command: alike.rest)
+                window.open()
+                runInWindow(alike.rest)
             } else {
                 Task {
-                    if await context.isAddressedToAssistant(text) { run(command: alike.rest) }
+                    if await context.isAddressedToAssistant(text) {
+                        window.open()
+                        runInWindow(alike.rest)
+                    }
                 }
             }
             return
         }
 
-        if let ends = commandWindowEnds, Date() < ends {
-            commandWindowEnds = nil
-            run(command: text)
+        // Still listening after "Neo": this phrase is a command (or a goodbye).
+        if window.isOpen {
+            if VoicePhrases.matches(text, VoicePhrases.endConversationWords) {
+                window.close()
+            } else {
+                runInWindow(text)
+            }
             return
         }
 
         if !context.settings.requireWakeWord {
             runKeyPhraseOnly(text)
         }
+    }
+
+    /// Partial speech arrived: the user is talking, so the window waits.
+    func userIsSpeaking() {
+        window.userIsSpeaking()
+    }
+
+    /// An AI answer or search result appeared: the user has listenAfterReplySeconds to respond.
+    func replyShown() {
+        window.replyShown()
+    }
+
+    /// Runs a command and tells the window whether an answer is still coming.
+    private func runInWindow(_ command: String) {
+        awaitingReply = false
+        run(command: command)
+        window.commandSent(awaitingReply: awaitingReply)
     }
 
     /// Runs a command (no wake word needed). Used after the wake word and by
@@ -113,6 +138,7 @@ final class VoiceCommandRouter {
             context.calcTab.calculate(command)
         } else {
             open("ai")
+            awaitingReply = true
             context.aiTab.ask(command)
         }
     }
@@ -168,6 +194,7 @@ final class VoiceCommandRouter {
         }
         if let query = VoicePhrases.payload(command, VoicePhrases.searchPrefixes, suffixes: VoicePhrases.searchSuffixes) {
             open("search")
+            awaitingReply = true
             context.searchTab.search(query)
             return true
         }
@@ -178,6 +205,7 @@ final class VoiceCommandRouter {
         }
         if let question = VoicePhrases.payload(command, VoicePhrases.aiPrefixes) {
             open("ai")
+            awaitingReply = true
             context.aiTab.ask(question)
             return true
         }
@@ -218,6 +246,8 @@ final class VoiceCommandRouter {
         guard context.lens.activeTab?.id == "nav" else { return false }
         // Contains, not exact: "let me see the map" counts. Other wording goes to the AI,
         // which has a directionsView ability for the same three views.
+        if VoicePhrases.containsAny(command, VoicePhrases.navZoomInWords) { context.navigator.zoom(in: true); return true }
+        if VoicePhrases.containsAny(command, VoicePhrases.navZoomOutWords) { context.navigator.zoom(in: false); return true }
         if VoicePhrases.containsAny(command, VoicePhrases.navMapWords) { context.navigator.showMap(); return true }
         if VoicePhrases.containsAny(command, VoicePhrases.navMinimalWords) { context.navigator.minimal = true; return true }
         if VoicePhrases.containsAny(command, VoicePhrases.navFullWords) { context.navigator.minimal = false; return true }

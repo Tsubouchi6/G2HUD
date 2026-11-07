@@ -62,6 +62,7 @@ enum HudText {
         case findingImage, imageNotFound
         case tabSaved, savedHint, savedAiTag, savedTalkTag, translating, translationFailed
         case chatSaved, nothingToSave, aiChats
+        case navPlaceWalk
         case tabNav, navHint, navFinding, navArrived, navRemaining, navThen, navRerouting, navToArrival
         case listeningStarted, listeningSaved, savedListenTag, listenedClips
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
@@ -93,7 +94,7 @@ enum HudText {
         .aiUnavailable: ("AIが使えません (Apple Intelligenceをオンに)", "AI unavailable (turn on Apple Intelligence)",
                          "IA indisponível (ative a Apple Intelligence)"),
 
-        .wakeAck: ("はい?", "Yes?", "Sim?"),
+        .wakeAck: ("● はい? (聞いています)", "● Yes? (listening)", "● Sim? (ouvindo)"),
         .noted: ("メモした", "Noted", "Anotado"),
         .timeUnknown: ("時間が分からない", "Couldn't read the time", "Não entendi o horário"),
         .reminderSet: ("%@ にリマインド", "Reminder at %@", "Lembrete às %@"),
@@ -173,6 +174,7 @@ enum HudText {
         .chatSaved: ("保存した: %@", "Saved: %@", "Salvo: %@"),
         .nothingToSave: ("保存する会話がない", "Nothing to save", "Nada para salvar"),
         .tabNav: ("ナビ", "Nav", "Rota"),
+        .navPlaceWalk: ("徒歩 %@ · %d分", "%@ on foot · %d min", "%@ a pé · %d min"),
         .navHint: ("(ネオ 一番近いコンビニへの道)", "(Neo directions to the nearest convenience store)", "(Neo rota até a loja de conveniência mais perto)"),
         .navFinding: ("探しています: %@", "Finding: %@", "Procurando: %@"),
         .navArrived: ("到着: %@", "Arrived: %@", "Chegou: %@"),

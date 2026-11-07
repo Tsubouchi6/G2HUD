@@ -4,8 +4,9 @@
 // in native apps). Apple doesn't hand apps street shapes, only rendered map
 // pictures, so this is a street-level snapshot: dark style, muted, no points
 // of interest, no 3D buildings. It is north-up (turning it would turn its
-// labels upside-down) and twice the map's size, so it can be reused while the
-// user walks; Navigator fetches a new one after they move away from its center.
+// labels upside-down) and navBackgroundScale times the map's size at the map's
+// zoom, so it can be reused while the user walks; Navigator fetches a new one
+// after the map center moves away from its middle, or after zooming.
 //
 // Cleaning: roads must light up and the land around them go black (only
 // black is see-through on the lens). Which one is brighter depends on Apple's
@@ -17,9 +18,11 @@
 // Rendered at 2x and drawn at 1x, so edges and text shrink smoothly.
 //
 // Public API:
-//   StreetBackground.make(around:route:) async -> StreetBackground?
-//   image: UIImage, center: CLLocation
+//   StreetBackground.make(for frame:, route:) async -> StreetBackground?
+//   image: UIImage, center: CLLocation, metersPerPixel: Double
 //   point(for coordinate) -> CGPoint      // pixel in `image`
+//   matches(frame) -> Bool                // same zoom (usable for drawing)
+//   covers(frame) -> Bool                 // same zoom and still near enough (no refetch needed)
 
 import CoreLocation
 import MapKit
@@ -29,21 +32,35 @@ struct StreetBackground {
 
     let image: UIImage
     let center: CLLocation
+    let metersPerPixel: Double
     private let snapshot: MKMapSnapshotter.Snapshot
+
+    func matches(_ frame: MapFrame) -> Bool {
+        abs(frame.metersPerPixel - metersPerPixel) / metersPerPixel < 0.01
+    }
+
+    /// Refetch distance grows with the zoom (navBackgroundRefetchMeters at the default zoom).
+    func covers(_ frame: MapFrame) -> Bool {
+        let defaultMetersPerPixel = HudConstants.navMiniMapRadiusMeters / (Double(HudConstants.navMapWidthPx) / 2)
+        let limit = HudConstants.navBackgroundRefetchMeters * metersPerPixel / defaultMetersPerPixel
+        let target = CLLocation(latitude: frame.center.latitude, longitude: frame.center.longitude)
+        return matches(frame) && target.distance(from: center) < limit
+    }
 
     /// Where a coordinate falls in `image`, in pixels.
     func point(for coordinate: CLLocationCoordinate2D) -> CGPoint {
         snapshot.point(for: coordinate)
     }
 
-    /// Snapshot of navBackgroundScale x the map size around `center`, at the
-    /// map's scale (1 px per meter for a 200 m radius on 400 px).
+    /// Snapshot of navBackgroundScale x the map size around the frame's center,
+    /// at the frame's zoom.
     @MainActor
-    static func make(around center: CLLocation, route: [CLLocationCoordinate2D]) async -> StreetBackground? {
+    static func make(for frame: MapFrame, route: [CLLocationCoordinate2D]) async -> StreetBackground? {
         let scale = HudConstants.navBackgroundScale
         let size = CGSize(width: CGFloat(HudConstants.navMapWidthPx) * scale,
                           height: CGFloat(HudConstants.navMapHeightPx) * scale)
-        let metersPerPixel = HudConstants.navMiniMapRadiusMeters / (Double(HudConstants.navMapWidthPx) / 2)
+        let center = CLLocation(latitude: frame.center.latitude, longitude: frame.center.longitude)
+        let metersPerPixel = frame.metersPerPixel
         let pointsPerMeter = MKMapPointsPerMeterAtLatitude(center.coordinate.latitude)
         let width = Double(size.width) * metersPerPixel * pointsPerMeter
         let height = Double(size.height) * metersPerPixel * pointsPerMeter
@@ -63,7 +80,7 @@ struct StreetBackground {
         guard let snapshot = try? await MKMapSnapshotter(options: options).start(),
               let image = cleanStreets(snapshot, route: route)
         else { return nil }
-        return StreetBackground(image: image, center: center, snapshot: snapshot)
+        return StreetBackground(image: image, center: center, metersPerPixel: metersPerPixel, snapshot: snapshot)
     }
 
     /// Lights each pixel by its distance from the land gray (see header).

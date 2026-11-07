@@ -63,7 +63,16 @@ enum VoicePhrases {
     /// Nav tab (only while it is open): minimal view, full view, route map.
     static let navMinimalWords = ["シンプル", "シンプルにして", "ミニマル", "画面をすっきり", "simple", "minimal", "clear screen", "simples", "mínimo", "minimo"]
     static let navFullWords = ["詳しく", "詳細", "全部表示", "full", "details", "detailed", "completo", "detalhes"]
+    static let navZoomInWords = ["ズームイン", "拡大", "大きく", "zoom in", "closer", "aproximar", "aproxima", "mais perto"]
+    static let navZoomOutWords = ["ズームアウト", "縮小", "小さく", "zoom out", "further", "afastar", "afasta", "mais longe"]
     static let navMapWords = ["地図", "マップ", "地図を見せて", "map", "show map", "mapa", "mostra o mapa"]
+
+    /// Ends the listening window after "Neo" (whole phrase only).
+    static let endConversationWords = [
+        "ありがとう", "ありがとうございます", "以上", "終わり", "おわり", "もう大丈夫",
+        "thanks", "thank you", "that's all", "thats all", "bye", "goodbye",
+        "obrigado", "obrigada", "valeu", "tchau", "é isso", "e isso",
+    ]
 
     /// Language names for "英語に翻訳" / "translate to Portuguese".
     static let languageWords: [HudLanguage: [String]] = [

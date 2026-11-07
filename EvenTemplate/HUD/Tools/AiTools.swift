@@ -14,7 +14,8 @@
 //     saveChat     — saves this AI chat to the Saved tab
 //     startListening / stopListening — saves what people around say, from now until stopped
 //     startDirections / stopDirections — turn-by-turn to the nearest match (Apple Maps, free)
-//     directionsView — route map / full / minimal view of the running directions
+//     showPlace    — where the nearest X is, with the user, on one map (no turn-by-turn)
+//     directionsView — map / minimal / zoom in / zoom out
 //     calculate    — exact arithmetic (the model writes the formula, the app computes)
 //     convert      — units (Apple) or currency (live Yahoo rate)
 //   Failures are returned to the model as "Failed: ..." text, not thrown.
@@ -40,6 +41,7 @@ enum AiTools {
             StopListeningTool(stop: actions.stopListening),
             StartDirectionsTool(start: actions.startDirections),
             StopDirectionsTool(stop: actions.stopDirections),
+            ShowPlaceTool(show: actions.showPlace),
             DirectionsViewTool(change: actions.directionsView),
             CalculateTool(calculate: actions.calculate),
             ConvertTool(convert: actions.convert),
@@ -329,14 +331,14 @@ private struct ConvertTool: Tool {
 private struct DirectionsViewTool: Tool {
     let name = "directionsView"
     let description = """
-    Changes how the running directions look: map shows the route map picture, full \
-    shows distance and the next turns, minimal shows one line at the top only.
+    Changes the map in the Nav tab (directions or a shown place): map shows it, \
+    minimal hides it (one line at the top), zoomIn / zoomOut zoom the map.
     """
     let change: @MainActor @Sendable (_ view: String) -> Bool
 
     @Generable
     enum ViewKind: String {
-        case map, full, minimal
+        case map, minimal, zoomIn, zoomOut
     }
 
     @Generable
@@ -346,5 +348,26 @@ private struct DirectionsViewTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await change(arguments.view.rawValue) ? "Done, shown on the glasses." : "No directions are running."
+    }
+}
+
+private struct ShowPlaceTool: Tool {
+    let name = "showPlace"
+    let description = """
+    Shows where the nearest place matching the request is on a map, together with \
+    the user's position (both fit), with the walking distance. Use for "where is", \
+    "show me where", "how far is" questions; use startDirections to actually go there.
+    """
+    let show: @MainActor @Sendable (_ query: String) -> Void
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The kind of place or the place, as a map search, e.g. convenience store, Tokyo Station")
+        let query: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await show(arguments.query)
+        return "Shown on the map."
     }
 }

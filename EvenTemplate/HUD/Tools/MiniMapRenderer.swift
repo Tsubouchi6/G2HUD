@@ -3,7 +3,7 @@
 // Draws the navigation map (400x200, the biggest picture the glasses take):
 // Apple Maps streets behind (StreetBackground, north-up, like the G2's
 // "Full Map" mode), the route thick on top, the next turn as a dot, the
-// destination as a ring, and the user's arrow in the middle. The arrow turns
+// destination as a ring, and the user's arrow. The arrow turns
 // with the phone's compass (no glasses), else it points along the route.
 // White on black: black is see-through on the lens.
 //
@@ -12,7 +12,8 @@
 // (fine over a few hundred meters). Source: movable-type.co.uk/scripts/latlong.html
 //
 // Public API:
-//   MiniMapRenderer.png(background:route:user:nextTurn:destination:headingDegrees:) -> Data?
+//   MiniMapRenderer.png(background:frame:route:user:nextTurn:destination:headingDegrees:) -> Data?
+//     frame (Navigator's MapFrame): what's in the middle and how far the map reaches
 
 import CoreLocation
 import UIKit
@@ -24,6 +25,7 @@ enum MiniMapRenderer {
 
     static func png(
         background: StreetBackground?,
+        frame: MapFrame,
         route: [CLLocationCoordinate2D],
         user: CLLocationCoordinate2D,
         nextTurn: CLLocationCoordinate2D?,
@@ -31,26 +33,27 @@ enum MiniMapRenderer {
         headingDegrees: Double?
     ) -> Data? {
         let size = CGSize(width: HudConstants.navMapWidthPx, height: HudConstants.navMapHeightPx)
-        // User a bit below center, so more of the way ahead is visible.
-        let center = CGPoint(x: size.width / 2, y: size.height * HudConstants.navMiniMapUserYFraction)
+        // Where the frame's center lands (directions: the user, a bit low so more is ahead).
+        let anchor = CGPoint(x: size.width / 2, y: size.height * frame.anchorYFraction)
 
-        /// Coordinate to a pixel on this map, with the user at `center`.
+        /// Coordinate to a pixel on this map, with the frame's center at `anchor`.
         let point: (CLLocationCoordinate2D) -> CGPoint
         if let background {
-            let userInBackground = background.point(for: user)
+            let centerInBackground = background.point(for: frame.center)
             point = { coordinate in
                 let p = background.point(for: coordinate)
-                return CGPoint(x: p.x - userInBackground.x + center.x, y: p.y - userInBackground.y + center.y)
+                return CGPoint(x: p.x - centerInBackground.x + anchor.x, y: p.y - centerInBackground.y + anchor.y)
             }
         } else {
-            let pixelsPerMeter = (size.width / 2) / HudConstants.navMiniMapRadiusMeters
-            let φ0 = user.latitude * .pi / 180
+            let pixelsPerMeter = 1 / frame.metersPerPixel
+            let φ0 = frame.center.latitude * .pi / 180
             point = { coordinate in
-                let east = (coordinate.longitude - user.longitude) * .pi / 180 * cos(φ0) * earthRadiusMeters
-                let north = (coordinate.latitude - user.latitude) * .pi / 180 * earthRadiusMeters
-                return CGPoint(x: center.x + east * pixelsPerMeter, y: center.y - north * pixelsPerMeter)
+                let east = (coordinate.longitude - frame.center.longitude) * .pi / 180 * cos(φ0) * earthRadiusMeters
+                let north = (coordinate.latitude - frame.center.latitude) * .pi / 180 * earthRadiusMeters
+                return CGPoint(x: anchor.x + east * pixelsPerMeter, y: anchor.y - north * pixelsPerMeter)
             }
         }
+        let center = point(user)
 
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
@@ -59,10 +62,10 @@ enum MiniMapRenderer {
             cg.setFillColor(UIColor.black.cgColor)
             cg.fill(CGRect(origin: .zero, size: size))
 
-            // Streets (Apple Maps), shifted so the user sits at `center`.
+            // Streets (Apple Maps), shifted so the frame's center sits at `anchor`.
             if let background {
-                let userInBackground = background.point(for: user)
-                background.image.draw(at: CGPoint(x: center.x - userInBackground.x, y: center.y - userInBackground.y))
+                let centerInBackground = background.point(for: frame.center)
+                background.image.draw(at: CGPoint(x: anchor.x - centerInBackground.x, y: anchor.y - centerInBackground.y))
             }
 
             // Route: a black outline first so it stays readable over streets.
@@ -90,7 +93,7 @@ enum MiniMapRenderer {
             cg.setLineWidth(3)
             cg.strokeEllipse(in: CGRect(x: end.x - marker * 1.6, y: end.y - marker * 1.6, width: marker * 3.2, height: marker * 3.2))
 
-            // User arrow (map is north-up): phone compass, else along the route ahead.
+            // User arrow at the user's spot (map is north-up): phone compass, else along the route ahead.
             var arrowAngle = (headingDegrees ?? 0) * .pi / 180
             if headingDegrees == nil, let ahead = route.first(where: { hypot(point($0).x - center.x, point($0).y - center.y) > 10 }) {
                 let p = point(ahead)

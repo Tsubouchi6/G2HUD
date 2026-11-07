@@ -11,7 +11,8 @@
 //   LISTEN_STOP                                      -> stops and keeps that text
 //   DIRECTIONS: <place> | <walking|driving>          -> turn-by-turn (with the map) to the nearest match
 //   DIRECTIONS_STOP                                  -> stops navigation
-//   DIRECTIONS_VIEW: <map|full|minimal>              -> route map / full / one-line view
+//   DIRECTIONS_VIEW: <map|minimal|zoomin|zoomout>    -> map / one-line view / zoom
+//   PLACE: <place>                                   -> where the nearest match is, with the user
 //   CALC: <formula>                                  -> exact result, added to the answer
 //   CONVERT: <value> | <from> | <to>                 -> units / live currency, added to the answer
 //
@@ -110,6 +111,8 @@ final class ClaudeOnPC {
                 _ = actions.stopListening()
             } else if let view = value(trimmedLine, "DIRECTIONS_VIEW:") {
                 _ = actions.directionsView(view.lowercased())
+            } else if let query = value(trimmedLine, "PLACE:") {
+                actions.showPlace(query)
             } else if trimmedLine.uppercased() == "DIRECTIONS_STOP" {
                 _ = actions.stopDirections()
             } else if let spec = value(trimmedLine, "DIRECTIONS:") {
