@@ -12,23 +12,18 @@
 //   TransitService(settings:)
 //   isConfigured: Bool
 //   routes(from:to:) async throws -> [(route: NavRoute, fare: String?)]   // up to a few alternatives
-//   enum TransitError
+//   struct TransitError (.noKey / .noRoute / .server(_:), in the HUD language)
 
 import CoreLocation
 import Foundation
 
-enum TransitError: LocalizedError {
-    case noKey
-    case server(String)
-    case noRoute
+/// The message is built when thrown (HudText is main-actor), in the HUD language.
+struct TransitError: LocalizedError {
+    let errorDescription: String?
 
-    var errorDescription: String? {
-        switch self {
-        case .noKey: return HudText.t(.navNoGoogleKey)
-        case .server(let message): return "Google: \(message)"
-        case .noRoute: return HudText.t(.navNoTransit)
-        }
-    }
+    @MainActor static var noKey: TransitError { TransitError(errorDescription: HudText.t(.navNoGoogleKey)) }
+    @MainActor static var noRoute: TransitError { TransitError(errorDescription: HudText.t(.navNoTransit)) }
+    static func server(_ message: String) -> TransitError { TransitError(errorDescription: "Google: \(message)") }
 }
 
 @MainActor

@@ -63,6 +63,7 @@ struct NavRoute {
     }
 
     /// An Apple Maps walking or driving route.
+    @MainActor
     init(apple route: MKRoute) {
         let steps = route.steps.map { step in
             let end = DirectionsService.coordinates(of: step.polyline).last ?? step.polyline.coordinate
