@@ -14,6 +14,10 @@
 //   VoicePhrases.isNavigation(_:) -> Bool
 //   VoicePhrases.mentionsLiveInfo(_:) -> Bool      // needs the web (weather, news, now...)
 //   VoicePhrases.wantsPicture(_:) -> Bool          // "show me a picture of ..."
+//   VoicePhrases.wantsStock(_:) -> Bool            // "トヨタの株価", "apple stock"
+//   VoicePhrases.wantsChart(_:) -> Bool            // "日本の人口のグラフ", "chart of ..."
+//   VoicePhrases.stockRange(_:) -> StockRange      // "今年" -> .year (default .month)
+//   VoicePhrases.stripChartWords(_:) -> String     // "トヨタの株価" -> "トヨタ"
 //   phrase tables: next, previous, scrollUp, scrollDown, yes, no, ...
 
 import Foundation
@@ -76,6 +80,25 @@ enum VoicePhrases {
         "picture", "image", "photo", "show me", "look like", "looks like",
         "foto", "imagem", "mostra", "mostrar", "aparência", "parece",
     ]
+
+    /// Stock / market words (checked before pictures, so "show me Apple's
+    /// stock" draws a chart). Japanese as substrings, others as whole words.
+    static let stockSubstrings = ["株価", "株", "日経平均", "ダウ", "ナスダック", "ビットコイン", "仮想通貨", "為替", "ドル円"]
+    static let stockWords = [
+        "stock", "stocks", "shares", "share price", "ticker", "nasdaq", "nikkei", "dow", "bitcoin", "crypto",
+        "ação", "ações", "acao", "acoes", "bolsa", "cotação", "cotacao", "ibovespa",
+    ]
+    /// Chart / statistics words. Same matching rules.
+    static let chartSubstrings = ["統計", "グラフ", "チャート", "推移"]
+    static let chartWords = [
+        "chart", "graph", "statistics", "stats", "statistic", "trend",
+        "gráfico", "grafico", "estatística", "estatisticas", "estatísticas", "estatistica",
+    ]
+    /// Time-range words for stock charts, longest range first so "5年" beats "年".
+    static let fiveYearWords = ["5年", "五年", "five years", "5 years", "cinco anos", "5 anos"]
+    static let yearWords = ["今年", "1年", "一年", "年間", "year", "ano"]
+    static let weekWords = ["今週", "1週間", "一週間", "週", "week", "semana"]
+    static let dayWords = ["今日", "本日", "1日", "today", "day", "hoje", "dia"]
 
     private static let politeEndings = ["してください", "ください", "して", "へ", "に"]
     private static let openWords = ["タブを開いて", "を開いて", "開いて", "タブ", "に切り替えて", "を表示", "見せて",
@@ -146,6 +169,50 @@ enum VoicePhrases {
         if pictureSubstrings.contains(where: { lowered.contains($0) }) { return true }
         let padded = " " + lowered.components(separatedBy: CharacterSet.letters.inverted).joined(separator: " ") + " "
         return picturePhrases.contains(where: { padded.contains(" \($0) ") })
+    }
+
+    static func wantsStock(_ text: String) -> Bool {
+        containsSubstringOrWord(text, substrings: stockSubstrings, words: stockWords)
+    }
+
+    static func wantsChart(_ text: String) -> Bool {
+        containsSubstringOrWord(text, substrings: chartSubstrings, words: chartWords)
+    }
+
+    static func stockRange(_ text: String) -> StockRange {
+        if containsAny(text.lowercased(), fiveYearWords) { return .fiveYears }
+        if containsSubstringOrWord(text, substrings: ["年"], words: yearWords) { return .year }
+        if containsSubstringOrWord(text, substrings: ["週"], words: weekWords) { return .week }
+        if containsSubstringOrWord(text, substrings: ["今日", "本日"], words: dayWords) { return .day }
+        return .month
+    }
+
+    /// Removes stock, chart, range, and filler words, leaving the subject
+    /// ("トヨタの今年の株価のグラフ" -> "トヨタ").
+    static func stripChartWords(_ text: String) -> String {
+        var result = " " + text.lowercased().replacingOccurrences(of: "'", with: " ") + " "
+        let japanese = stockSubstrings + chartSubstrings + ["今年", "今週", "今日", "本日", "5年", "1年", "1週間",
+                                                            "見せて", "表示して", "出して", "教えて", "の", "を"]
+        for word in japanese.sorted(by: { $0.count > $1.count }) {
+            result = result.replacingOccurrences(of: word, with: " ")
+        }
+        let latin = stockWords + chartWords + fiveYearWords + yearWords + weekWords + dayWords + [
+            "show me", "show", "the", "of", "for", "price", "this", "last", "past", "a", "an", "s",
+            "mostra", "mostrar", "me", "do", "da", "de", "o", "a", "preço", "preco", "este", "esse", "último", "ultimo",
+        ]
+        for word in latin.sorted(by: { $0.count > $1.count }) {
+            result = result.replacingOccurrences(of: " \(word) ", with: " ")
+        }
+        return result.components(separatedBy: separators).filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
+    /// Japanese substrings anywhere, or Latin words/phrases on word boundaries.
+    private static func containsSubstringOrWord(_ text: String, substrings: [String], words: [String]) -> Bool {
+        let lowered = text.lowercased()
+        if substrings.contains(where: { lowered.contains($0) }) { return true }
+        let padded = " " + lowered.components(separatedBy: CharacterSet.letters.inverted.subtracting(.decimalDigits))
+            .joined(separator: " ") + " "
+        return words.contains(where: { padded.contains(" \($0) ") })
     }
 
     static func isNavigation(_ text: String) -> Bool {

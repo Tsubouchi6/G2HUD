@@ -2,7 +2,7 @@
 //
 // Assembles the HUD and is its single on/off switch. Builds the lens tabs,
 // wires speech -> voice commands -> tabs, glasses input -> lens, and reminders
-// -> lens alerts. Screens talk to this object (and the parts it exposes).
+// -> lens alerts, and voice chart requests (stocks / statistics) -> lens pictures. Screens talk to this object (and the parts it exposes).
 //
 // Tab order on the lens: 字幕, AI, 検索, 計算, メモ, リマインダー.
 //
@@ -49,6 +49,7 @@ final class HudController: ObservableObject {
         let aiTab = AiTab(ai: ai)
         let searchTab = SearchTab(service: search)
         let calcTab = CalcTab()
+        let charts = ChartService(search: search, ai: ai)
         lens.setTabs([
             CaptionsTab(captions: captions),
             aiTab,
@@ -78,10 +79,27 @@ final class HudController: ObservableObject {
         }
         aiTab.onWantsImage = { terms, caption in showPicture(terms, caption) }
         searchTab.onImage = { [weak lens] data, caption in lens?.showImage(data, caption: caption) }
+        let showChart: @MainActor (@escaping @MainActor () async throws -> RenderedChart) -> Void = { [weak lens] make in
+            lens?.showBanner(HudText.t(.loadingChart), seconds: HudConstants.searchTimeoutSeconds)
+            Task {
+                do {
+                    let chart = try await make()
+                    lens?.showImage(chart.png, caption: chart.caption)
+                } catch ChartError.stockNotFound {
+                    lens?.showBanner(HudText.t(.stockNotFound))
+                } catch SearchError.missingApiKey {
+                    lens?.showBanner(HudText.t(.noSearchKey))
+                } catch {
+                    lens?.showBanner(HudText.t(.chartNoData))
+                }
+            }
+        }
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
             reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab,
-            showPicture: { terms in showPicture(terms, nil) }
+            showPicture: { terms in showPicture(terms, nil) },
+            showStock: { command in showChart { try await charts.stockChart(for: command) } },
+            showStats: { command in showChart { try await charts.statsChart(for: command) } }
         ))
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 

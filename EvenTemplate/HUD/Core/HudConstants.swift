@@ -152,6 +152,35 @@ enum HudConstants {
     /// Request timeout for web searches, in seconds.
     static let searchTimeoutSeconds: Double = 10
 
+    // MARK: - Charts (stocks / statistics)
+
+    /// Yahoo Finance price history (free, no key, unofficial). Ticker is appended.
+    /// Source: query1.finance.yahoo.com/v8/finance/chart (community docs, 2026).
+    static let yahooChartEndpoint: String = "https://query1.finance.yahoo.com/v8/finance/chart/"
+
+    /// Yahoo Finance name -> ticker search (params q, quotesCount, newsCount).
+    /// Source: finance-query crate (docs.rs), yfinance.
+    static let yahooSearchEndpoint: String = "https://query2.finance.yahoo.com/v1/finance/search"
+
+    /// Yahoo rejects requests without a browser User-Agent.
+    static let browserUserAgent: String =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+
+    /// Axis label size in points (= pixels; charts render at scale 1 into the
+    /// 400x200 picture area). Smaller is unreadable on the lens.
+    static let chartLabelFontPt: CGFloat = 16
+
+    /// Statistics with more points than this draw as a line instead of bars
+    /// (bar labels stop fitting across 400 px).
+    static let chartMaxBars: Int = 8
+
+    /// Most points the AI may pull out of search text for one statistics chart.
+    static let chartMaxPoints: Int = 12
+
+    /// Search text handed to the on-device AI for number extraction, in
+    /// characters (its context is ~4k tokens, shared with the instructions).
+    static let chartSourceMaxChars: Int = 3000
+
     // MARK: - On-device AI
 
     /// Marker the on-device AI adds when it wants to show a picture.

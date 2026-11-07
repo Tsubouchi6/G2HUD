@@ -3,7 +3,8 @@
 // Turns finished speech phrases into actions. Cheapest path first:
 //   1. Wake word ("Claude ...") marks a command; other speech is just captions.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI.
-//   3. Anything else: "show me a picture of..." shows a web photo; questions
+//   3. Anything else: stock words ("トヨタの株価") draw a price chart; chart or
+//      statistics words draw a chart from search results; "show me a picture of..." shows a web photo; questions
 //      needing live data (weather, news, "now"...) go to Search; maths to the
 //      calculator; the rest to the on-device AI (which may ask for a picture).
 // Destructive actions wait for "はい / yes / sim" before running.
@@ -29,6 +30,10 @@ struct VoiceCommandContext {
     let calcTab: CalcTab
     /// Finds a web photo for the words and shows it on the lens.
     let showPicture: @MainActor (_ terms: String) -> Void
+    /// Draws a stock price chart on the lens.
+    let showStock: @MainActor (_ command: String) -> Void
+    /// Draws a statistics chart from web numbers on the lens.
+    let showStats: @MainActor (_ command: String) -> Void
 }
 
 @MainActor
@@ -82,9 +87,14 @@ final class VoiceCommandRouter {
         context.lens.dismissImage()
         if runKeyPhrase(command) { return }
 
-        // Not a known phrase: live questions to Search (the offline AI can't
-        // know them), maths to the calculator, the rest to the AI.
-        if VoicePhrases.wantsPicture(command) {
+        // Not a known phrase: charts first (their requests often contain
+        // "show me"), then pictures, live questions to Search (the offline AI
+        // can't know them), maths to the calculator, the rest to the AI.
+        if VoicePhrases.wantsStock(command) {
+            context.showStock(command)
+        } else if VoicePhrases.wantsChart(command) {
+            context.showStats(command)
+        } else if VoicePhrases.wantsPicture(command) {
             context.showPicture(command)
         } else if VoicePhrases.mentionsLiveInfo(command) {
             open("search")
