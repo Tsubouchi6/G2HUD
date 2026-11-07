@@ -10,37 +10,49 @@
 //
 // Each line is written immediately, so nothing is lost if the app is closed.
 //
+// ListeningLog (below) is the same thing for "listen to this" clips: started
+// when the user asks the AI to pay attention, kept in Documents/Listening, with
+// a title in the header ("2026-11-07 15:40 · 日本語 · Store").
+//
 // Public API:
-//   ConversationLog()
+//   ConversationLog()   /   ListeningLog()
 //   @Published sessions: [URL]                 // newest first
-//   startSession(language:) / endSession()
+//   isRecording: Bool
+//   startSession(language:title:) / endSession()
 //   append(_ phrase: String)                   // no-op when no session is open
 //   read(_ url: URL) -> String
 //   delete(_ url: URL) / refreshList()
-//   static title(for url: URL) -> String       // "2026-11-07 14:32"
+//   static title(for url: URL) -> String       // "2026-11-07 14:32" or "2026-11-07 15:40 Store"
 
 import Foundation
 
 @MainActor
-final class ConversationLog: ObservableObject {
+class ConversationLog: ObservableObject {
 
     // MARK: - State
 
     @Published private(set) var sessions: [URL] = []
 
     private var currentFile: URL?
+    private let folderName: String
+    private let filePrefix: String
 
-    init() {
+    init(folderName: String = HudConstants.conversationsFolderName, filePrefix: String = "conv-") {
+        self.folderName = folderName
+        self.filePrefix = filePrefix
         refreshList()
     }
 
+    var isRecording: Bool { currentFile != nil }
+
     // MARK: - Writing
 
-    func startSession(language: HudLanguage) {
-        guard currentFile == nil, let folder = try? Self.folder() else { return }
+    func startSession(language: HudLanguage, title: String? = nil) {
+        guard currentFile == nil, let folder = try? folderURL() else { return }
         let now = Date()
-        let url = folder.appendingPathComponent("conv-\(Self.format(now, "yyyy-MM-dd_HH-mm-ss")).txt")
-        let header = "\(Self.format(now, "yyyy-MM-dd HH:mm")) · \(language.displayName)\n"
+        let url = folder.appendingPathComponent("\(filePrefix)\(Self.format(now, "yyyy-MM-dd_HH-mm-ss")).txt")
+        let titlePart = title.map { " · " + $0.replacingOccurrences(of: "\n", with: " ") } ?? ""
+        let header = "\(Self.format(now, "yyyy-MM-dd HH:mm")) · \(language.displayName)\(titlePart)\n"
         guard FileManager.default.createFile(atPath: url.path, contents: Data(header.utf8)) else { return }
         currentFile = url
         refreshList()
@@ -77,7 +89,7 @@ final class ConversationLog: ObservableObject {
     }
 
     func refreshList() {
-        guard let folder = try? Self.folder(),
+        guard let folder = try? folderURL(),
               let urls = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
         else { return }
         sessions = urls
@@ -85,22 +97,21 @@ final class ConversationLog: ObservableObject {
             .sorted { $0.lastPathComponent > $1.lastPathComponent }
     }
 
-    /// "conv-2026-11-07_14-32-05.txt" -> "2026-11-07 14:32".
+    /// Header "2026-11-07 14:32 · 日本語[ · Store]" -> "2026-11-07 14:32[ Store]".
     static func title(for url: URL) -> String {
-        let stamp = url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "conv-", with: "")
-        let parts = stamp.split(separator: "_")
-        guard parts.count == 2 else { return stamp }
-        let time = parts[1].split(separator: "-").prefix(2).joined(separator: ":")
-        return "\(parts[0]) \(time)"
+        let header = (try? String(contentsOf: url, encoding: .utf8))?.components(separatedBy: "\n").first ?? ""
+        let parts = header.components(separatedBy: " · ")
+        guard let date = parts.first, !date.isEmpty else { return url.deletingPathExtension().lastPathComponent }
+        return ([date] + parts.dropFirst(2)).joined(separator: " ")
     }
 
     // MARK: - Helpers
 
-    private static func folder() throws -> URL {
+    private func folderURL() throws -> URL {
         let documents = try FileManager.default.url(
             for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true
         )
-        let folder = documents.appendingPathComponent(HudConstants.conversationsFolderName, isDirectory: true)
+        let folder = documents.appendingPathComponent(folderName, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return folder
     }
@@ -110,5 +121,13 @@ final class ConversationLog: ObservableObject {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = pattern
         return formatter.string(from: date)
+    }
+}
+
+/// "Listen to this" clips (its own type so screens can get it from the environment).
+@MainActor
+final class ListeningLog: ConversationLog {
+    init() {
+        super.init(folderName: HudConstants.listeningFolderName, filePrefix: "listen-")
     }
 }

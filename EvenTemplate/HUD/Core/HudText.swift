@@ -62,6 +62,7 @@ enum HudText {
         case findingImage, imageNotFound
         case tabSaved, savedHint, savedAiTag, savedTalkTag, translating, translationFailed
         case chatSaved, nothingToSave, aiChats
+        case listeningStarted, listeningSaved, savedListenTag, listenedClips
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
         case checkConnection, connectionOk, iphoneAiTag
     }
@@ -168,6 +169,10 @@ enum HudText {
         .translationFailed: ("翻訳できませんでした (設定 > アプリ > 翻訳 で言語をダウンロード)", "Couldn't translate (download the languages in Settings > Apps > Translate)", "Não foi possível traduzir (baixe os idiomas em Ajustes > Apps > Traduzir)"),
         .chatSaved: ("保存した: %@", "Saved: %@", "Salvo: %@"),
         .nothingToSave: ("保存する会話がない", "Nothing to save", "Nada para salvar"),
+        .listeningStarted: ("聞き取り中: %@", "Listening: %@", "Ouvindo: %@"),
+        .listeningSaved: ("聞き取りを保存した", "Listening saved", "Escuta salva"),
+        .savedListenTag: ("聞き取り", "Listened", "Ouvido"),
+        .listenedClips: ("聞き取り", "Listened", "Escutas"),
         .aiChats: ("保存したAIチャット", "Saved AI chats", "Conversas com IA salvas"),
         .claudeHeader: ("Claude (PC経由)", "Claude (through your PC)", "Claude (pelo PC)"),
         .useClaudeOnPC: ("AIタブでClaudeを使う", "Use Claude in the AI tab", "Usar Claude na aba IA"),

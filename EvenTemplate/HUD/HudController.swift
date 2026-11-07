@@ -8,7 +8,7 @@
 //
 // Public API:
 //   HudController(session:)
-//   settings, captions, lens, notes, reminders, tilt, conversations, claude, aiChats   (exposed parts)
+//   settings, captions, lens, notes, reminders, tilt, conversations, claude, aiChats, listening   (exposed parts)
 //   start() async / stop() async
 //   runTyped(_ command: String)      // phone test box: runs like a spoken command
 
@@ -29,6 +29,7 @@ final class HudController: ObservableObject {
     let conversations: ConversationLog
     let claude: ClaudeOnPC
     let aiChats: AiChatArchive
+    let listening: ListeningLog
 
     private let search: WebSearchService
     private let router: VoiceCommandRouter
@@ -45,39 +46,51 @@ final class HudController: ObservableObject {
         let reminders = ReminderService()
         let tilt = HeadTiltDetector()
         let conversations = ConversationLog()
+        let listening = ListeningLog()
 
         let ai = OnDeviceAI()
         let search = WebSearchService(settings: settings, ai: ai)
         let charts = ChartService()
         let aiChats = AiChatArchive()
 
-        // Charts and pictures from either AI go on the lens.
-        let showChart: @MainActor @Sendable (RenderedChart) -> Void = { [weak lens] chart in
-            lens?.showImage(chart.png, caption: chart.caption)
-        }
-        let showPicture: @MainActor @Sendable (String, String) -> Void = { [weak lens] terms, caption in
-            lens?.showBanner(HudText.t(.findingImage), seconds: HudConstants.searchTimeoutSeconds)
-            Task {
-                if let data = await search.findImage(terms) {
-                    lens?.showImage(data, caption: caption)
-                } else {
-                    lens?.showBanner(HudText.t(.imageNotFound))
+        // What either AI can make the HUD do (charts, pictures, saving, listening).
+        let actions = AiActions(
+            showChart: { [weak lens] chart in lens?.showImage(chart.png, caption: chart.caption) },
+            showPicture: { [weak lens] terms, caption in
+                lens?.showBanner(HudText.t(.findingImage), seconds: HudConstants.searchTimeoutSeconds)
+                Task {
+                    if let data = await search.findImage(terms) {
+                        lens?.showImage(data, caption: caption)
+                    } else {
+                        lens?.showBanner(HudText.t(.imageNotFound))
+                    }
                 }
+            },
+            saveChat: { [weak lens] title in
+                let saved = aiChats.saveCurrent(title: title, language: settings.language)
+                lens?.showBanner(saved ? HudText.t(.chatSaved, title) : HudText.t(.nothingToSave))
+                return saved
+            },
+            startListening: { [weak lens, weak captions] title in
+                guard captions?.isRunning == true else { return false }
+                listening.endSession()
+                listening.startSession(language: settings.language, title: title)
+                lens?.showBanner(HudText.t(.listeningStarted, title), seconds: HudConstants.listeningBannerSeconds)
+                return true
+            },
+            stopListening: { [weak lens] in
+                guard listening.isRecording else { return false }
+                listening.endSession()
+                lens?.showBanner(HudText.t(.listeningSaved))
+                return true
             }
-        }
-        let saveChat: @MainActor @Sendable (String) -> Bool = { [weak lens] title in
-            let saved = aiChats.saveCurrent(title: title, language: settings.language)
-            lens?.showBanner(saved ? HudText.t(.chatSaved, title) : HudText.t(.nothingToSave))
-            return saved
-        }
-        ai.tools = AiTools.make(
-            search: search, charts: charts, showChart: showChart, showPicture: showPicture, saveChat: saveChat
         )
-        let claude = ClaudeOnPC(
-            settings: settings, charts: charts, showChart: showChart, showPicture: showPicture, saveChat: saveChat
-        )
+        ai.tools = AiTools.make(search: search, charts: charts, actions: actions)
+        let claude = ClaudeOnPC(settings: settings, charts: charts, actions: actions)
         let aiTab = AiTab(ai: ai, claude: claude, settings: settings, archive: aiChats)
-        let savedTab = SavedTab(conversations: conversations, chats: aiChats, translator: Translator(ai: ai))
+        let savedTab = SavedTab(
+            conversations: conversations, listening: listening, chats: aiChats, translator: Translator(ai: ai)
+        )
         let searchTab = SearchTab(service: search)
         let calcTab = CalcTab()
         lens.setTabs([
@@ -100,6 +113,7 @@ final class HudController: ObservableObject {
         self.search = search
         self.claude = claude
         self.aiChats = aiChats
+        self.listening = listening
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
             reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab, savedTab: savedTab
@@ -108,6 +122,8 @@ final class HudController: ObservableObject {
 
         captions.onFinalPhrase = { [weak self] phrase in
             self?.conversations.append(phrase)
+            // "Listen to this" clips keep only what others say, not "Claude ..." commands.
+            if VoicePhrases.stripWakeWord(VoicePhrases.normalize(phrase)) == nil { self?.listening.append(phrase) }
             self?.router.handle(phrase: phrase)
         }
         // Redraw the lens in the new language (next tick, after the value is stored).
@@ -134,6 +150,7 @@ final class HudController: ObservableObject {
         input.stop()
         await captions.stop()
         conversations.endSession()
+        listening.endSession()
         lens.deactivate()
     }
 

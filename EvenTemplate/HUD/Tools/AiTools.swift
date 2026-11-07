@@ -6,12 +6,13 @@
 // Source: developer.apple.com/documentation/foundationmodels/tool
 //
 // Public API:
-//   AiTools.make(search:charts:showChart:showPicture:saveChat:) -> [any Tool]
+//   AiTools.make(search:charts:actions:) -> [any Tool]
 //     searchWeb    — live or recent facts (Tavily, 1 credit)
 //     stockChart   — price chart from Yahoo Finance (free)
 //     drawChart    — bar/line chart from numbers the model already has
 //     showPicture  — a web photo on the lens (Tavily, 1 credit)
 //     saveChat     — saves this AI chat to the Saved tab
+//     startListening / stopListening — saves what people around say, from now until stopped
 //   Failures are returned to the model as "Failed: ..." text, not thrown.
 
 import Foundation
@@ -23,16 +24,16 @@ enum AiTools {
     static func make(
         search: WebSearchService,
         charts: ChartService,
-        showChart: @escaping @MainActor @Sendable (RenderedChart) -> Void,
-        showPicture: @escaping @MainActor @Sendable (_ terms: String, _ caption: String) -> Void,
-        saveChat: @escaping @MainActor @Sendable (_ title: String) -> Bool
+        actions: AiActions
     ) -> [any Tool] {
         [
             SearchWebTool(search: search),
-            StockChartTool(charts: charts, show: showChart),
-            DrawChartTool(charts: charts, show: showChart),
-            ShowPictureTool(show: showPicture),
-            SaveChatTool(save: saveChat),
+            StockChartTool(charts: charts, show: actions.showChart),
+            DrawChartTool(charts: charts, show: actions.showChart),
+            ShowPictureTool(show: actions.showPicture),
+            SaveChatTool(save: actions.saveChat),
+            StartListeningTool(start: actions.startListening),
+            StopListeningTool(stop: actions.stopListening),
         ]
     }
 
@@ -188,5 +189,43 @@ private struct SaveChatTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await save(arguments.title) ? "Saved." : "Failed: the chat is empty."
+    }
+}
+
+// MARK: - Listening
+
+private struct StartListeningTool: Tool {
+    let name = "startListening"
+    let description = """
+    Starts saving the text of what people around the user say, from now on, so the \
+    user can read it later in the Saved tab. Use when the user asks, in any words, \
+    to listen, pay attention, or remember what someone says (a meeting, a store...).
+    """
+    let start: @MainActor @Sendable (_ title: String) -> Bool
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Very short title in the user's language, e.g. the place or event")
+        let title: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await start(arguments.title) ? "Listening started." : "Failed: the HUD is not running, so nothing can be heard."
+    }
+}
+
+private struct StopListeningTool: Tool {
+    let name = "stopListening"
+    let description = """
+    Stops saving what people say (started by startListening) and keeps the text. \
+    Use when the user says, in any words, that they're done or you can stop listening.
+    """
+    let stop: @MainActor @Sendable () -> Bool
+
+    @Generable
+    struct Arguments {}
+
+    func call(arguments: Arguments) async throws -> String {
+        await stop() ? "Stopped and saved." : "Nothing was being listened to."
     }
 }

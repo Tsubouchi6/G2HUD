@@ -31,6 +31,10 @@ enum HudConstants {
     /// Source: design choice (HUD mockup: "name flashes ~1 s").
     static let lensBannerSeconds: Double = 1.2
 
+    /// How long "Listening: ..." stays on the lens after it starts, in seconds.
+    /// Source: design choice (long enough to confirm it heard the request).
+    static let listeningBannerSeconds: Double = 4
+
     /// How long a reminder alert stays on the lens, in seconds.
     static let reminderAlertSeconds: Double = 10
 
@@ -94,6 +98,9 @@ enum HudConstants {
 
     /// Folder (inside Documents) for saved conversation transcripts.
     static let conversationsFolderName: String = "Conversations"
+
+    /// Documents subfolder for "listen to this" clips (visible in the Files app).
+    static let listeningFolderName: String = "Listening"
 
     /// Documents subfolder for saved AI chats (visible in the Files app).
     static let aiChatsFolderName: String = "AIChats"
@@ -200,7 +207,10 @@ enum HudConstants {
     IMAGE: <2-5 English search words> to show a photo. \
     STOCK: <name as Yahoo Finance lists it> | <day, week, month, year or fiveYears> to show a price chart. \
     CHART: <title> | <unit> | <label>=<number>; <label>=<number> to draw a chart from real numbers only. \
-    SAVE: <short title> when the user asks, in any words, to save or keep this chat.
+    SAVE: <short title> when the user asks, in any words, to save or keep this chat. \
+    LISTEN: <short title> when the user asks you to listen to or pay attention to what people \
+    around them say (the app saves that text from now on; you cannot hear it yourself). \
+    LISTEN_STOP when the user says you can stop listening.
     """
 
     // MARK: - On-device AI
@@ -223,6 +233,8 @@ enum HudConstants {
     Call drawChart when the user asks for a chart or statistics and you have \
     real numbers (search first if needed). Call showPicture when the user wants \
     to see something. Call saveChat when the user asks, in any words, to save \
-    or keep this chat. After a tool, reply with one short sentence.
+    or keep this chat. Call startListening when the user asks you to listen to or \
+    pay attention to what people around them say, and stopListening when they say \
+    you can stop. After a tool, reply with one short sentence.
     """
 }

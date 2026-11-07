@@ -1,6 +1,7 @@
 // SavedTab.swift
 //
-// Lens tab: saved AI chats and saved real conversations, newest first, all
+// Lens tab: saved AI chats, "listen to this" clips, and saved real
+// conversations, newest first, all
 // controlled by voice (with the wake word, while this tab is open):
 //   "2番" / "number 2" / "número 2"   -> open item 2
 //   "翻訳して" / "translate" / "traduz" -> show each line with its translation
@@ -9,7 +10,7 @@
 // Scrolling uses the normal up/down commands.
 //
 // Public API:
-//   SavedTab(conversations:chats:translator:)  — LensTab with id "saved"
+//   SavedTab(conversations:listening:chats:translator:)  — LensTab with id "saved"
 //   open(number:) -> Bool                      // 1-based, as shown in the list
 //   translate(to:)                             // nil = default target language
 //   showList()
@@ -28,7 +29,7 @@ final class SavedTab: LensTab {
 
     // MARK: - State
 
-    private enum Kind { case aiChat, conversation }
+    private enum Kind { case aiChat, listened, conversation }
     private struct Item {
         let url: URL
         let kind: Kind
@@ -44,17 +45,19 @@ final class SavedTab: LensTab {
     }
 
     private let conversations: ConversationLog
+    private let listening: ListeningLog
     private let chats: AiChatArchive
     private let translator: Translator
     private var items: [Item] = []
     private var opened: OpenItem?
     private var subscriptions: [AnyCancellable] = []
 
-    init(conversations: ConversationLog, chats: AiChatArchive, translator: Translator) {
+    init(conversations: ConversationLog, listening: ListeningLog, chats: AiChatArchive, translator: Translator) {
         self.conversations = conversations
+        self.listening = listening
         self.chats = chats
         self.translator = translator
-        for publisher in [conversations.objectWillChange, chats.objectWillChange] {
+        for publisher in [conversations.objectWillChange, listening.objectWillChange, chats.objectWillChange] {
             publisher
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] _ in self?.reloadItems() }
@@ -71,7 +74,12 @@ final class SavedTab: LensTab {
         if let opened { return LensPage(lines: detailLines(opened), anchor: .top) }
         guard !items.isEmpty else { return LensPage(lines: [HudText.t(.savedHint)], anchor: .top) }
         let list = items.enumerated().map { index, item in
-            let tag = HudText.t(item.kind == .aiChat ? .savedAiTag : .savedTalkTag)
+            let tag: String
+            switch item.kind {
+            case .aiChat: tag = HudText.t(.savedAiTag)
+            case .listened: tag = HudText.t(.savedListenTag)
+            case .conversation: tag = HudText.t(.savedTalkTag)
+            }
             return "\(index + 1). [\(tag)] \(item.title)"
         }
         return LensPage(lines: list, anchor: .top)
@@ -95,7 +103,12 @@ final class SavedTab: LensTab {
     func open(number: Int) -> Bool {
         guard items.indices.contains(number - 1) else { return false }
         let item = items[number - 1]
-        let text = item.kind == .aiChat ? chats.read(item.url) : conversations.read(item.url)
+        let text: String
+        switch item.kind {
+        case .aiChat: text = chats.read(item.url)
+        case .listened: text = listening.read(item.url)
+        case .conversation: text = conversations.read(item.url)
+        }
         var lines = text.components(separatedBy: "\n")
         let header = lines.isEmpty ? "" : lines.removeFirst()
         opened = OpenItem(item: item, language: Self.language(inHeader: header), lines: lines.filter { !$0.isEmpty })
@@ -133,9 +146,10 @@ final class SavedTab: LensTab {
 
     private func reloadItems() {
         let talk = conversations.sessions.map { Item(url: $0, kind: .conversation, title: ConversationLog.title(for: $0)) }
+        let listened = listening.sessions.map { Item(url: $0, kind: .listened, title: ConversationLog.title(for: $0)) }
         let ai = chats.chats.map { Item(url: $0, kind: .aiChat, title: AiChatArchive.title(for: $0)) }
-        // Both titles start with "yyyy-MM-dd HH:mm", so text order is time order.
-        items = (talk + ai).sorted { $0.title > $1.title }
+        // All titles start with "yyyy-MM-dd HH:mm", so text order is time order.
+        items = (talk + listened + ai).sorted { $0.title > $1.title }
         onChange?()
     }
 

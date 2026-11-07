@@ -7,9 +7,11 @@
 //   STOCK: <Yahoo name> | <day|week|month|year|fiveYears> -> price chart
 //   CHART: <title> | <unit> | <label>=<n>; <label>=<n>    -> bar/line chart
 //   SAVE: <short title>                              -> saves this chat (Saved tab)
+//   LISTEN: <short title>                            -> saves what people say from now on
+//   LISTEN_STOP                                      -> stops and keeps that text
 //
 // Public API:
-//   ClaudeOnPC(settings:charts:showChart:showPicture:saveChat:)
+//   ClaudeOnPC(settings:charts:actions:)
 //   isConfigured: Bool                       // enabled + URL + token filled in
 //   ask(_ question:) async throws -> String  // answer text, action lines removed
 //   checkConnection() async -> String?       // nil = OK, else the error
@@ -40,9 +42,7 @@ final class ClaudeOnPC {
 
     private let settings: HudSettings
     private let charts: ChartService
-    private let showChart: @MainActor (RenderedChart) -> Void
-    private let showPicture: @MainActor (_ terms: String, _ caption: String) -> Void
-    private let saveChat: @MainActor (_ title: String) -> Bool
+    private let actions: AiActions
 
     /// First question after launch starts a fresh Claude conversation.
     private var needsNewSession = true
@@ -50,15 +50,11 @@ final class ClaudeOnPC {
     init(
         settings: HudSettings,
         charts: ChartService,
-        showChart: @escaping @MainActor (RenderedChart) -> Void,
-        showPicture: @escaping @MainActor (_ terms: String, _ caption: String) -> Void,
-        saveChat: @escaping @MainActor (_ title: String) -> Bool
+        actions: AiActions
     ) {
         self.settings = settings
         self.charts = charts
-        self.showChart = showChart
-        self.showPicture = showPicture
-        self.saveChat = saveChat
+        self.actions = actions
     }
 
     var isConfigured: Bool {
@@ -93,19 +89,23 @@ final class ClaudeOnPC {
 
     // MARK: - Action lines
 
-    /// Carries out IMAGE/STOCK/CHART/SAVE lines and returns the text without them.
+    /// Carries out IMAGE/STOCK/CHART/SAVE/LISTEN lines and returns the text without them.
     private func runActions(in answer: String) -> String {
         var kept: [String] = []
         for line in answer.components(separatedBy: "\n") {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
-            if let terms = value(trimmedLine, "IMAGE:") {
-                showPicture(terms, kept.last ?? terms)
+            if trimmedLine.uppercased() == "LISTEN_STOP" {
+                _ = actions.stopListening()
+            } else if let title = value(trimmedLine, "LISTEN:") {
+                _ = actions.startListening(title)
+            } else if let terms = value(trimmedLine, "IMAGE:") {
+                actions.showPicture(terms, kept.last ?? terms)
             } else if let spec = value(trimmedLine, "STOCK:") {
                 runStock(spec)
             } else if let spec = value(trimmedLine, "CHART:") {
                 runChart(spec)
             } else if let title = value(trimmedLine, "SAVE:") {
-                _ = saveChat(title)
+                _ = actions.saveChat(title)
             } else {
                 kept.append(line)
             }
@@ -124,7 +124,7 @@ final class ClaudeOnPC {
         let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
         let range = parts.count > 1 ? StockRange(rawValue: parts[1]) ?? .month : .month
         Task {
-            if let chart = try? await charts.stockChart(name: parts[0], range: range) { showChart(chart) }
+            if let chart = try? await charts.stockChart(name: parts[0], range: range) { actions.showChart(chart) }
         }
     }
 
@@ -139,7 +139,7 @@ final class ClaudeOnPC {
             else { return nil }
             return ChartPoint(label: String(sides[0].trimmingCharacters(in: .whitespaces).prefix(8)), value: number)
         }
-        if let chart = try? charts.chart(title: parts[0], unit: parts[1], points: points) { showChart(chart) }
+        if let chart = try? charts.chart(title: parts[0], unit: parts[1], points: points) { actions.showChart(chart) }
     }
 
     // MARK: - HTTP
