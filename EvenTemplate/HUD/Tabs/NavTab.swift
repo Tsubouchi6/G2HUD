@@ -3,7 +3,9 @@
 // Lens tab: turn-by-turn directions, or "where is X", from Navigator. Two views:
 //   full    — map (400x200, MiniMapRenderer: Apple Maps streets, north-up, route,
 //             user arrow; the biggest picture the glasses take) with two lines under it: next turn; distance/time · destination
-//   minimal — one line at the top ("120m 左折 ..."), the rest of the lens clear
+//   minimal — one line at the top ("120m 左折 ..."), the rest of the lens clear;
+//             with the phone compass, a small arrow top-left rotates to the exact
+//             direction of the next turn, with the angle beside it ("35° right · 50m")
 // Without glasses connected, an arrow from the phone's compass points to the next turn.
 // Switched by voice while this tab is open ("シンプル" / "詳しく" / "地図"),
 // or the AI picks minimal when asked for a clear screen.
@@ -32,7 +34,15 @@ final class NavTab: LensTab {
     }
 
     func page() -> LensPage {
-        if navigator.minimal { return LensPage(lines: minimalLines(), anchor: .top) }
+        if navigator.minimal {
+            // Exact turn direction (phone compass): rotating arrow top-left + angle beside it.
+            if case .active(let progress) = navigator.state, let degrees = progress.relativeBearing,
+               let arrow = ArrowRenderer.png(degrees: (degrees / 5).rounded() * 5) {
+                return LensPage(lines: angleLines(progress, degrees: degrees), anchor: .top,
+                                picture: arrow, pictureSpot: .corner)
+            }
+            return LensPage(lines: minimalLines(), anchor: .top)
+        }
         // Map view: the map as big as the glasses allow, only two lines under it.
         guard let miniMap = navigator.miniMap else { return LensPage(lines: fullLines(), anchor: .top) }
         switch navigator.state {
@@ -83,6 +93,20 @@ final class NavTab: LensTab {
     private func placeLines(_ place: PlaceInfo) -> [String] {
         let walk = HudText.t(.navPlaceWalk, Self.distance(place.walkingMeters), place.walkingMinutes)
         return [LensTextLayout.truncate("◎ \(place.name) · \(walk)", units: HudConstants.lensLineUnits)]
+    }
+
+    /// Beside the rotating arrow: "35° right · 50m", then the turn itself.
+    private func angleLines(_ progress: NavProgress, degrees: Double) -> [String] {
+        let angle: String
+        if degrees <= HudConstants.navStraightDegrees || degrees >= 360 - HudConstants.navStraightDegrees {
+            angle = HudText.t(.navStraight)
+        } else if degrees <= 180 {
+            angle = HudText.t(.navAngleRight, Int(degrees.rounded()))
+        } else {
+            angle = HudText.t(.navAngleLeft, Int((360 - degrees).rounded()))
+        }
+        let distance = Self.distance(progress.nextTurn == nil ? progress.remainingMeters : progress.metersToNextTurn)
+        return ["\(angle) · \(distance)", progress.nextTurn ?? HudText.t(.navToArrival)]
     }
 
     /// A single line at the top; everything else on the lens stays empty.

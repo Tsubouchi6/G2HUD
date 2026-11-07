@@ -62,7 +62,7 @@ enum HudText {
         case findingImage, imageNotFound
         case tabSaved, savedHint, savedAiTag, savedTalkTag, translating, translationFailed
         case chatSaved, nothingToSave, aiChats
-        case navPlaceWalk
+        case navPlaceWalk, navAngleRight, navAngleLeft, navStraight
         case tabNav, navHint, navFinding, navArrived, navRemaining, navThen, navRerouting, navToArrival
         case listeningStarted, listeningSaved, savedListenTag, listenedClips
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
@@ -174,6 +174,9 @@ enum HudText {
         .chatSaved: ("保存した: %@", "Saved: %@", "Salvo: %@"),
         .nothingToSave: ("保存する会話がない", "Nothing to save", "Nada para salvar"),
         .tabNav: ("ナビ", "Nav", "Rota"),
+        .navAngleRight: ("右 %d°", "%d° right", "%d° à direita"),
+        .navAngleLeft: ("左 %d°", "%d° left", "%d° à esquerda"),
+        .navStraight: ("まっすぐ", "straight ahead", "em frente"),
         .navPlaceWalk: ("徒歩 %@ · %d分", "%@ on foot · %d min", "%@ a pé · %d min"),
         .navHint: ("(ネオ 一番近いコンビニへの道)", "(Neo directions to the nearest convenience store)", "(Neo rota até a loja de conveniência mais perto)"),
         .navFinding: ("探しています: %@", "Finding: %@", "Procurando: %@"),

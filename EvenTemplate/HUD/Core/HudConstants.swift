@@ -100,6 +100,12 @@ enum HudConstants {
     /// Lines under the map, above the status bar (44 px; one firmware line needs 40 px).
     static let navTextLines: Int = 1
 
+    /// Minimal navigation: turn arrow picture, top-left (one 100x100 image container,
+    /// so it updates quickly), rotated to the exact direction of the next turn.
+    static let navArrowSizePx: Int = 100
+    /// Within this many degrees of straight ahead, say "straight" instead of an angle.
+    static let navStraightDegrees: Double = 10
+
     /// A picture stays on the lens this long unless dismissed, in seconds.
     static let imageShowSeconds: Double = 20
 
@@ -357,8 +363,9 @@ enum HudConstants {
     one search. Use when seeing it helps (how something looks, an animal, a place). \
     5. Save chat: saves this conversation (questions and answers) with a title; the \
     user reads it later in the Saved tab and can translate it there. \
-    6. Listen: from now on the app saves the text of what people around the user say \
-    (you can't hear it yourself) until told to stop; it appears in the Saved tab. \
+    6. Listen: from now on the app itself writes down everything said around the user \
+    (other people and the user, not commands to you) until told to stop, and saves it in \
+    the Saved tab. You don't hear it and never ask the user to report what they hear. \
     Use when the user wants to remember what someone says (a meeting, a shop clerk). \
     7. Directions (always with the map unless the user asks to hide it): finds the \
     nearest place matching what the user wants (Apple Maps) \

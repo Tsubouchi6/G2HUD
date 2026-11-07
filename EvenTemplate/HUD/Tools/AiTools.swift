@@ -221,7 +221,14 @@ private struct StartListeningTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await start(arguments.title) ? "Listening started." : "Failed: the HUD is not running, so nothing can be heard."
+        await start(arguments.title)
+            ? """
+            Started. The app itself is now writing down everything said around the user \
+            (other people and the user, but not commands to you) and saves it in the Saved tab. \
+            You don't hear it and the user doesn't need to tell you anything. Confirm that in \
+            one short sentence and say they can tell you to stop when done.
+            """
+            : "Failed: the HUD is not running, so nothing can be heard."
     }
 }
 

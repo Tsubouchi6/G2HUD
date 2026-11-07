@@ -90,7 +90,12 @@ struct HudScreen: View {
                     }
                 } else {
                     // Picture placed like on the lens: under the chat, or the nav map above its two lines.
-                    if lens.previewPictureSpot == .top, let picture = previewPictureView {
+                    if lens.previewPictureSpot == .corner, let picture = previewPictureView {
+                        HStack(alignment: .top, spacing: 8) {
+                            picture.frame(width: 60, height: 60)
+                            previewLines
+                        }
+                    } else if lens.previewPictureSpot == .top, let picture = previewPictureView {
                         VStack(alignment: .center, spacing: 4) {
                             picture.frame(maxWidth: 260)
                             previewLines.frame(maxWidth: .infinity, alignment: .leading)

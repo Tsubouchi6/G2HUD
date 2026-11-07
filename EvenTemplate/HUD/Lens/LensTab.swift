@@ -5,7 +5,7 @@
 //
 // Public API:
 //   struct LensPage { lines, anchor, picture, pictureSpot }
-//   enum LensPictureSpot: bottom (chat) / top (navigation map) — boxes in lens px
+//   enum LensPictureSpot: bottom (chat) / top (navigation map) / corner (nav arrow) — boxes in lens px
 //   protocol LensTab
 //     id, title, voiceNames
 //     page() -> LensPage
@@ -30,6 +30,8 @@ enum LensPictureSpot {
     case bottom
     /// Navigation: the biggest picture (400x200) at the top, one text line under it.
     case top
+    /// Minimal navigation: a small turn arrow top-left, two text lines beside it.
+    case corner
 
     struct Box: Equatable {
         let x: Int, y: Int, width: Int, height: Int
@@ -43,6 +45,8 @@ enum LensPictureSpot {
         case .top:
             return Box(x: HudConstants.navMapX, y: 0,
                        width: HudConstants.navMapWidthPx, height: HudConstants.navMapHeightPx)
+        case .corner:
+            return Box(x: 0, y: 0, width: HudConstants.navArrowSizePx, height: HudConstants.navArrowSizePx)
         }
     }
 
@@ -53,14 +57,24 @@ enum LensPictureSpot {
         case .top:
             return Box(x: 0, y: HudConstants.navTextY,
                        width: HudConstants.lensWidthPx, height: HudConstants.lensContentHeightPx - HudConstants.navTextY)
+        case .corner:
+            let x = HudConstants.navArrowSizePx + 8
+            return Box(x: x, y: 0, width: HudConstants.lensWidthPx - x, height: HudConstants.navArrowSizePx)
         }
     }
 
     /// Text lines that fit, and text units per line.
     var textLines: Int {
-        self == .bottom ? HudConstants.chatLinesAbovePicture : HudConstants.navTextLines
+        switch self {
+        case .bottom: return HudConstants.chatLinesAbovePicture
+        case .top: return HudConstants.navTextLines
+        case .corner: return 2
+        }
     }
-    var lineUnits: Int { HudConstants.lensLineUnits }
+    var lineUnits: Int {
+        let width = textBox.width
+        return HudConstants.lensLineUnits * width / HudConstants.lensWidthPx
+    }
 }
 
 @MainActor
