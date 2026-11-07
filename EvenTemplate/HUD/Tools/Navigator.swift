@@ -218,7 +218,7 @@ final class Navigator: ObservableObject {
         guard !isFetchingBackground else { return }
         isFetchingBackground = true
         Task {
-            if let fresh = await StreetBackground.make(around: here) {
+            if let fresh = await StreetBackground.make(around: here, route: routePoints.map(\.coordinate)) {
                 background = fresh
                 mapStatus = "Apple Maps"
                 miniMapDrawnAt = .distantPast

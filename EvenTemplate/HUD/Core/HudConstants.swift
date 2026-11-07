@@ -207,17 +207,15 @@ enum HudConstants {
     static let navBackgroundScale: CGFloat = 3
     static let navBackgroundRefetchMeters: Double = 150
 
-    /// Street picture cleaning (StreetBackground), in pixels of the 2x render:
-    /// brightness above which a pixel is road (dark style: background is darker,
-    /// roads lighter; the first version used 0.25 and roads came through), the
-    /// radius that erases label text strokes (thinner than 2x this), the radius
-    /// that fills label holes in roads (narrower than 2x this), and the even road
-    /// brightness (0-1) under the full-white route. Source: design choice.
+    /// Street picture (StreetBackground): rendered at 2x for smooth edges;
+    /// roads lit to this brightness (0-1, under the full-white route; names go
+    /// brighter); at least this many route points must fall on the picture to
+    /// measure the road gray; and the smallest road/land gray difference used
+    /// (0-255), so a flat picture doesn't blow up. Source: design choice.
     static let navBackgroundRenderScale: CGFloat = 2
-    static let navBackgroundRoadThreshold: CGFloat = 0.22
-    static let navBackgroundTextRadiusPx: CGFloat = 2
-    static let navBackgroundHoleRadiusPx: CGFloat = 12
-    static let navBackgroundRoadBrightness: CGFloat = 0.45
+    static let navBackgroundRoadBrightness: CGFloat = 0.5
+    static let navBackgroundMinRouteSamples: Int = 5
+    static let navBackgroundMinContrast: Double = 12
 
     /// Nearest-place search: try these radii in order until something is found,
     /// in meters (500, 1000, ... 5000), with results restricted to the area

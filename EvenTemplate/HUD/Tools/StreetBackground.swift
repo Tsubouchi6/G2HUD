@@ -7,20 +7,20 @@
 // labels upside-down) and twice the map's size, so it can be reused while the
 // user walks; Navigator fetches a new one after they move away from its center.
 //
-// Cleaning (Core Image), done at 2x resolution so edges come out smooth when
-// shrunk: grayscale -> threshold (roads white, the dark grey background black,
-// since only black is see-through on the lens) -> "opening" erases thin label
-// text and specks -> "closing" fills the holes street-name labels cut into
-// roads -> dim to one even road brightness, so the route stands out on top.
-// (Morphological opening/closing: erode+dilate / dilate+erode; CIMorphology filters.)
+// Cleaning: roads must light up and the land around them go black (only
+// black is see-through on the lens). Which one is brighter depends on Apple's
+// style (in the dark style the land blocks came out brighter than the roads),
+// so it is measured instead of assumed: the route always runs on roads, so the
+// gray under the route is the road color, and the most common gray is the land.
+// Each pixel is lit by how far it is from the land color: roads come out at
+// navBackgroundRoadBrightness, street names (even further from land) brighter.
+// Rendered at 2x and drawn at 1x, so edges and text shrink smoothly.
 //
 // Public API:
-//   StreetBackground.make(around:) async -> StreetBackground?
+//   StreetBackground.make(around:route:) async -> StreetBackground?
 //   image: UIImage, center: CLLocation
 //   point(for coordinate) -> CGPoint      // pixel in `image`
 
-import CoreImage
-import CoreImage.CIFilterBuiltins
 import CoreLocation
 import MapKit
 import UIKit
@@ -39,7 +39,7 @@ struct StreetBackground {
     /// Snapshot of navBackgroundScale x the map size around `center`, at the
     /// map's scale (1 px per meter for a 200 m radius on 400 px).
     @MainActor
-    static func make(around center: CLLocation) async -> StreetBackground? {
+    static func make(around center: CLLocation, route: [CLLocationCoordinate2D]) async -> StreetBackground? {
         let scale = HudConstants.navBackgroundScale
         let size = CGSize(width: CGFloat(HudConstants.navMapWidthPx) * scale,
                           height: CGFloat(HudConstants.navMapHeightPx) * scale)
@@ -61,51 +61,71 @@ struct StreetBackground {
         options.preferredConfiguration = configuration
 
         guard let snapshot = try? await MKMapSnapshotter(options: options).start(),
-              let image = cleanStreets(snapshot.image)
+              let image = cleanStreets(snapshot, route: route)
         else { return nil }
         return StreetBackground(image: image, center: center, snapshot: snapshot)
     }
 
-    /// Roads only, as one even dim gray on black, with label holes filled.
-    /// Returned at the snapshot's 2x scale, so drawing it at its point size
+    /// Lights each pixel by its distance from the land gray (see header).
+    /// Returned at the snapshot's scale (2x), so drawing it at its point size
     /// into the 1x map shrinks it smoothly.
-    private static func cleanStreets(_ image: UIImage) -> UIImage? {
-        guard let input = CIImage(image: image) else { return nil }
-        let gray = CIFilter.colorControls()
-        gray.inputImage = input
-        gray.saturation = 0
+    private static func cleanStreets(_ snapshot: MKMapSnapshotter.Snapshot, route: [CLLocationCoordinate2D]) -> UIImage? {
+        guard let source = snapshot.image.cgImage else { return nil }
+        let width = source.width, height = source.height
+        var gray = [UInt8](repeating: 0, count: width * height)
+        // The buffer must stay valid while drawing, so draw inside its pointer scope.
+        let drawn = gray.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(
+                data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue
+            ) else { return false }
+            context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return nil }
 
-        let threshold = CIFilter.colorThreshold()
-        threshold.inputImage = gray.outputImage
-        threshold.threshold = Float(HudConstants.navBackgroundRoadThreshold)
+        // Land = most common gray (median); road = median gray under the route.
+        let land = median(gray)
+        let scale = snapshot.image.scale
+        var underRoute: [UInt8] = []
+        for coordinate in route {
+            let p = snapshot.point(for: coordinate)
+            let x = Int(p.x * scale), y = Int(p.y * scale)
+            guard x >= 0, x < width, y >= 0, y < height else { continue }
+            underRoute.append(gray[y * width + x])
+        }
+        // Too few route points on this picture: assume roads are the lightest 10%.
+        let road = underRoute.count >= HudConstants.navBackgroundMinRouteSamples
+            ? median(underRoute)
+            : gray.sorted()[gray.count * 9 / 10]
+        let roadDistance = max(abs(Double(road) - Double(land)), HudConstants.navBackgroundMinContrast)
+        let roadLevel = Double(HudConstants.navBackgroundRoadBrightness)
 
-        // Opening: erode then dilate, removes bright strokes thinner than 2x the radius (text, specks).
-        let erodeText = CIFilter.morphologyMinimum()
-        erodeText.inputImage = threshold.outputImage
-        erodeText.radius = Float(HudConstants.navBackgroundTextRadiusPx)
-        let restoreRoads = CIFilter.morphologyMaximum()
-        restoreRoads.inputImage = erodeText.outputImage
-        restoreRoads.radius = Float(HudConstants.navBackgroundTextRadiusPx)
+        var lit = [UInt8](repeating: 0, count: width * height)
+        for index in 0 ..< gray.count {
+            let distance = abs(Double(gray[index]) - Double(land))
+            lit[index] = UInt8(min(1, distance / roadDistance * roadLevel) * 255)
+        }
 
-        // Closing: dilate then erode, fills dark gaps narrower than 2x the radius (label holes).
-        let fillHoles = CIFilter.morphologyMaximum()
-        fillHoles.inputImage = restoreRoads.outputImage
-        fillHoles.radius = Float(HudConstants.navBackgroundHoleRadiusPx)
-        let restoreEdges = CIFilter.morphologyMinimum()
-        restoreEdges.inputImage = fillHoles.outputImage
-        restoreEdges.radius = Float(HudConstants.navBackgroundHoleRadiusPx)
-
-        // Dim: roads at one even level, below the route's full white.
-        let dim = CIFilter.colorMatrix()
-        dim.inputImage = restoreEdges.outputImage
-        let level = HudConstants.navBackgroundRoadBrightness
-        dim.rVector = CIVector(x: level, y: 0, z: 0, w: 0)
-        dim.gVector = CIVector(x: 0, y: level, z: 0, w: 0)
-        dim.bVector = CIVector(x: 0, y: 0, z: level, w: 0)
-
-        guard let output = dim.outputImage,
-              let cgImage = CIContext().createCGImage(output, from: input.extent)
+        guard let provider = CGDataProvider(data: Data(lit) as CFData),
+              let output = CGImage(
+                  width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: width,
+                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
+                  provider: provider, decode: nil, shouldInterpolate: true, intent: .defaultIntent
+              )
         else { return nil }
-        return UIImage(cgImage: cgImage, scale: image.scale, orientation: .up)
+        return UIImage(cgImage: output, scale: scale, orientation: .up)
+    }
+
+    private static func median(_ values: [UInt8]) -> UInt8 {
+        // Counting sort: 256 buckets, fast for millions of pixels.
+        var counts = [Int](repeating: 0, count: 256)
+        for value in values { counts[Int(value)] += 1 }
+        var seen = 0
+        for (value, count) in counts.enumerated() {
+            seen += count
+            if seen * 2 >= values.count { return UInt8(value) }
+        }
+        return 0
     }
 }
