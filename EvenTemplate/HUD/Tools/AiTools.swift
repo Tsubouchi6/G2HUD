@@ -337,7 +337,7 @@ private struct DirectionsViewTool: Tool {
     let change: @MainActor @Sendable (_ view: String) -> Bool
 
     @Generable
-    enum View: String {
+    enum ViewKind: String {
         case map, full, minimal
     }
 
