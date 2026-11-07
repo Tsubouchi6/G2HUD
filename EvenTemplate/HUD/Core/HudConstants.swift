@@ -108,26 +108,13 @@ enum HudConstants {
     // MARK: - Voice commands
 
     /// Wake word ("Claude"): a phrase starting with one of these is a command.
-    /// Exact spellings; WakeWordMatcher also matches by sound (lists below).
+    /// Includes the spellings speech-to-text may produce in each language
+    /// (Japanese writes it in katakana). Matched on the transcript, so no extra
+    /// model is needed. Add variants here if the Captions tab shows another spelling.
     static let wakeWords: [String] = [
         "claude", "claud", "clode",
         "クロード", "くろーど", "クロウド",
     ]
-
-    /// How "Claude" comes out of English/Portuguese speech-to-text, as a first
-    /// word (lowercase, no accents). Source: common ASR confusions for /klo:d/;
-    /// add any other spelling the Captions tab shows.
-    static let wakeSoundsLatin: Set<String> = [
-        "claude", "claud", "clode", "clawed", "claw", "cloud", "clod", "klaud", "klod", "clowd",
-    ]
-
-    /// Romaji readings (long vowels folded) that sound like クロード, for any
-    /// kana/kanji spelling Japanese speech-to-text picks (苦労ど, 黒ード, クラウド...).
-    static let wakeSoundsJapanese: Set<String> = ["kurodo", "kuraudo", "kurado", "kurodu", "kuroto"]
-
-    /// Stop reading a Japanese phrase's start after this many romaji letters
-    /// (longest wake sound is 7).
-    static let wakeReadingMaxLetters: Int = 8
 
     /// After saying only the wake word, the next sentence counts as a command
     /// if it starts within this many seconds.

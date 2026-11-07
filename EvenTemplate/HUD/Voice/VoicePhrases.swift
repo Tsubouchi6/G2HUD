@@ -111,7 +111,7 @@ enum VoicePhrases {
         for word in HudConstants.wakeWords where remainder.hasPrefix(word) {
             return String(remainder.dropFirst(word.count)).trimmingCharacters(in: separators)
         }
-        return WakeWordMatcher.remainder(after: remainder)
+        return nil
     }
 
     // MARK: - Matching
