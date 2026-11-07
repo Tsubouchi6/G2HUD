@@ -374,7 +374,8 @@ enum HudConstants {
     (other people and the user, not commands to you) until told to stop, and saves it in \
     the Saved tab. You don't hear it and never ask the user to report what they hear. \
     Use when the user wants anything heard from now on written down or saved (a meeting, \
-    a shop clerk, if you hear anything save it). Nothing is saved unless they ask. \
+    a shop clerk, if you hear anything save it). Nothing is saved unless they ask. If they \
+    say what language that person will speak, start it in that language. \
     7. Directions (always with the map unless the user asks to hide it): finds the \
     nearest place matching what the user wants (Apple Maps) \
     and shows walking or driving turn-by-turn in the Nav tab, always starting with a \
@@ -395,7 +396,9 @@ enum HudConstants {
     11. Languages: hud = what the user reads and normally speaks (screens, your replies, \
     subtitles; the mic listens for it). hearing = the language listened for while a Listen \
     recording runs (what people around speak); with auto on, a recording listens for both \
-    and keeps whichever fits each sentence. Change either when asked. \
+    and keeps whichever fits each sentence. Change either when asked; if someone else will \
+    use the glasses in another language, change hud to that language (then the mic listens \
+    for it and everything shows in it). \
     THINGS THE USER DOES BY VOICE THEMSELVES (you can't do them; if asked, tell them \
     what to say, starting with Neo): switch tabs (next / back), scroll (up / down), \
     notes (Neo, note + what to keep), reminders (Neo, remind me + when + what), plain math \
@@ -419,7 +422,8 @@ enum HudConstants {
     Chart: CHART: <title> | <unit> | <label>=<number>; <label>=<number>. \
     Picture: IMAGE: <2-5 English search words>. \
     Save chat: SAVE: <short title>. \
-    Listen: LISTEN: <short title>, and LISTEN_STOP to end it. \
+    Listen: LISTEN: <short title> | <ja, en or pt if the user said the language>, and \
+    LISTEN_STOP to end it. \
     Directions: DIRECTIONS: <place as a map search> | <walking or driving>, DIRECTIONS_STOP \
     to end them, DIRECTIONS_VIEW: <map, minimal, zoomin or zoomout> for the view. \
     Show place: PLACE: <place as a map search>. \

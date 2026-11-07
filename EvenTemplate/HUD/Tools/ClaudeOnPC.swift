@@ -7,7 +7,7 @@
 //   STOCK: <Yahoo name> | <day|week|month|year|fiveYears> -> price chart
 //   CHART: <title> | <unit> | <label>=<n>; <label>=<n>    -> bar/line chart
 //   SAVE: <short title>                              -> saves this chat (Saved tab)
-//   LISTEN: <short title>                            -> saves what people say from now on
+//   LISTEN: <short title> [| ja|en|pt]               -> saves what people say from now on (in that language)
 //   LISTEN_STOP                                      -> stops and keeps that text
 //   DIRECTIONS: <place> | <walking|driving>          -> turn-by-turn (with the map) to the nearest match
 //   DIRECTIONS_STOP                                  -> stops navigation
@@ -127,7 +127,9 @@ final class ClaudeOnPC {
                 let mode = parts.count > 1 ? DirectionsMode(rawValue: parts[1].lowercased()) ?? .walking : .walking
                 actions.startDirections(parts[0], mode)
             } else if let title = value(trimmedLine, "LISTEN:") {
-                _ = actions.startListening(title)
+                // "LISTEN: Meeting | ja" — optional language the people will speak.
+                let parts = title.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+                _ = actions.startListening(parts[0], parts.count > 1 ? parts[1].lowercased() : nil)
             } else if let terms = value(trimmedLine, "IMAGE:") {
                 actions.showPicture(terms, kept.last ?? terms)
             } else if let spec = value(trimmedLine, "STOCK:") {

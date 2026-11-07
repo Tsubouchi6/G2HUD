@@ -93,8 +93,10 @@ final class HudController: ObservableObject {
                 lens?.showBanner(saved ? HudText.t(.chatSaved, title) : HudText.t(.nothingToSave))
                 return saved
             },
-            startListening: { [weak lens, weak captions] title in
+            startListening: { [weak lens, weak captions] title, code in
                 guard captions?.isRunning == true else { return false }
+                // "My friend will speak Japanese": record in that language.
+                if let code, let language = HudLanguage(rawValue: code) { settings.hearingLanguage = language }
                 listening.endSession()
                 listening.startSession(language: settings.hearingLanguage, title: title)
                 captions?.isRecording = true  // switch to the recording languages

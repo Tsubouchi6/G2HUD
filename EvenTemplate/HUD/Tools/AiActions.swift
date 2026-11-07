@@ -8,7 +8,8 @@
 //   showChart(chart)               — chart picture on the lens
 //   showPicture(terms, caption)    — web photo on the lens
 //   saveChat(title) -> Bool        — saves the AI chat (false = empty)
-//   startListening(title) -> Bool  — saves what people say from now on (false = HUD not listening)
+//   startListening(title, language) -> Bool — saves what people say from now on, listening for
+//                                  `language` ("ja"/"en"/"pt"; nil = the Listen-for setting)
 //   stopListening() -> Bool        — ends and keeps the clip (false = nothing was being saved)
 //   startDirections(destination, mode) — nearest match, turn-by-turn with the map in the Nav tab
 //   stopDirections() -> Bool       — ends navigation (false = none running)
@@ -25,7 +26,7 @@ struct AiActions: Sendable {
     let showChart: @MainActor @Sendable (RenderedChart) -> Void
     let showPicture: @MainActor @Sendable (_ terms: String, _ caption: String) -> Void
     let saveChat: @MainActor @Sendable (_ title: String) -> Bool
-    let startListening: @MainActor @Sendable (_ title: String) -> Bool
+    let startListening: @MainActor @Sendable (_ title: String, _ language: String?) -> Bool
     let stopListening: @MainActor @Sendable () -> Bool
     let startDirections: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode) -> Void
     let stopDirections: @MainActor @Sendable () -> Bool

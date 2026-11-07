@@ -214,18 +214,27 @@ private struct StartListeningTool: Tool {
     let description = """
     Starts saving the text of what people around the user say, from now on, so the \
     user can read it later in the Saved tab. Use when the user asks, in any words, \
-    to listen, pay attention, or remember what someone says (a meeting, a store...).
+    to listen, pay attention, or remember what someone says (a meeting, a store...). \
+    If the user says what language that person will speak, pass it.
     """
-    let start: @MainActor @Sendable (_ title: String) -> Bool
+    let start: @MainActor @Sendable (_ title: String, _ language: String?) -> Bool
+
+    @Generable
+    enum SpokenLanguage: String {
+        case unchanged, ja, en, pt
+    }
 
     @Generable
     struct Arguments {
         @Guide(description: "Very short title in the user's language, e.g. the place or event")
         let title: String
+        @Guide(description: "Language the people will speak: ja, en or pt; unchanged if the user didn't say")
+        let language: SpokenLanguage
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await start(arguments.title)
+        let language = arguments.language == .unchanged ? nil : arguments.language.rawValue
+        return await start(arguments.title, language)
             ? """
             Started. The app itself is now writing down everything said around the user \
             (other people and the user, but not commands to you) and saves it in the Saved tab. \
