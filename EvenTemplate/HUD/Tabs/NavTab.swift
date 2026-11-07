@@ -73,21 +73,16 @@ final class NavTab: LensTab {
         }
     }
 
-    /// The two lines under the map: the next turn, then distance/time left and where to.
+    /// The line under the map: the next turn, then the minutes left.
     private func mapLines(_ progress: NavProgress) -> [String] {
-        let units = HudConstants.lensLineUnits
-        let overview = HudText.t(.navRemaining, Self.distance(progress.remainingMeters), progress.remainingMinutes)
-            + (progress.rerouting ? "  " + HudText.t(.navRerouting) : "  → \(progress.destinationName)")
-        return [LensTextLayout.truncate(turnLine(progress), units: units), LensTextLayout.truncate(overview, units: units)]
+        let left = progress.rerouting ? HudText.t(.navRerouting) : "\(progress.remainingMinutes)min"
+        return [LensTextLayout.truncate("\(turnLine(progress)) · \(left)", units: HudConstants.lensLineUnits)]
     }
 
-    /// "Where is X": the place, then how far on foot.
+    /// "Where is X": the place and how far on foot, in one line.
     private func placeLines(_ place: PlaceInfo) -> [String] {
-        let units = HudConstants.lensLineUnits
-        return [
-            LensTextLayout.truncate("◎ \(place.name)", units: units),
-            HudText.t(.navPlaceWalk, Self.distance(place.walkingMeters), place.walkingMinutes),
-        ]
+        let walk = HudText.t(.navPlaceWalk, Self.distance(place.walkingMeters), place.walkingMinutes)
+        return [LensTextLayout.truncate("◎ \(place.name) · \(walk)", units: HudConstants.lensLineUnits)]
     }
 
     /// A single line at the top; everything else on the lens stays empty.

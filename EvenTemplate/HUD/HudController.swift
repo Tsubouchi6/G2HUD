@@ -35,6 +35,7 @@ final class HudController: ObservableObject {
     private let search: WebSearchService
     private let router: VoiceCommandRouter
     private let input: GlassesInputHandler
+    private let status: LensStatus
     private var languageSubscription: AnyCancellable?
 
     // MARK: - Assembly
@@ -168,6 +169,12 @@ final class HudController: ObservableObject {
             isAddressedToAssistant: { sentence in await ai.isAddressedToAssistant(sentence) }
         ))
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
+        // Status bar (time, listening dot, batteries) in the corner of every screen.
+        status = LensStatus(
+            session: session,
+            isListening: { [weak captions] in captions?.isRunning == true },
+            onText: { [weak lens] text in lens?.updateStatus(text) }
+        )
 
         captions.onFinalPhrase = { [weak self] phrase in
             guard let self else { return }
@@ -202,11 +209,13 @@ final class HudController: ObservableObject {
         guard captions.isRunning else { return }
         if settings.saveConversations { conversations.startSession(language: settings.language) }
         lens.activate()
+        status.start()
         input.start()
     }
 
     func stop() async {
         input.stop()
+        status.stop()
         await captions.stop()
         conversations.endSession()
         listening.endSession()

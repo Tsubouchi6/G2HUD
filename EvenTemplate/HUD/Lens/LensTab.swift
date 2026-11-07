@@ -28,10 +28,10 @@ struct LensPage {
 enum LensPictureSpot {
     /// Chat: text on top, a 400x100 picture under the newest lines.
     case bottom
-    /// Navigation: the biggest picture (400x200) at the top, two text lines under it.
+    /// Navigation: the biggest picture (400x200) at the top, one text line under it.
     case top
 
-    struct Box {
+    struct Box: Equatable {
         let x: Int, y: Int, width: Int, height: Int
     }
 
@@ -52,7 +52,7 @@ enum LensPictureSpot {
             return Box(x: 0, y: 0, width: HudConstants.lensWidthPx, height: HudConstants.chatPictureY)
         case .top:
             return Box(x: 0, y: HudConstants.navTextY,
-                       width: HudConstants.lensWidthPx, height: HudConstants.lensHeightPx - HudConstants.navTextY)
+                       width: HudConstants.lensWidthPx, height: HudConstants.lensContentHeightPx - HudConstants.navTextY)
         }
     }
 

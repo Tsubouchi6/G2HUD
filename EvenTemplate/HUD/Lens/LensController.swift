@@ -14,6 +14,7 @@
 //   next() / previous() / select(id:) -> Bool / tab(named:) -> LensTab?
 //   scroll(linesUp:) / scroll(linesDown:)
 //   showBanner(_ text: String, seconds: Double) / hideBanner()
+//   updateStatus(_ text:) / statusText       // status bar in the bottom-right corner
 //   showImage(_ data: Data, caption: String) / dismissImage()
 //   @Published image: LensImage?            // picture currently on the lens
 //   render()
@@ -36,6 +37,8 @@ final class LensController: ObservableObject {
     /// Picture shown under the text (chat pictures), for the phone preview.
     @Published private(set) var previewPicture: Data?
     @Published private(set) var previewPictureSpot: LensPictureSpot = .bottom
+    /// Status bar text (bottom-right corner of every screen), set by LensStatus.
+    @Published private(set) var statusText = ""
     @Published private(set) var isActive = false
     @Published private(set) var image: LensImage?
 
@@ -164,6 +167,13 @@ final class LensController: ObservableObject {
         }
     }
 
+    /// New status bar text; redraws only when it changed.
+    func updateStatus(_ text: String) {
+        guard text != statusText else { return }
+        statusText = text
+        render()
+    }
+
     /// Removes the banner now (e.g. "Finding a picture..." once it's found).
     func hideBanner() {
         bannerTask?.cancel()
@@ -182,7 +192,7 @@ final class LensController: ObservableObject {
         let picture = offset == 0 ? page.picture : nil
         let spot = page.pictureSpot
         let wrapped = page.lines.flatMap { LensTextLayout.wrap($0, units: picture == nil ? HudConstants.lensLineUnits : spot.lineUnits) }
-        let screenLines = picture == nil ? HudConstants.lensLinesPerScreen : spot.textLines
+        let screenLines = picture == nil ? HudConstants.lensContentLines : spot.textLines
         let height = screenLines - (banner == nil ? 0 : 1)
 
         let window = LensTextLayout.window(wrapped, anchor: page.anchor, scroll: offset, height: height)
@@ -197,7 +207,14 @@ final class LensController: ObservableObject {
         previewPictureSpot = spot
         // While a full-lens picture is up, keep it; the text is pushed when it's dismissed.
         guard isActive, image == nil else { return }
-        if let picture { pusher.showScene(text: text, picture: picture, spot: spot) } else { pusher.show(text) }
+        let fullText = LensPictureSpot.Box(x: 0, y: 0, width: HudConstants.lensWidthPx, height: HudConstants.lensContentHeightPx)
+        pusher.show(LensFrame(
+            text: text,
+            textBox: picture == nil ? fullText : spot.textBox,
+            picture: picture,
+            pictureBox: picture == nil ? nil : spot.pictureBox,
+            status: statusText
+        ))
     }
 
     // MARK: - Private

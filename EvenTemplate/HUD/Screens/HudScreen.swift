@@ -113,6 +113,15 @@ struct HudScreen: View {
             .background(Color.black)
             .cornerRadius(8)
 
+            // Status bar, as in the lens's bottom-right corner.
+            if !lens.statusText.isEmpty {
+                Text(lens.statusText)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(Self.lensGreen)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .listRowBackground(Color.black)
+            }
+
             // Phone-only check for the map's street background.
             if lens.activeTab?.id == "nav", !navigator.mapStatus.isEmpty {
                 Text("Map: \(navigator.mapStatus)").font(.footnote).foregroundColor(.secondary)

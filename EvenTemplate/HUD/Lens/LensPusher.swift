@@ -1,17 +1,30 @@
 // LensPusher.swift
 //
-// The only place that sends HUD text to the glasses. Rate-limits pushes to
-// `HudConstants.lensPushIntervalMs` and skips text that didn't change, so
-// fast-changing content (live captions) can't flood Bluetooth.
+// The only place that sends HUD content to the glasses. Every screen is one
+// scene frame (template DeviceManager "scene" event) with up to three
+// elements: the tab's text, an optional picture (chat picture / nav map),
+// and the status bar in the bottom-right corner. Each element carries a
+// change mark, so the G2 code only re-sends what changed (G2.applySceneFrame
+// skips "unchanged"; the slow picture isn't re-sent when only the time ticks).
+// Pushes are rate-limited to `HudConstants.lensPushIntervalMs`; the newest wins.
 //
 // Public API:
 //   LensPusher(session:)
-//   show(_ text: String)                    // throttled; the newest text always wins
-//   showImage(tiles:caption:)               // picture tiles + caption under them
-//   showScene(text:picture:spot:)           // text block + picture placed by LensPictureSpot (one scene)
+//   show(LensFrame)                          // throttled; the newest frame always wins
+//   showImage(tiles:caption:)               // full-lens picture tiles + caption (legacy layout)
 //   clear()                                 // blank the lens immediately
+//   struct LensFrame { text, textBox, picture, pictureBox, status }
 
 import Foundation
+
+/// One screen: the tab's text in `textBox`, an optional picture, and the status bar.
+struct LensFrame: Equatable {
+    var text: String
+    var textBox: LensPictureSpot.Box
+    var picture: Data?
+    var pictureBox: LensPictureSpot.Box?
+    var status: String
+}
 
 @MainActor
 final class LensPusher {
@@ -19,14 +32,11 @@ final class LensPusher {
     // MARK: - State
 
     private let session: BluetoothSession
-    private var pendingText: String?
-    private var lastSentText = ""
+    private var pendingFrame: LensFrame?
+    /// Last frame sent; nil after a clear or a full-lens picture (next frame paints fresh).
+    private var lastFrame: LensFrame?
     private var lastSendDate = Date.distantPast
     private var sendTask: Task<Void, Never>?
-
-    /// Last chat scene sent (the G2 code diffs elements by id, so unchanged
-    /// parts, especially the slow picture, aren't re-sent). nil = text mode.
-    private var lastScene: (text: String, picture: Data, spot: LensPictureSpot)?
 
     init(session: BluetoothSession) {
         self.session = session
@@ -34,8 +44,8 @@ final class LensPusher {
 
     // MARK: - API
 
-    func show(_ text: String) {
-        pendingText = text
+    func show(_ frame: LensFrame) {
+        pendingFrame = frame
         guard sendTask == nil else { return }  // a send is already scheduled; it will pick this up
 
         let elapsedMs = Date().timeIntervalSince(lastSendDate) * 1000
@@ -73,54 +83,16 @@ final class LensPusher {
         }
     }
 
-    /// Text and a picture placed by `spot`, as one scene frame (template
-    /// DeviceManager "scene" event: elements with per-id change marks;
-    /// G2.applySceneFrame skips "unchanged" ones, so the slow picture is only
-    /// re-sent when it changes). Used by the AI chat and the nav mini-map.
-    func showScene(text: String, picture: Data, spot: LensPictureSpot) {
-        sendTask?.cancel()
-        sendTask = nil
-        pendingText = nil
-        if let last = lastScene, last.text == text, last.picture == picture, last.spot == spot { return }
-
-        // Coming from text mode or another layout: paint everything fresh.
-        let replay = lastScene == nil || lastScene?.spot != spot
-        let textChange = replay ? "created" : (lastScene?.text == text ? "unchanged" : "updated")
-        let pictureChange = replay ? "created" : (lastScene?.picture == picture ? "unchanged" : "updated")
-        lastScene = (text, picture, spot)
-        let textBox = spot.textBox, pictureBox = spot.pictureBox
-        lastSentText = ""  // the next plain-text push must be sent again
-
-        let scene: [String: Any] = [
-            "appId": "g2hud",
-            "replay": replay,
-            "removed": [String](),
-            "elements": [
-                [
-                    "id": "scene-text", "type": "text", "text": text, "change": textChange,
-                    "box": ["x": textBox.x, "y": textBox.y, "w": textBox.width, "h": textBox.height],
-                ],
-                [
-                    "id": "scene-picture", "type": "image", "data": picture.base64EncodedString(), "change": pictureChange,
-                    "box": ["x": pictureBox.x, "y": pictureBox.y, "w": pictureBox.width, "h": pictureBox.height],
-                ],
-            ],
-        ]
-        let sdk = session.sdk
-        Task { try? await sdk.displayEvent(DisplayEventRequest(values: ["view": "main", "scene": scene])) }
-    }
-
     /// A main-view display event in the template's layout format.
     private static func layoutEvent(_ layout: [String: Any]) -> DisplayEventRequest {
         DisplayEventRequest(values: ["view": "main", "layout": layout])
     }
 
     func clear() {
-        lastScene = nil
+        lastFrame = nil
         sendTask?.cancel()
         sendTask = nil
-        pendingText = nil
-        lastSentText = ""
+        pendingFrame = nil
         let sdk = session.sdk
         Task { try? await sdk.clearDisplay() }
     }
@@ -128,20 +100,50 @@ final class LensPusher {
     // MARK: - Sending
 
     private func sendPending() {
-        guard let text = pendingText else { return }
-        pendingText = nil
-        guard text != lastSentText else { return }
-        lastSentText = text
+        guard let frame = pendingFrame else { return }
+        pendingFrame = nil
+        guard frame != lastFrame else { return }
+        let previous = lastFrame
+        lastFrame = frame
         lastSendDate = Date()
-        let sdk = session.sdk
-        // Leaving a chat scene: a "clear_view" layout makes the template drop the
-        // stored scene and blank its elements (plain displayText bypasses that,
-        // and the old scene would come back after the head-up dashboard).
-        let leavingScene = lastScene != nil
-        lastScene = nil
-        Task {
-            if leavingScene { try? await sdk.displayEvent(Self.layoutEvent(["layoutType": "clear_view"])) }
-            try? await sdk.displayText(text)
+
+        // Coming from nothing (start, clear, full-lens picture) or a different
+        // layout: paint everything fresh; otherwise mark only what changed.
+        let replay = previous == nil || previous?.textBox != frame.textBox || previous?.pictureBox != frame.pictureBox
+        func change(_ same: Bool) -> String { replay ? "created" : (same ? "unchanged" : "updated") }
+
+        var elements: [[String: Any]] = [
+            Self.element(id: "content", type: "text", box: frame.textBox,
+                         change: change(previous?.text == frame.text), payload: ["text": frame.text]),
+            Self.element(id: "status", type: "text", box: Self.statusBox,
+                         change: change(previous?.status == frame.status), payload: ["text": frame.status]),
+        ]
+        var removed: [String] = []
+        if let picture = frame.picture, let box = frame.pictureBox {
+            elements.append(Self.element(id: "picture", type: "image", box: box,
+                                         change: change(previous?.picture == picture),
+                                         payload: ["data": picture.base64EncodedString()]))
+        } else if previous?.picture != nil {
+            removed.append("picture")
         }
+
+        let scene: [String: Any] = ["appId": "g2hud", "replay": replay, "removed": removed, "elements": elements]
+        let sdk = session.sdk
+        Task { try? await sdk.displayEvent(DisplayEventRequest(values: ["view": "main", "scene": scene])) }
+    }
+
+    private static let statusBox = LensPictureSpot.Box(
+        x: HudConstants.statusBarX, y: HudConstants.statusBarY,
+        width: HudConstants.statusBarWidthPx, height: HudConstants.statusBarHeightPx
+    )
+
+    private static func element(id: String, type: String, box: LensPictureSpot.Box, change: String,
+                                payload: [String: Any]) -> [String: Any] {
+        var element: [String: Any] = [
+            "id": id, "type": type, "change": change,
+            "box": ["x": box.x, "y": box.y, "w": box.width, "h": box.height],
+        ]
+        element.merge(payload) { _, new in new }
+        return element
     }
 }

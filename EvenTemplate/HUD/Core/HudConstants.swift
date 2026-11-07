@@ -22,6 +22,20 @@ enum HudConstants {
     /// Source: Even Hub glasses-ui docs: 288 px tall canvas, ~27 px per line.
     static let lensLinesPerScreen: Int = 10
 
+    /// Status bar (time, listening dot, glasses/phone battery): the bottom row,
+    /// right-aligned, so it stays out of the middle of the view. Text size on
+    /// the glasses is fixed, so it's one normal line (one firmware line needs
+    /// 40 px, per template G2.minTextContainerHeight). Tabs get the rest.
+    static let statusBarHeightPx: Int = 40
+    static let statusBarWidthPx: Int = 300
+    static let statusBarX: Int = lensWidthPx - statusBarWidthPx
+    static let statusBarY: Int = lensHeightPx - statusBarHeightPx
+    static let lensContentHeightPx: Int = lensHeightPx - statusBarHeightPx
+    /// Tab lines above the status bar (248 px / ~28.8 px per line).
+    static let lensContentLines: Int = 8
+    /// Status bar refresh, in seconds (the listening dot blinks at this rate).
+    static let statusTickSeconds: Double = 1
+
     /// Width of one lens line in "half-width units" (ASCII = 1, CJK = 2).
     /// Source: estimate. 576 px canvas; CJK glyphs ~24 px wide = ~23 per line.
     /// Lower it if lines wrap on the glasses before we expect.
@@ -72,19 +86,19 @@ enum HudConstants {
     /// newest chat lines. Source: tile limit above; 100 px ≈ 3.5 text lines.
     static let chatPictureWidthPx: Int = 400
     static let chatPictureHeightPx: Int = 100
-    static let chatPictureY: Int = lensHeightPx - chatPictureHeightPx
+    static let chatPictureY: Int = lensContentHeightPx - chatPictureHeightPx
 
-    /// Chat lines that fit above that picture (188 px / 28.8 px per line).
-    static let chatLinesAbovePicture: Int = 6
+    /// Chat lines that fit above that picture (148 px / 28.8 px per line).
+    static let chatLinesAbovePicture: Int = 5
 
     /// Navigation map: the biggest picture the glasses take (4 tiles = 400x200 px,
-    /// see imageTile*), centered at the top; the directions go in two lines under it.
+    /// see imageTile*), centered at the top; the directions go in one line under it.
     static let navMapWidthPx: Int = imageTileWidthPx * imageTilesAcross
     static let navMapHeightPx: Int = imageTileHeightPx * imageTilesDown
     static let navMapX: Int = (lensWidthPx - navMapWidthPx) / 2
     static let navTextY: Int = navMapHeightPx + 4
-    /// Lines under the map (84 px; one firmware line needs 40 px, per G2.minTextContainerHeight).
-    static let navTextLines: Int = 2
+    /// Lines under the map, above the status bar (44 px; one firmware line needs 40 px).
+    static let navTextLines: Int = 1
 
     /// A picture stays on the lens this long unless dismissed, in seconds.
     static let imageShowSeconds: Double = 20
