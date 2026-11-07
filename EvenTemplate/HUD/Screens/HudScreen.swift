@@ -76,13 +76,27 @@ struct HudScreen: View {
 
     private var previewSection: some View {
         Section(HudText.t(.lensPreview)) {
-            Text(lens.previewText.isEmpty ? " " : lens.previewText)
-                .font(.system(size: 13, design: .monospaced))
-                .foregroundColor(Color(red: 0.3, green: 1, blue: 0.45))
-                .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
-                .padding(8)
-                .background(Color.black)
-                .cornerRadius(8)
+            Group {
+                if let picture = lens.image, let uiImage = UIImage(data: picture.data) {
+                    VStack(spacing: 6) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFit()
+                            .grayscale(1)
+                            .colorMultiply(Self.lensGreen)
+                            .frame(maxHeight: 140)
+                        Text(picture.caption)
+                    }
+                } else {
+                    Text(lens.previewText.isEmpty ? " " : lens.previewText)
+                }
+            }
+            .font(.system(size: 13, design: .monospaced))
+            .foregroundColor(Self.lensGreen)
+            .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
+            .padding(8)
+            .background(Color.black)
+            .cornerRadius(8)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
@@ -121,6 +135,8 @@ struct HudScreen: View {
     }
 
     // MARK: - Helpers
+
+    private static let lensGreen = Color(red: 0.3, green: 1, blue: 0.45)
 
     private func runTyped() {
         hud.runTyped(typedCommand)

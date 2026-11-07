@@ -37,6 +37,38 @@ enum HudConstants {
     /// Lines moved per scroll command.
     static let lensScrollStepLines: Int = 3
 
+    // MARK: - Lens images
+
+    /// Largest image container the G2 firmware accepts, in px.
+    /// Source: template G2.swift maxImageTileW/H (hardware-verified: 150x150
+    /// refused, 200x100 clean).
+    static let imageTileWidthPx: Int = 200
+    static let imageTileHeightPx: Int = 100
+
+    /// Tile grid for one picture (2x2 = 400x200 px, the max 4 image containers).
+    /// Source: Even Hub docs, max 4 image containers per page.
+    static let imageTilesAcross: Int = 2
+    static let imageTilesDown: Int = 2
+
+    /// Top-left of the picture on the 576x288 lens, in px (centered horizontally).
+    static let imageOriginX: Int = (lensWidthPx - imageTileWidthPx * imageTilesAcross) / 2
+    static let imageOriginY: Int = 0
+
+    /// Caption box under the picture, in px (one firmware line needs 40 px,
+    /// per template G2.minTextContainerHeight; this leaves ~84 px = 2 lines).
+    static let imageCaptionY: Int = imageOriginY + imageTileHeightPx * imageTilesDown + 4
+    static let imageCaptionHeight: Int = lensHeightPx - imageCaptionY
+
+    /// Lens canvas size, in px. Source: Even Hub glasses-ui docs.
+    static let lensWidthPx: Int = 576
+    static let lensHeightPx: Int = 288
+
+    /// A picture stays on the lens this long unless dismissed, in seconds.
+    static let imageShowSeconds: Double = 20
+
+    /// Pictures bigger than this are skipped, in bytes (keeps downloads quick).
+    static let imageMaxDownloadBytes: Int = 5_000_000
+
     // MARK: - Captions
 
     /// Finished phrases kept in memory.
@@ -122,6 +154,9 @@ enum HudConstants {
 
     // MARK: - On-device AI
 
+    /// Marker the on-device AI adds when it wants to show a picture.
+    static let aiImageMarker: String = "IMAGE:"
+
     /// System instructions for the on-device model.
     static let aiInstructions: String = """
     You are a heads-up display assistant on smart glasses. Reply in the same \
@@ -129,6 +164,8 @@ enum HudConstants {
     short sentences, plain text only (no markdown, no lists). You have no \
     internet and no live data: never guess weather, temperature, news, prices, \
     or the current time. For those, say you can't know and suggest saying \
-    "Claude, search ...".
+    "Claude, search ...". If a picture would clearly help (an object, animal, \
+    place, tool, or how something looks), add one last line exactly like \
+    "IMAGE: <2-5 English search words>". Otherwise never add that line.
     """
 }

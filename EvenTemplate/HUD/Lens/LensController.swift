@@ -14,9 +14,17 @@
 //   next() / previous() / select(id:) -> Bool / tab(named:) -> LensTab?
 //   scroll(linesUp:) / scroll(linesDown:)
 //   showBanner(_ text: String, seconds: Double)
+//   showImage(_ data: Data, caption: String) / dismissImage()
+//   @Published image: LensImage?            // picture currently on the lens
 //   render()
 
 import Foundation
+
+/// A picture shown full-lens (with a caption) on top of the tabs.
+struct LensImage {
+    let data: Data
+    let caption: String
+}
 
 @MainActor
 final class LensController: ObservableObject {
@@ -26,6 +34,7 @@ final class LensController: ObservableObject {
     @Published private(set) var activeIndex = 0
     @Published private(set) var previewText = ""
     @Published private(set) var isActive = false
+    @Published private(set) var image: LensImage?
 
     private(set) var tabs: [LensTab] = []
 
@@ -36,6 +45,7 @@ final class LensController: ObservableObject {
     private var scrollOffsets: [String: Int] = [:]
     private var banner: String?
     private var bannerTask: Task<Void, Never>?
+    private var imageTask: Task<Void, Never>?
 
     init(pusher: LensPusher) {
         self.pusher = pusher
@@ -60,6 +70,8 @@ final class LensController: ObservableObject {
 
     func deactivate() {
         isActive = false
+        image = nil
+        imageTask?.cancel()
         bannerTask?.cancel()
         banner = nil
         pusher.clear()
@@ -71,12 +83,20 @@ final class LensController: ObservableObject {
         tabs.indices.contains(activeIndex) ? tabs[activeIndex] : nil
     }
 
-    func next() { move(by: 1) }
-    func previous() { move(by: -1) }
+    func next() {
+        if dismissImage() { return }
+        move(by: 1)
+    }
+
+    func previous() {
+        if dismissImage() { return }
+        move(by: -1)
+    }
 
     /// Jumps to a tab by id. Returns false if there is no such tab.
     @discardableResult
     func select(id: String) -> Bool {
+        dismissImage()
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return false }
         switchTo(index)
         return true
@@ -88,8 +108,43 @@ final class LensController: ObservableObject {
         return tabs.first { $0.voiceNames.contains(key) }
     }
 
-    func scroll(linesUp count: Int) { scrollActive(by: count, towardsOlder: true) }
-    func scroll(linesDown count: Int) { scrollActive(by: count, towardsOlder: false) }
+    func scroll(linesUp count: Int) {
+        if dismissImage() { return }
+        scrollActive(by: count, towardsOlder: true)
+    }
+
+    func scroll(linesDown count: Int) {
+        if dismissImage() { return }
+        scrollActive(by: count, towardsOlder: false)
+    }
+
+    // MARK: - Images
+
+    /// Shows a picture (fitted into the tile grid) with a caption, for
+    /// `HudConstants.imageShowSeconds` or until any navigation dismisses it.
+    func showImage(_ data: Data, caption: String) {
+        let tiles = LensImageTiler.tiles(from: data)
+        guard !tiles.isEmpty else { return }
+        image = LensImage(data: data, caption: caption)
+        if isActive { pusher.showImage(tiles: tiles, caption: caption) }
+        imageTask?.cancel()
+        imageTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(HudConstants.imageShowSeconds * 1_000_000_000))
+            guard let self, !Task.isCancelled else { return }
+            self.dismissImage()
+        }
+    }
+
+    /// Removes the picture and redraws the tab. Returns true if one was showing.
+    @discardableResult
+    func dismissImage() -> Bool {
+        guard image != nil else { return false }
+        image = nil
+        imageTask?.cancel()
+        pusher.clear()
+        render()
+        return true
+    }
 
     // MARK: - Banner
 
@@ -124,7 +179,8 @@ final class LensController: ObservableObject {
         let text = lines.joined(separator: "\n")
 
         previewText = text
-        if isActive { pusher.show(text) }
+        // While a picture is up, keep it; the text is pushed when it's dismissed.
+        if isActive, image == nil { pusher.show(text) }
     }
 
     // MARK: - Private

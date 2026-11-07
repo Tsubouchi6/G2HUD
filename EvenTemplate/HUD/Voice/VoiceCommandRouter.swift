@@ -3,8 +3,9 @@
 // Turns finished speech phrases into actions. Cheapest path first:
 //   1. Wake word ("Claude ...") marks a command; other speech is just captions.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI.
-//   3. Anything else: questions needing live data (weather, news, "now"...)
-//      go to Search; maths to the calculator; the rest to the on-device AI.
+//   3. Anything else: "show me a picture of..." shows a web photo; questions
+//      needing live data (weather, news, "now"...) go to Search; maths to the
+//      calculator; the rest to the on-device AI (which may ask for a picture).
 // Destructive actions wait for "はい / yes / sim" before running.
 //
 // Public API:
@@ -26,6 +27,8 @@ struct VoiceCommandContext {
     let aiTab: AiTab
     let searchTab: SearchTab
     let calcTab: CalcTab
+    /// Finds a web photo for the words and shows it on the lens.
+    let showPicture: @MainActor (_ terms: String) -> Void
 }
 
 @MainActor
@@ -76,11 +79,14 @@ final class VoiceCommandRouter {
     func run(command rawCommand: String) {
         let command = VoicePhrases.normalize(rawCommand)
         guard !command.isEmpty else { return }
+        context.lens.dismissImage()
         if runKeyPhrase(command) { return }
 
         // Not a known phrase: live questions to Search (the offline AI can't
         // know them), maths to the calculator, the rest to the AI.
-        if VoicePhrases.mentionsLiveInfo(command) {
+        if VoicePhrases.wantsPicture(command) {
+            context.showPicture(command)
+        } else if VoicePhrases.mentionsLiveInfo(command) {
             open("search")
             context.searchTab.search(command)
         } else if Calculator.looksLikeMath(command) {

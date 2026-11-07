@@ -5,7 +5,7 @@
 // Source: docs.tavily.com/api-reference/endpoint/search
 //
 // Public API:
-//   TavilySearchClient.search(_ query:, apiKey:, languageCode:) async throws -> SearchOutcome
+//   TavilySearchClient.search(_ query:, apiKey:, languageCode:, includeImages:, maxResults:) async throws -> SearchOutcome
 //   (throws SearchError.quotaExceeded on HTTP 432/433 so the caller can fall back)
 
 import Foundation
@@ -17,7 +17,8 @@ enum TavilySearchClient {
     private struct Request: Encodable {
         let query: String
         let search_depth: String
-        let include_answer: String
+        let include_answer: Bool
+        let include_images: Bool
         let max_results: Int
         let language: String
     }
@@ -30,11 +31,34 @@ enum TavilySearchClient {
         }
         let answer: String?
         let results: [Item]?
+        /// Image URLs: plain strings, or {url, description} objects when
+        /// descriptions are on. Both shapes are accepted so decoding never fails.
+        let images: [ImageItem]?
+    }
+
+    private struct ImageItem: Decodable {
+        let url: String
+
+        init(from decoder: Decoder) throws {
+            if let plain = try? decoder.singleValueContainer().decode(String.self) {
+                url = plain
+                return
+            }
+            struct Object: Decodable { let url: String }
+            url = try Object(from: decoder).url
+        }
     }
 
     // MARK: - Search
 
-    static func search(_ query: String, apiKey: String, languageCode: String) async throws -> SearchOutcome {
+    static func search(
+        _ query: String,
+        apiKey: String,
+        languageCode: String,
+        includeAnswer: Bool = true,
+        includeImages: Bool = false,
+        maxResults: Int = HudConstants.searchResultCount
+    ) async throws -> SearchOutcome {
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty, let url = URL(string: HudConstants.tavilySearchEndpoint) else {
             throw SearchError.missingApiKey
@@ -47,8 +71,9 @@ enum TavilySearchClient {
         request.httpBody = try JSONEncoder().encode(Request(
             query: query,
             search_depth: HudConstants.tavilySearchDepth,  // "basic" = 1 credit
-            include_answer: "basic",
-            max_results: HudConstants.searchResultCount,
+            include_answer: includeAnswer,
+            include_images: includeImages,
+            max_results: maxResults,
             language: languageCode
         ))
 
@@ -65,8 +90,10 @@ enum TavilySearchClient {
             SearchResult(title: $0.title ?? "", url: $0.url ?? "", snippet: $0.content ?? "")
         }
         let answer = decoded.answer?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let imageURLs = (decoded.images ?? []).compactMap { URL(string: $0.url) }.filter { $0.scheme == "https" }
         return SearchOutcome(
-            summary: answer?.isEmpty == false ? answer : nil, results: results, provider: "Tavily", isOffline: false
+            summary: answer?.isEmpty == false ? answer : nil, results: results, imageURLs: imageURLs,
+            provider: "Tavily", isOffline: false
         )
     }
 }

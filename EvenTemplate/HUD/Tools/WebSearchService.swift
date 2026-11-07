@@ -7,7 +7,8 @@
 //
 // Public API:
 //   WebSearchService(settings:ai:)
-//   search(_ query: String) async throws -> SearchOutcome
+//   search(_ query: String, includeImages: Bool) async throws -> SearchOutcome
+//   findImage(_ terms: String) async -> Data?      // first web photo for the terms, downloaded
 //   struct SearchOutcome, struct SearchResult, enum SearchError
 
 import Foundation
@@ -24,6 +25,8 @@ struct SearchResult: Equatable {
 struct SearchOutcome {
     let summary: String?
     let results: [SearchResult]
+    /// Web photos for the query (only when requested).
+    let imageURLs: [URL]
     /// Which path answered, e.g. "Tavily" or "offline AI".
     let provider: String
     /// True when the answer came from the on-device AI's memory, not the web.
@@ -57,13 +60,13 @@ final class WebSearchService {
         self.ai = ai
     }
 
-    func search(_ query: String) async throws -> SearchOutcome {
+    func search(_ query: String, includeImages: Bool = false) async throws -> SearchOutcome {
         let tavilyKey = settings.tavilyApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !tavilyKey.isEmpty else { throw SearchError.missingApiKey }
 
         do {
             return try await TavilySearchClient.search(
-                query, apiKey: tavilyKey, languageCode: settings.language.rawValue
+                query, apiKey: tavilyKey, languageCode: settings.language.rawValue, includeImages: includeImages
             )
         } catch {
             // Quota used up, network or server error: answer offline if the
@@ -71,7 +74,35 @@ final class WebSearchService {
             guard ai.availabilityMessage == nil,
                   let answer = try? await ai.answerOffline(query: query, language: settings.language)
             else { throw error }
-            return SearchOutcome(summary: answer, results: [], provider: "offline AI", isOffline: true)
+            return SearchOutcome(summary: answer, results: [], imageURLs: [], provider: "offline AI", isOffline: true)
         }
+    }
+
+    // MARK: - Images
+
+    /// Looks up a photo for `terms` (1 Tavily credit) and downloads the first
+    /// usable one. nil if there's no key, no image, or the download fails.
+    func findImage(_ terms: String) async -> Data? {
+        let key = settings.tavilyApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty,
+              let outcome = try? await TavilySearchClient.search(
+                  terms, apiKey: key, languageCode: "en", includeAnswer: false, includeImages: true, maxResults: 1
+              )
+        else { return nil }
+        return await download(outcome.imageURLs)
+    }
+
+    /// Downloads the first URL that returns a reasonably sized image.
+    func download(_ urls: [URL]) async -> Data? {
+        for url in urls.prefix(3) {
+            let request = URLRequest(url: url, timeoutInterval: HudConstants.searchTimeoutSeconds)
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  (response as? HTTPURLResponse)?.statusCode == 200,
+                  data.count <= HudConstants.imageMaxDownloadBytes,
+                  !LensImageTiler.tiles(from: data).isEmpty
+            else { continue }
+            return data
+        }
+        return nil
     }
 }

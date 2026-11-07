@@ -59,6 +59,7 @@ enum HudText {
         case swapLeftRight, tiltReadout, calibrate, headTiltFooter, notesHeader, remindersHeader
         case tavilyKeyPlaceholder, noSearchKey, offlineTag
         case savedConversations, noConversations, saveConversations, saveConversationsFooter
+        case findingImage, imageNotFound
     }
 
     // MARK: - Table (ja, en, pt)
@@ -154,6 +155,8 @@ enum HudText {
                        "Adicione uma chave Tavily nos Ajustes"),
         .offlineTag: ("(オフライン)", "(offline)", "(offline)"),
         .savedConversations: ("保存した会話", "Saved conversations", "Conversas salvas"),
+        .findingImage: ("画像を探しています...", "Finding a picture...", "Procurando uma imagem..."),
+        .imageNotFound: ("画像が見つからない", "No picture found", "Nenhuma imagem encontrada"),
         .noConversations: ("まだありません", "None yet", "Nenhuma ainda"),
         .saveConversations: ("会話を保存", "Save conversations", "Salvar conversas"),
         .saveConversationsFooter: ("HUD実行中の文字起こしを時刻付きで保存。字幕タブ > 保存した会話 で見られます (ファイル: このiPhone内 > G2HUD > Conversations)。",

@@ -11,7 +11,7 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 | `EvenTemplate/HUD/Core/` | `HudConstants` (every tunable number, with units + source), settings, text layout, JSON storage, PCM helpers |
 | `EvenTemplate/HUD/Speech/` | `SpeechEngine` protocol + engines (`AppleSpeechEngine` = iOS 26 on-device) |
 | `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> transcript), `ConversationLog` (saved transcripts), `RawAudioRecorder` (test .wav files) |
-| `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners), `LensPusher` (rate-limited sends), `LensTab` protocol |
+| `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners, pictures), `LensPusher` (rate-limited sends), `LensTab` protocol |
 | `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind |
 | `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily, offline on-device AI fallback), on-device AI |
 | `EvenTemplate/HUD/Voice/` | `VoiceCommandRouter` (wake word -> key phrases -> AI) and `VoicePhrases` tables |
@@ -36,6 +36,7 @@ in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
 | 天気を検索 | search weather | pesquisar tempo | web search + AI summary (Tavily key in Settings) |
 | 計算 12かける35 | calculate 12 times 35 | calcular 12 vezes 35 | calculator |
 | 5時にロット確認 | remind me at 5 to check | me lembra às 5 de conferir | reminder |
+| 猫の写真を見せて | show me a picture of a cat | mostra uma foto de gato | web photo on the lens (Tavily) |
 | 最後のメモを消して | delete last note | apagar última nota | asks yes/no first |
 | anything else | anything else | qualquer outra coisa | on-device AI |
 

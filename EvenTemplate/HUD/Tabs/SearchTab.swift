@@ -3,7 +3,11 @@
 // Lens tab: web search. Shows the query, a short AI summary (from Tavily, or
 // the on-device AI's offline answer when Tavily is unavailable), then result titles.
 //
+// When the query asks for a picture ("画像", "photo of", "foto"...), the first
+// web photo is downloaded and handed to `onImage` with the summary as caption.
+//
 // Public API: SearchTab(service:)  — LensTab with id "search"; search(_ query:)
+//   onImage: ((_ data: Data, _ caption: String) -> Void)?
 
 import Foundation
 
@@ -14,6 +18,7 @@ final class SearchTab: LensTab {
     var title: String { HudText.t(.tabSearch) }
     let voiceNames = ["検索", "けんさく", "サーチ", "search", "google", "グーグル", "pesquisa", "busca"]
     var onChange: (() -> Void)?
+    var onImage: ((_ data: Data, _ caption: String) -> Void)?
 
     private let service: WebSearchService
     private var lines: [String] = []
@@ -32,8 +37,12 @@ final class SearchTab: LensTab {
         show([HudText.t(.searchLabel, query), "..."])
         Task {
             do {
-                let outcome = try await service.search(query)
+                let wantsPicture = VoicePhrases.wantsPicture(query)
+                let outcome = try await service.search(query, includeImages: wantsPicture)
                 show(Self.format(query: query, outcome: outcome))
+                if wantsPicture, let data = await service.download(outcome.imageURLs) {
+                    onImage?(data, outcome.summary ?? query)
+                }
             } catch SearchError.missingApiKey {
                 show([HudText.t(.searchLabel, query), HudText.t(.noSearchKey)])
             } catch {

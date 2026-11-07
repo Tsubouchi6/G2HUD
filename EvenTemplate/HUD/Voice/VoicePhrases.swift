@@ -13,6 +13,7 @@
 //   VoicePhrases.containsAny(_:_:) -> Bool
 //   VoicePhrases.isNavigation(_:) -> Bool
 //   VoicePhrases.mentionsLiveInfo(_:) -> Bool      // needs the web (weather, news, now...)
+//   VoicePhrases.wantsPicture(_:) -> Bool          // "show me a picture of ..."
 //   phrase tables: next, previous, scrollUp, scrollDown, yes, no, ...
 
 import Foundation
@@ -67,6 +68,13 @@ enum VoicePhrases {
         "hours", "open", "now", "today", "tonight", "latest", "current", "score", "exchange",
         "tempo", "temperatura", "previsão", "chuva", "notícias", "noticias", "preço", "preços",
         "cotação", "horário", "aberto", "agora", "hoje", "atual", "últimas",
+    ]
+
+    /// Words asking to see a picture. Japanese as substrings, others as phrases.
+    static let pictureSubstrings = ["画像", "写真", "見せて", "見た目", "どんな形"]
+    static let picturePhrases = [
+        "picture", "image", "photo", "show me", "look like", "looks like",
+        "foto", "imagem", "mostra", "mostrar", "aparência", "parece",
     ]
 
     private static let politeEndings = ["してください", "ください", "して", "へ", "に"]
@@ -131,6 +139,13 @@ enum VoicePhrases {
         if liveInfoSubstrings.contains(where: { text.contains($0) }) { return true }
         let words = Set(text.lowercased().components(separatedBy: CharacterSet.letters.inverted))
         return liveInfoWords.contains(where: { words.contains($0) })
+    }
+
+    static func wantsPicture(_ text: String) -> Bool {
+        let lowered = text.lowercased()
+        if pictureSubstrings.contains(where: { lowered.contains($0) }) { return true }
+        let padded = " " + lowered.components(separatedBy: CharacterSet.letters.inverted).joined(separator: " ") + " "
+        return picturePhrases.contains(where: { padded.contains(" \($0) ") })
     }
 
     static func isNavigation(_ text: String) -> Bool {

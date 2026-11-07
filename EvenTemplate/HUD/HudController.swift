@@ -28,6 +28,7 @@ final class HudController: ObservableObject {
     let tilt: HeadTiltDetector
     let conversations: ConversationLog
 
+    private let search: WebSearchService
     private let router: VoiceCommandRouter
     private let input: GlassesInputHandler
     private var languageSubscription: AnyCancellable?
@@ -44,8 +45,9 @@ final class HudController: ObservableObject {
         let conversations = ConversationLog()
 
         let ai = OnDeviceAI()
+        let search = WebSearchService(settings: settings, ai: ai)
         let aiTab = AiTab(ai: ai)
-        let searchTab = SearchTab(service: WebSearchService(settings: settings, ai: ai))
+        let searchTab = SearchTab(service: search)
         let calcTab = CalcTab()
         lens.setTabs([
             CaptionsTab(captions: captions),
@@ -63,9 +65,23 @@ final class HudController: ObservableObject {
         self.reminders = reminders
         self.tilt = tilt
         self.conversations = conversations
+        self.search = search
+        let showPicture: @MainActor (String, String?) -> Void = { [weak lens] terms, caption in
+            lens?.showBanner(HudText.t(.findingImage), seconds: HudConstants.searchTimeoutSeconds)
+            Task {
+                if let data = await search.findImage(terms) {
+                    lens?.showImage(data, caption: caption ?? terms)
+                } else {
+                    lens?.showBanner(HudText.t(.imageNotFound))
+                }
+            }
+        }
+        aiTab.onWantsImage = { terms, caption in showPicture(terms, caption) }
+        searchTab.onImage = { [weak lens] data, caption in lens?.showImage(data, caption: caption) }
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
-            reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab
+            reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab,
+            showPicture: { terms in showPicture(terms, nil) }
         ))
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 

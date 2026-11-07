@@ -6,8 +6,9 @@
 //
 // Public API:
 //   LensPusher(session:)
-//   show(_ text: String)    // throttled; the newest text always wins
-//   clear()                 // blank the lens immediately
+//   show(_ text: String)                    // throttled; the newest text always wins
+//   showImage(tiles:caption:)               // picture tiles + caption under them
+//   clear()                                 // blank the lens immediately
 
 import Foundation
 
@@ -40,6 +41,36 @@ final class LensPusher {
             self.sendTask = nil
             self.sendPending()
         }
+    }
+
+    /// Replaces the lens with a picture (already cut into tiles) and a caption.
+    /// Any pending text is dropped; the next `show` after `clear` redraws text.
+    func showImage(tiles: [LensImageTile], caption: String) {
+        clear()
+        let sdk = session.sdk
+        let captionEvent = Self.layoutEvent([
+            "layoutType": "positioned_text",
+            "text": caption,
+            "x": 0, "y": HudConstants.imageCaptionY,
+            "width": HudConstants.lensWidthPx, "height": HudConstants.imageCaptionHeight,
+        ])
+        let tileEvents = tiles.map { tile in
+            Self.layoutEvent([
+                "layoutType": "bitmap_view",
+                "data": tile.png.base64EncodedString(),
+                "x": tile.x, "y": tile.y, "width": tile.width, "height": tile.height,
+            ])
+        }
+        Task {
+            try? await sdk.displayEvent(captionEvent)
+            // The glasses queue image sends one at a time (template reconcile loop).
+            for event in tileEvents { try? await sdk.displayEvent(event) }
+        }
+    }
+
+    /// A main-view display event in the template's layout format.
+    private static func layoutEvent(_ layout: [String: Any]) -> DisplayEventRequest {
+        DisplayEventRequest(values: ["view": "main", "layout": layout])
     }
 
     func clear() {
