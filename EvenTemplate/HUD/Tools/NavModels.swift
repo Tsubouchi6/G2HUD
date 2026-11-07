@@ -2,7 +2,7 @@
 //
 // The data the Nav tab works with, shared by Navigator, RoutePlanner,
 // TransitService and NavTab:
-//   NavRoute   — one route to follow, from Apple (walk / drive) or Google (train / bus)
+//   NavRoute   — one route to follow, from Apple (walk / drive) or NAVITIME (train / bus)
 //   NavStep    — one step of it; a ride step carries RideInfo
 //   RouteChoice / TripChoices — the ways to get somewhere, for the user to pick
 //   NavState, NavProgress, PlaceInfo — what the Nav tab shows
@@ -27,9 +27,10 @@ struct RideInfo {
     let headsign: String?
     let fromStop: String
     let toStop: String
-    /// Local clock text from Google ("06:52"), nil if not given.
+    /// Local clock text ("06:52"), nil if not given.
     let departs: String?
     let arrives: String?
+    /// Stops to ride; 0 when not known.
     let stopCount: Int
 }
 
@@ -51,7 +52,7 @@ struct NavRoute {
     let distanceMeters: Double
     let seconds: Double
     /// Apple walk/drive routes can be recalculated when the user strays;
-    /// transit routes can't (every recalculation would be a paid Google call).
+    /// transit routes can't (each recalculation would use up the monthly NAVITIME quota).
     let canReroute: Bool
 
     init(points: [CLLocationCoordinate2D], steps: [NavStep], distanceMeters: Double, seconds: Double, canReroute: Bool) {
@@ -89,7 +90,7 @@ struct RouteChoice {
     let kind: Kind
     let route: NavRoute
     let minutes: Int
-    /// "¥180" from Google, nil when unknown (or walking).
+    /// "¥180" from NAVITIME, nil when unknown (or walking).
     let fare: String?
 }
 

@@ -109,10 +109,10 @@ struct SettingsScreen: View {
         }
     }
 
-    /// Google Routes API key: train / bus directions in the Nav tab.
+    /// RapidAPI key for NAVITIME: train / bus directions in the Nav tab.
     private var transitSection: some View {
         Section {
-            SecureField(HudText.t(.googleKeyPlaceholder), text: $settings.googleMapsApiKey)
+            SecureField(HudText.t(.transitKeyPlaceholder), text: $settings.transitApiKey)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
         } header: {

@@ -14,7 +14,7 @@
 //     saveChat     — saves this AI chat to the Saved tab
 //     startListening / stopListening — saves what people around say, now or at set times
 //     startDirections / stopDirections — the nearest match: walking / driving / train-bus, or the
-//                    ways there with a pick (Apple Maps free; trains and buses Google)
+//                    ways there with a pick (Apple Maps; trains and buses NAVITIME)
 //     chooseRoute  — start one of the listed ways
 //     showPlace    — where the nearest X is, with the user, on one map (no turn-by-turn)
 //     directionsView — map / minimal / zoom in / zoom out

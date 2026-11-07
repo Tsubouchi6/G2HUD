@@ -65,7 +65,7 @@ enum HudText {
         case navPlaceWalk, navAngleRight, navAngleLeft, navStraight
         case tabNav, navHint, navFinding, navArrived, navRemaining, navThen, navRerouting, navToArrival
         case navWalk, navTrain, navBus, navMixed, navFree, navBoard, navLineToward, navGetOff, navStops
-        case navNoGoogleKey, navNoTransit, googleKeyPlaceholder, transitHeader, transitFooter
+        case navNoTransitKey, navNoTransit, navWalkTo, transitKeyPlaceholder, transitHeader, transitFooter
         case listeningStarted, listeningSaved, listeningScheduled, listeningUntil, savedListenTag, listenedClips
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
         case checkConnection, connectionOk, iphoneAiTag
@@ -198,14 +198,15 @@ enum HudText {
         .navLineToward: ("%@ %@方面", "%@ for %@", "%@ sentido %@"),
         .navGetOff: ("%@で降りる", "Get off at %@", "Desça em %@"),
         .navStops: ("%d駅", "%d stops", "%d paradas"),
-        .navNoGoogleKey: ("電車・バスは設定でGoogleのキーを入れてください", "Add a Google key in Settings for trains and buses",
-                          "Adicione uma chave Google nos Ajustes para trem e ônibus"),
+        .navNoTransitKey: ("電車・バスは設定でRapidAPIのキーを入れてください", "Add a RapidAPI key in Settings for trains and buses",
+                           "Adicione uma chave RapidAPI nos Ajustes para trem e ônibus"),
+        .navWalkTo: ("%@まで歩く", "Walk to %@", "Caminhe até %@"),
         .navNoTransit: ("電車・バスのルートが見つからない", "No train or bus route found", "Nenhuma rota de trem ou ônibus"),
-        .googleKeyPlaceholder: ("Google APIキー", "Google API key", "Chave da API Google"),
-        .transitHeader: ("電車・バス (Google)", "Trains and buses (Google)", "Trem e ônibus (Google)"),
-        .transitFooter: ("Google Routes API (月1万回まで無料)。ナビで電車・バスの行き方を出します。キーはこのiPhoneにだけ保存。",
-                         "Google Routes API (free up to 10,000 a month). Shows train and bus routes in Nav. The key stays on this iPhone.",
-                         "Google Routes API (grátis até 10.000 por mês). Mostra rotas de trem e ônibus na Nav. A chave fica só neste iPhone."),
+        .transitKeyPlaceholder: ("RapidAPIキー (NAVITIME)", "RapidAPI key (NAVITIME)", "Chave RapidAPI (NAVITIME)"),
+        .transitHeader: ("電車・バス (NAVITIME)", "Trains and buses (NAVITIME)", "Trem e ônibus (NAVITIME)"),
+        .transitFooter: ("RapidAPIのNAVITIME Route(totalnavi)、無料プランは月500回まで (超えると止まるだけで課金なし)。キーはこのiPhoneにだけ保存。",
+                         "NAVITIME Route (totalnavi) on RapidAPI. Free plan: 500 a month; it just stops after that, no charges. The key stays on this iPhone.",
+                         "NAVITIME Route (totalnavi) no RapidAPI. Plano grátis: 500 por mês; depois só para, sem cobrança. A chave fica só neste iPhone."),
         .listeningStarted: ("聞き取り中: %@", "Listening: %@", "Ouvindo: %@"),
         .listeningSaved: ("聞き取りを保存した", "Listening saved", "Escuta salva"),
         .listeningScheduled: ("%@から聞き取り: %@", "Listening from %@: %@", "Ouvindo a partir de %@: %@"),

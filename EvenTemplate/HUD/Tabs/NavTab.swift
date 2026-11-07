@@ -87,7 +87,8 @@ final class NavTab: LensTab {
     /// On a train / bus: what you're on, then where to get off.
     private func rideLines(_ ride: RideInfo) -> [String] {
         let getOff = HudText.t(.navGetOff, ride.toStop) + (ride.arrives.map { " (\($0))" } ?? "")
-        return [">> \(TransitService.rideName(ride)) | " + HudText.t(.navStops, ride.stopCount), "   " + getOff]
+        let stops = ride.stopCount > 0 ? " | " + HudText.t(.navStops, ride.stopCount) : ""
+        return [">> \(TransitService.rideName(ride))\(stops)", "   " + getOff]
     }
 
     private func fullLines() -> [String] {

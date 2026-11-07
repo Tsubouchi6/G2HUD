@@ -4,7 +4,7 @@
 //   directions — follows a route as the user moves: which step they're on,
 //                distance to the next turn, distance and time left, re-routing
 //                when off a walk/drive route, arrival. The map is centered on the user.
-//                Train/bus routes (Google) are followed the same way: a ride is
+//                Train/bus routes (NAVITIME) are followed the same way: a ride is
 //                one step from station to station.
 //   choosing   — "I want to go to X": the ways to get there (RoutePlanner) with
 //                Neo's pick, until the user chooses one (choose(_:)).

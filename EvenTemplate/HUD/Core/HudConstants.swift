@@ -250,10 +250,9 @@ enum HudConstants {
     static let navWalkMaxMinutes: Int = 25
     static let navTieMinutes: Int = 3
 
-    /// Google Routes API computeRoutes (train / bus routes). Free up to 10,000
-    /// requests a month (Compute Routes Essentials). Source:
-    /// developers.google.com/maps/documentation/routes/transit-route
-    static let googleRoutesEndpoint: String = "https://routes.googleapis.com/directions/v2:computeRoutes"
+    /// NAVITIME Route (totalnavi) on RapidAPI: train / bus routes. Free Basic
+    /// plan, 500 requests a month (hard limit). Source: api-sdk.navitime.co.jp/api/rakutenrapid/
+    static let transitApiHost: String = "navitime-route-totalnavi.p.rapidapi.com"
 
     /// Phone compass updates only after turning this many degrees (saves redraws;
     /// the arrow has 45° steps). Source: design choice.

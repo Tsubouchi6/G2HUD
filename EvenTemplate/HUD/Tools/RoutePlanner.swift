@@ -1,12 +1,12 @@
 // RoutePlanner.swift
 //
 // "I want to go to X" without saying how: lists the ways to get there
-// (walking from Apple Maps, train / bus / mixed from Google via TransitService)
+// (walking from Apple Maps, train / bus / mixed from NAVITIME via TransitService)
 // and picks one to recommend:
 //   walk when it's short (navWalkAlwaysMinutes), or not much slower than the
 //   fastest ride (navWalkExtraMinutes) and still reasonable (navWalkMaxMinutes);
 //   otherwise the fastest ride, the cheaper / fewer-transfer one on a near tie.
-// Without a Google key it lists walking only.
+// Without a NAVITIME (RapidAPI) key it lists walking only.
 //
 // Public API:
 //   RoutePlanner(directions:transit:)

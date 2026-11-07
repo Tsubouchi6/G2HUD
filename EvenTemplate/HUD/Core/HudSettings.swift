@@ -9,7 +9,7 @@
 //                                // down"); otherwise the mic listens for `language` only
 //   autoLanguage: Bool           // while recording, also listen for the HUD language (per sentence)
 //   tavilyApiKey: String         // web search (with AI answer)
-//   googleMapsApiKey: String     // Google Routes API: train / bus directions
+//   transitApiKey: String        // RapidAPI key for NAVITIME: train / bus directions
 //   useClaudeOnPC: Bool          // AI tab asks Claude through the PC bridge (falls back to the iPhone AI)
 //   pcBridgeUrl, pcBridgeToken: String  // Tailscale address of the PC bridge + its token.txt
 //   requireWakeWord: Bool        // commands need the wake word first
@@ -37,7 +37,7 @@ final class HudSettings: ObservableObject {
     @Published var hearingLanguage: HudLanguage { didSet { save(hearingLanguage.rawValue, Key.hearingLanguage) } }
     @Published var autoLanguage: Bool { didSet { save(autoLanguage, Key.autoLanguage) } }
     @Published var tavilyApiKey: String { didSet { save(tavilyApiKey, Key.tavilyApiKey) } }
-    @Published var googleMapsApiKey: String { didSet { save(googleMapsApiKey, Key.googleMapsApiKey) } }
+    @Published var transitApiKey: String { didSet { save(transitApiKey, Key.transitApiKey) } }
     @Published var useClaudeOnPC: Bool { didSet { save(useClaudeOnPC, Key.useClaudeOnPC) } }
     @Published var pcBridgeUrl: String { didSet { save(pcBridgeUrl, Key.pcBridgeUrl) } }
     @Published var pcBridgeToken: String { didSet { save(pcBridgeToken, Key.pcBridgeToken) } }
@@ -58,7 +58,7 @@ final class HudSettings: ObservableObject {
         static let hearingLanguage = "g2hud_hearing_language"
         static let autoLanguage = "g2hud_auto_language"
         static let tavilyApiKey = "g2hud_tavily_api_key"
-        static let googleMapsApiKey = "g2hud_google_maps_api_key"
+        static let transitApiKey = "g2hud_transit_api_key"
         static let useClaudeOnPC = "g2hud_use_claude_on_pc"
         static let pcBridgeUrl = "g2hud_pc_bridge_url"
         static let pcBridgeToken = "g2hud_pc_bridge_token"
@@ -83,7 +83,7 @@ final class HudSettings: ObservableObject {
         hearingLanguage = defaults.string(forKey: Key.hearingLanguage).flatMap(HudLanguage.init(rawValue:)) ?? hudLanguage
         autoLanguage = defaults.object(forKey: Key.autoLanguage) as? Bool ?? true
         tavilyApiKey = defaults.string(forKey: Key.tavilyApiKey) ?? ""
-        googleMapsApiKey = defaults.string(forKey: Key.googleMapsApiKey) ?? ""
+        transitApiKey = defaults.string(forKey: Key.transitApiKey) ?? ""
         useClaudeOnPC = defaults.object(forKey: Key.useClaudeOnPC) as? Bool ?? true
         pcBridgeUrl = defaults.string(forKey: Key.pcBridgeUrl) ?? ""
         pcBridgeToken = defaults.string(forKey: Key.pcBridgeToken) ?? ""

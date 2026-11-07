@@ -1,18 +1,26 @@
 // TransitService.swift
 //
-// Train and bus routes from the Google Routes API (computeRoutes, travelMode
-// TRANSIT, with alternatives). Apple Maps can't give apps transit steps (only
-// an arrival time), so this is the one paid-tier service the Nav tab uses:
-// free up to 10,000 requests a month (Compute Routes Essentials), one request
-// per "I want to go to X". The key is entered in Settings and stays on the phone.
-// Sources: developers.google.com/maps/documentation/routes/transit-route,
-// developers.google.com/maps/billing-and-pricing/pricing
+// Train and bus routes from NAVITIME Route (totalnavi) on RapidAPI:
+// GET /route_transit?start=lat,lon&goal=lat,lon&start_time=...&shape=true.
+// Apple Maps can't give apps transit steps (only an arrival time), and
+// NAVITIME is free on RapidAPI's Basic plan: 500 requests a month, a hard
+// limit (it stops answering, it never bills). One request per "I want to go
+// to X". The key is entered in Settings and stays on the phone.
+// Sources: api-sdk.navitime.co.jp/api/specs/api_guide/route_transit.html,
+// api-sdk.navitime.co.jp/api/rakutenrapid/ (plans), qiita.com/jagaimo310 (RapidAPI host/headers)
+//
+// Response, as used here: items[] (one per route) with summary.move {time
+// (min), distance (m), fare {unit_N: yen}} and sections[] alternating
+// point {name, coord {lat, lon}} / move {move: walk | local_train | local_bus ...,
+// line_name, from_time, to_time, time, distance, transport {destination, getoff}};
+// shapes: GeoJSON FeatureCollection (LineString coordinates are [lon, lat]).
+// NAVITIME walking sections have no turn-by-turn, so each is one "walk to X" step.
 //
 // Public API:
 //   TransitService(settings:)
 //   isConfigured: Bool
-//   routes(from:to:) async throws -> [(route: NavRoute, fare: String?)]   // up to a few alternatives
-//   struct TransitError (.noKey / .noRoute / .server(_:), in the HUD language)
+//   routes(from:to:) async throws -> [(route: NavRoute, fare: String?)]   // up to navMaxChoices
+//   struct TransitError
 
 import CoreLocation
 import Foundation
@@ -21,9 +29,9 @@ import Foundation
 struct TransitError: LocalizedError {
     let errorDescription: String?
 
-    @MainActor static var noKey: TransitError { TransitError(errorDescription: HudText.t(.navNoGoogleKey)) }
+    @MainActor static var noKey: TransitError { TransitError(errorDescription: HudText.t(.navNoTransitKey)) }
     @MainActor static var noRoute: TransitError { TransitError(errorDescription: HudText.t(.navNoTransit)) }
-    static func server(_ message: String) -> TransitError { TransitError(errorDescription: "Google: \(message)") }
+    static func server(_ message: String) -> TransitError { TransitError(errorDescription: "NAVITIME: \(message)") }
 }
 
 @MainActor
@@ -37,133 +45,160 @@ final class TransitService {
 
     var isConfigured: Bool { !apiKey.isEmpty }
 
-    private var apiKey: String { settings.googleMapsApiKey.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var apiKey: String { settings.transitApiKey.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     // MARK: - Request
 
     func routes(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async throws
         -> [(route: NavRoute, fare: String?)] {
         guard isConfigured else { throw TransitError.noKey }
-        guard let url = URL(string: HudConstants.googleRoutesEndpoint) else { throw TransitError.noRoute }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        var components = URLComponents(string: "https://\(HudConstants.transitApiHost)/route_transit")
+        components?.queryItems = [
+            URLQueryItem(name: "start", value: Self.point(origin)),
+            URLQueryItem(name: "goal", value: Self.point(destination)),
+            URLQueryItem(name: "start_time", value: formatter.string(from: Date())),
+            URLQueryItem(name: "limit", value: String(HudConstants.navMaxChoices)),
+            URLQueryItem(name: "shape", value: "true"),
+        ]
+        guard let url = components?.url else { throw TransitError.noRoute }
 
         var request = URLRequest(url: url, timeoutInterval: HudConstants.searchTimeoutSeconds)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "X-Goog-Api-Key")
-        request.setValue(Self.fieldMask, forHTTPHeaderField: "X-Goog-FieldMask")
-        // Lets the key be restricted to this app in the Google Cloud console.
-        if let bundleId = Bundle.main.bundleIdentifier {
-            request.setValue(bundleId, forHTTPHeaderField: "X-Ios-Bundle-Identifier")
-        }
-        let body: [String: Any] = [
-            "origin": Self.waypoint(origin),
-            "destination": Self.waypoint(destination),
-            "travelMode": "TRANSIT",
-            "computeAlternativeRoutes": true,
-            "languageCode": settings.language.speechLocaleId,
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.setValue(apiKey, forHTTPHeaderField: "x-rapidapi-key")
+        request.setValue(HudConstants.transitApiHost, forHTTPHeaderField: "x-rapidapi-host")
 
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
         let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
-        if let error = json["error"] as? [String: Any] {
-            throw TransitError.server(error["message"] as? String ?? "error")
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard status == 200 else {
+            // RapidAPI errors: {"message": "..."}; NAVITIME errors: {"error": {"message": ...}} or similar.
+            let message = json["message"] as? String
+                ?? (json["error"] as? [String: Any])?["message"] as? String
+                ?? "HTTP \(status)"
+            throw TransitError.server(message)
         }
-        let routes = (json["routes"] as? [[String: Any]] ?? []).compactMap(Self.parseRoute)
+        let routes = (json["items"] as? [[String: Any]] ?? []).compactMap(Self.parseRoute)
         guard !routes.isEmpty else { throw TransitError.noRoute }
         return routes
     }
 
-    /// Only the fields we read (Google bills and answers by field mask).
-    private static let fieldMask = [
-        "routes.duration", "routes.distanceMeters", "routes.polyline.encodedPolyline",
-        "routes.localizedValues.transitFare",
-        "routes.legs.steps.distanceMeters", "routes.legs.steps.staticDuration",
-        "routes.legs.steps.polyline.encodedPolyline", "routes.legs.steps.endLocation",
-        "routes.legs.steps.navigationInstruction", "routes.legs.steps.travelMode",
-        "routes.legs.steps.transitDetails",
-    ].joined(separator: ",")
-
-    private static func waypoint(_ coordinate: CLLocationCoordinate2D) -> [String: Any] {
-        ["location": ["latLng": ["latitude": coordinate.latitude, "longitude": coordinate.longitude]]]
+    private static func point(_ coordinate: CLLocationCoordinate2D) -> String {
+        String(format: "%.6f,%.6f", coordinate.latitude, coordinate.longitude)
     }
 
     // MARK: - Parsing
 
-    private static func parseRoute(_ json: [String: Any]) -> (route: NavRoute, fare: String?)? {
-        let legs = json["legs"] as? [[String: Any]] ?? []
-        let steps = legs.flatMap { $0["steps"] as? [[String: Any]] ?? [] }.compactMap(parseStep)
+    private static func parseRoute(_ item: [String: Any]) -> (route: NavRoute, fare: String?)? {
+        let sections = item["sections"] as? [[String: Any]] ?? []
+        var steps: [NavStep] = []
+        var trace: [CLLocationCoordinate2D] = []  // point coordinates, if there is no shape
+        for (index, section) in sections.enumerated() {
+            if section["type"] as? String == "point" {
+                if let coordinate = coordinate(section["coord"]) { trace.append(coordinate) }
+                continue
+            }
+            guard section["type"] as? String == "move",
+                  let from = sections[safe: index - 1], let to = sections[safe: index + 1],
+                  let end = coordinate(to["coord"])
+            else { continue }
+            if let step = parseMove(section, from: from["name"] as? String ?? "", to: to["name"] as? String ?? "", end: end) {
+                steps.append(step)
+            }
+        }
         guard !steps.isEmpty else { return nil }
-        let polyline = ((json["polyline"] as? [String: Any])?["encodedPolyline"] as? String).map(PolylineDecoder.decode) ?? []
-        let fare = ((json["localizedValues"] as? [String: Any])?["transitFare"] as? [String: Any])?["text"] as? String
+
+        let move = (item["summary"] as? [String: Any])?["move"] as? [String: Any] ?? [:]
+        let shape = lineCoordinates(item["shapes"])
         let route = NavRoute(
-            points: polyline, steps: steps,
-            distanceMeters: (json["distanceMeters"] as? NSNumber)?.doubleValue ?? steps.reduce(0) { $0 + $1.distanceMeters },
-            seconds: seconds(json["duration"]) ?? steps.reduce(0) { $0 + $1.seconds },
+            points: shape.isEmpty ? trace : shape, steps: steps,
+            distanceMeters: number(move["distance"]) ?? steps.reduce(0) { $0 + $1.distanceMeters },
+            seconds: (number(move["time"]) ?? 0) * 60,
             canReroute: false
         )
-        return (route, fare)
+        return (route, fareText(move["fare"]))
     }
 
-    private static func parseStep(_ json: [String: Any]) -> NavStep? {
-        guard let end = location(json["endLocation"]) else { return nil }
-        let distance = (json["distanceMeters"] as? NSNumber)?.doubleValue ?? 0
-        let duration = seconds(json["staticDuration"]) ?? 0
-        if let transit = json["transitDetails"] as? [String: Any], let ride = parseRide(transit) {
+    private static func parseMove(_ section: [String: Any], from: String, to: String, end: CLLocationCoordinate2D) -> NavStep? {
+        let kind = section["move"] as? String ?? ""
+        let distance = number(section["distance"]) ?? 0
+        let seconds = (number(section["time"]) ?? 0) * 60
+        let endLocation = CLLocation(latitude: end.latitude, longitude: end.longitude)
+        if kind == "walk" {
             return NavStep(
-                instruction: HudText.t(.navBoard, rideName(ride), ride.departs ?? ride.fromStop),
-                distanceMeters: distance, seconds: duration, end: end,
-                endRadiusMeters: HudConstants.navStationRadiusMeters, ride: ride
+                instruction: to.isEmpty ? "" : HudText.t(.navWalkTo, to), distanceMeters: distance, seconds: seconds,
+                end: endLocation, endRadiusMeters: HudConstants.navStationRadiusMeters, ride: nil
             )
         }
-        let instruction = (json["navigationInstruction"] as? [String: Any])?["instructions"] as? String ?? ""
+        let transport = section["transport"] as? [String: Any] ?? [:]
+        let line = section["line_name"] as? String ?? transport["name"] as? String ?? ""
+        let ride = RideInfo(
+            isBus: kind.contains("bus"),
+            line: line,
+            headsign: (transport["destination"] as? String) ?? ((transport["destination"] as? [String: Any])?["name"] as? String),
+            fromStop: from,
+            toStop: to,
+            departs: clock(section["from_time"]),
+            arrives: clock(section["to_time"]),
+            stopCount: 0
+        )
         return NavStep(
-            instruction: instruction, distanceMeters: distance, seconds: duration, end: end,
-            endRadiusMeters: HudConstants.navStepAdvanceMeters, ride: nil
+            instruction: HudText.t(.navBoard, rideName(ride), ride.departs ?? from),
+            distanceMeters: distance, seconds: seconds, end: endLocation,
+            endRadiusMeters: HudConstants.navStationRadiusMeters, ride: ride
         )
     }
-
-    private static func parseRide(_ json: [String: Any]) -> RideInfo? {
-        let stops = json["stopDetails"] as? [String: Any] ?? [:]
-        let line = json["transitLine"] as? [String: Any] ?? [:]
-        let vehicleType = (line["vehicle"] as? [String: Any])?["type"] as? String ?? ""
-        let times = json["localizedValues"] as? [String: Any] ?? [:]
-        guard let lineName = (line["nameShort"] as? String) ?? (line["name"] as? String) else { return nil }
-        return RideInfo(
-            isBus: busTypes.contains(vehicleType),
-            line: lineName,
-            headsign: json["headsign"] as? String,
-            fromStop: (stops["departureStop"] as? [String: Any])?["name"] as? String ?? "",
-            toStop: (stops["arrivalStop"] as? [String: Any])?["name"] as? String ?? "",
-            departs: clock(times["departureTime"]),
-            arrives: clock(times["arrivalTime"]),
-            stopCount: (json["stopCount"] as? NSNumber)?.intValue ?? 0
-        )
-    }
-
-    /// Google vehicle types that are buses (the rest are rail of some kind).
-    private static let busTypes: Set<String> = ["BUS", "INTERCITY_BUS", "TROLLEYBUS", "SHARE_TAXI"]
 
     /// "JR Yamanote for Shinjuku"
     static func rideName(_ ride: RideInfo) -> String {
         ride.headsign.map { HudText.t(.navLineToward, ride.line, $0) } ?? ride.line
     }
 
-    /// "1234s" -> 1234
-    private static func seconds(_ value: Any?) -> Double? {
-        (value as? String).flatMap { Double($0.replacingOccurrences(of: "s", with: "")) }
+    /// fare {unit_48: IC fare, unit_0: ticket fare, ...} in yen -> "¥180" (IC when given).
+    private static func fareText(_ value: Any?) -> String? {
+        guard let fares = value as? [String: Any] else { return nil }
+        let yen = number(fares["unit_48"]) ?? number(fares["unit_0"])
+        return yen.map { "¥\(Int($0))" }
     }
 
-    private static func location(_ value: Any?) -> CLLocation? {
-        guard let latLng = (value as? [String: Any])?["latLng"] as? [String: Any],
-              let latitude = (latLng["latitude"] as? NSNumber)?.doubleValue,
-              let longitude = (latLng["longitude"] as? NSNumber)?.doubleValue
-        else { return nil }
-        return CLLocation(latitude: latitude, longitude: longitude)
+    /// GeoJSON FeatureCollection -> one list of coordinates ([lon, lat] pairs).
+    private static func lineCoordinates(_ value: Any?) -> [CLLocationCoordinate2D] {
+        let features = (value as? [String: Any])?["features"] as? [[String: Any]] ?? []
+        return features.flatMap { feature -> [CLLocationCoordinate2D] in
+            let geometry = feature["geometry"] as? [String: Any] ?? [:]
+            let lines: [[Any]]
+            switch geometry["type"] as? String {
+            case "LineString": lines = [geometry["coordinates"] as? [Any] ?? []]
+            case "MultiLineString": lines = geometry["coordinates"] as? [[Any]] ?? []
+            default: lines = []
+            }
+            return lines.flatMap { line in
+                line.compactMap { pair -> CLLocationCoordinate2D? in
+                    guard let values = pair as? [Any], values.count >= 2,
+                          let lon = number(values[0]), let lat = number(values[1]) else { return nil }
+                    return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                }
+            }
+        }
     }
 
-    /// localizedValues.departureTime -> "06:52"
+    private static func coordinate(_ value: Any?) -> CLLocationCoordinate2D? {
+        guard let coord = value as? [String: Any], let lat = number(coord["lat"]), let lon = number(coord["lon"]) else { return nil }
+        return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+    }
+
+    private static func number(_ value: Any?) -> Double? {
+        (value as? NSNumber)?.doubleValue ?? (value as? String).flatMap(Double.init)
+    }
+
+    /// "2024-01-01T13:00:00+09:00" -> "13:00"
     private static func clock(_ value: Any?) -> String? {
-        ((value as? [String: Any])?["time"] as? [String: Any])?["text"] as? String
+        guard let text = value as? String, let tee = text.firstIndex(of: "T") else { return nil }
+        return String(text[text.index(after: tee)...].prefix(5))
     }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }
