@@ -3,8 +3,8 @@
 // Estimates how text wraps on the lens so tabs can scroll by whole lines.
 // The firmware wraps text itself and exposes no font metrics, so widths are
 // approximated: ASCII = 1 unit, everything else (kana, kanji) = 2 units.
-// Lines starting with spaces or a marker ("› ", "◆ ", "1. ", "→ ") keep wrapped
-// lines indented under the text (hanging indent), so items stay readable.
+// Lines starting with spaces or a marker (">> ", ":: ", "+ ", "[1] ", "{14:00} ")
+// keep wrapped lines indented under the text (hanging indent), so items stay readable.
 //
 // Public API:
 //   LensTextLayout.wrap(_ text: String) -> [String]
@@ -79,21 +79,18 @@ enum LensTextLayout {
         return result
     }
 
-    /// Width of the leading spaces plus a list marker ("› ", "◆ ", "12. ", "→ ").
+    /// Width of the leading spaces plus a list marker and its space.
     private static func hangingIndent(of line: String) -> Int {
-        let spaces = line.prefix { $0 == " " }
-        let rest = line.dropFirst(spaces.count)
-        if let first = rest.first, listMarkers.contains(first), rest.dropFirst().first == " " {
-            return spaces.count + units(of: first) + 1
-        }
-        let digits = rest.prefix { $0.isASCII && $0.isNumber }
-        if !digits.isEmpty, rest.dropFirst(digits.count).hasPrefix(". ") {
-            return spaces.count + digits.count + 2
-        }
-        return spaces.count
+        let range = NSRange(line.startIndex..., in: line)
+        guard let match = listMarker.firstMatch(in: line, range: range),
+              let found = Range(match.range, in: line) else { return 0 }
+        return units(of: String(line[found]))
     }
 
-    private static let listMarkers: Set<Character> = ["›", "◆", "・", "→", "▸"]
+    /// Leading spaces, then optionally ">>", "::", "+", "@", "[3]", "{14:00}", "1.", "→" and a space.
+    private static let listMarker = try! NSRegularExpression(
+        pattern: #"^ *(?:(?:>>|::|\+|@|\[[^\]]{1,8}\]|\{[^}]{1,8}\}|\d{1,3}\.|→) )?"#
+    )
 
     /// Cuts `text` to at most `units` wide, adding "…" when cut.
     static func truncate(_ text: String, units limit: Int) -> String {

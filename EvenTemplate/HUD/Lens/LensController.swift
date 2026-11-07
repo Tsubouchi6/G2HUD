@@ -201,11 +201,12 @@ final class LensController: ObservableObject {
         if offset > window.maxScroll { scrollOffsets[tab.id] = window.maxScroll }
 
         var lines = window.lines
-        if let banner { lines.insert(banner, at: 0) }
+        if let banner { lines.insert("<< \(banner) >>", at: 0) }
         let text = lines.joined(separator: "\n")
 
         let position = "\(activeIndex + 1)/\(tabs.count)"
-        let tabBar = LensTextLayout.truncate("\(position) \(page.header ?? tab.title)", units: HudConstants.tabBarUnits)
+        let label = LensTextLayout.truncate("\(position) \(page.header ?? tab.title)", units: HudConstants.tabBarUnits - 4)
+        let tabBar = "[ \(label) ]"
 
         previewText = text
         tabBarText = tabBar

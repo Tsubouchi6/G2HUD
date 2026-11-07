@@ -40,6 +40,8 @@ struct NavProgress {
     let destinationName: String
     let remainingMeters: Double
     let remainingMinutes: Int
+    /// Whole route length, for the progress bar.
+    let totalMeters: Double
     /// The next turn, and how far away it is. nil when only the arrival is left.
     let nextTurn: String?
     let metersToNextTurn: Double
@@ -416,6 +418,7 @@ final class Navigator: ObservableObject {
             destinationName: destinationName,
             remainingMeters: remaining,
             remainingMinutes: max(minutes, 1),
+            totalMeters: route.distance,
             nextTurn: upcoming.first?.instructions,
             metersToNextTurn: toStepEnd,
             turnAfter: upcoming.dropFirst().first?.instructions,

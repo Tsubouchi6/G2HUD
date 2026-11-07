@@ -37,6 +37,7 @@ final class HudController: ObservableObject {
     private let input: GlassesInputHandler
     private let status: LensStatus
     private let listenSchedule: ListeningScheduler
+    private let weather: WeatherService
     private var languageSubscription: AnyCancellable?
 
     // MARK: - Assembly
@@ -57,8 +58,10 @@ final class HudController: ObservableObject {
         let charts = ChartService()
         let aiChats = AiChatArchive()
         // Without glasses connected, the phone's compass drives the directions arrow.
+        let locationService = LocationService()
+        let weather = WeatherService(location: locationService)
         let navigator = Navigator(
-            location: LocationService(), directions: DirectionsService(), heading: HeadingService(),
+            location: locationService, directions: DirectionsService(), heading: HeadingService(),
             useCompass: { [weak session] in session?.glasses.connected != true }
         )
 
@@ -205,6 +208,7 @@ final class HudController: ObservableObject {
         self.listening = listening
         self.navigator = navigator
         self.listenSchedule = listenSchedule
+        self.weather = weather
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
             reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab, savedTab: savedTab,
@@ -216,6 +220,7 @@ final class HudController: ObservableObject {
         status = LensStatus(
             session: session,
             isListening: { [weak captions] in captions?.isRunning == true },
+            weather: { [weak weather] in weather?.latestText },
             onText: { [weak lens] text in lens?.updateStatus(text) }
         )
 
@@ -253,12 +258,14 @@ final class HudController: ObservableObject {
         if settings.saveConversations { conversations.startSession(language: settings.hearingLanguage) }
         lens.activate()
         status.start()
+        weather.start()
         input.start()
     }
 
     func stop() async {
         input.stop()
         status.stop()
+        weather.stop()
         await captions.stop()
         conversations.endSession()
         _ = listenSchedule.cancel()

@@ -94,7 +94,7 @@ struct HudScreen: View {
                 HStack {
                     Text(lens.tabBarText)
                     Spacer(minLength: 8)
-                    Text(lens.statusText)
+                    Text(lens.statusText).fixedSize().layoutPriority(1)
                 }
                 .font(.system(size: 12, design: .monospaced))
                 .lineLimit(1)

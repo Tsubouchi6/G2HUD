@@ -94,7 +94,7 @@ enum HudText {
         .aiUnavailable: ("AIが使えません (Apple Intelligenceをオンに)", "AI unavailable (turn on Apple Intelligence)",
                          "IA indisponível (ative a Apple Intelligence)"),
 
-        .wakeAck: ("● はい? (聞いています)", "● Yes? (listening)", "● Sim? (ouvindo)"),
+        .wakeAck: ("* はい? (聞いています)", "* Yes? (listening)", "* Sim? (ouvindo)"),
         .noted: ("メモした", "Noted", "Anotado"),
         .timeUnknown: ("時間が分からない", "Couldn't read the time", "Não entendi o horário"),
         .reminderSet: ("%@ にリマインド", "Reminder at %@", "Lembrete às %@"),

@@ -61,15 +61,15 @@ final class SearchTab: LensTab {
     private static func format(_ outcome: SearchOutcome) -> [String] {
         var result: [String] = []
         if let summary = outcome.summary {
-            result.append(outcome.isOffline ? "\(HudText.t(.offlineTag)) \(summary)" : summary)
+            result.append(":: " + (outcome.isOffline ? "\(HudText.t(.offlineTag)) \(summary)" : summary))
         }
         guard !outcome.results.isEmpty else {
             if outcome.summary == nil { result.append(HudText.t(.noResults)) }
             return result
         }
-        let titleUnits = HudConstants.lensLineUnits - 3
+        let titleUnits = HudConstants.lensLineUnits - 4
         for (index, item) in outcome.results.enumerated() {
-            result.append("\(index + 1). \(LensTextLayout.truncate(item.title, units: titleUnits))")
+            result.append("[\(index + 1)] \(LensTextLayout.truncate(item.title, units: titleUnits))")
         }
         return result
     }

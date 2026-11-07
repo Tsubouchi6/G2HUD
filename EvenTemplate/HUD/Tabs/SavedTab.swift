@@ -80,7 +80,7 @@ final class SavedTab: LensTab {
             case .listened: tag = HudText.t(.savedListenTag)
             case .conversation: tag = HudText.t(.savedTalkTag)
             }
-            return "\(index + 1). [\(tag)] \(item.title)"
+            return "[\(index + 1)] {\(tag)} \(item.title)"
         }
         return LensPage(lines: list, anchor: .top)
     }

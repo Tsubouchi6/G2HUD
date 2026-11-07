@@ -71,11 +71,12 @@ final class NavTab: LensTab {
             return placeLines(place)
         case .active(let progress):
             // Next turn first (biggest need), then the overview, like the G2 Navigate screen.
-            var lines = [turnLine(progress)]
-            if let after = progress.turnAfter { lines.append(HudText.t(.navThen, after)) }
+            var lines = [">> \(turnLine(progress))"]
+            if let after = progress.turnAfter { lines.append("   " + HudText.t(.navThen, after)) }
             lines += [
-                HudText.t(.navRemaining, Self.distance(progress.remainingMeters), progress.remainingMinutes),
-                "→ \(progress.destinationName)",
+                "   \(Self.progressBar(progress))  "
+                    + HudText.t(.navRemaining, Self.distance(progress.remainingMeters), progress.remainingMinutes),
+                "@ \(progress.destinationName)",
             ]
             if progress.rerouting { lines.append(HudText.t(.navRerouting)) }
             return lines
@@ -85,13 +86,13 @@ final class NavTab: LensTab {
     /// The line under the map: the next turn, then the minutes left.
     private func mapLines(_ progress: NavProgress) -> [String] {
         let left = progress.rerouting ? HudText.t(.navRerouting) : "\(progress.remainingMinutes)min"
-        return [LensTextLayout.truncate("\(turnLine(progress)) · \(left)", units: HudConstants.lensLineUnits)]
+        return [LensTextLayout.truncate(">> \(turnLine(progress)) | \(left)", units: HudConstants.lensLineUnits)]
     }
 
     /// "Where is X": the place and how far on foot, in one line.
     private func placeLines(_ place: PlaceInfo) -> [String] {
         let walk = HudText.t(.navPlaceWalk, Self.distance(place.walkingMeters), place.walkingMinutes)
-        return [LensTextLayout.truncate("◎ \(place.name) · \(walk)", units: HudConstants.lensLineUnits)]
+        return [LensTextLayout.truncate("@ \(place.name) | \(walk)", units: HudConstants.lensLineUnits)]
     }
 
     /// Beside the rotating arrow: "35° right · 50m", then the turn itself.
@@ -112,9 +113,9 @@ final class NavTab: LensTab {
     private func minimalLines() -> [String] {
         switch navigator.state {
         case .active(let progress):
-            return [LensTextLayout.truncate(turnLine(progress), units: HudConstants.lensLineUnits)]
+            return [LensTextLayout.truncate(">> \(turnLine(progress))", units: HudConstants.lensLineUnits)]
         case .place(let place):
-            return [LensTextLayout.truncate("◎ \(place.name) · \(Self.distance(place.walkingMeters))", units: HudConstants.lensLineUnits)]
+            return [LensTextLayout.truncate("@ \(place.name) | \(Self.distance(place.walkingMeters))", units: HudConstants.lensLineUnits)]
         case .arrived(let name):
             return [HudText.t(.navArrived, name)]
         case .finding(let query):
@@ -140,6 +141,14 @@ final class NavTab: LensTab {
     private static func arrow(_ degrees: Double) -> String {
         let arrows = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]
         return arrows[Int(((degrees + 22.5) / 45).rounded(.down)) % 8]
+    }
+
+    /// "[=========-------]": how much of the route is done.
+    private static func progressBar(_ progress: NavProgress) -> String {
+        let cells = HudConstants.navProgressCells
+        let done = progress.totalMeters > 0 ? 1 - progress.remainingMeters / progress.totalMeters : 0
+        let filled = min(max(Int((done * Double(cells)).rounded()), 0), cells)
+        return "[" + String(repeating: "=", count: filled) + String(repeating: "-", count: cells - filled) + "]"
     }
 
     /// "80m", "1.2km"

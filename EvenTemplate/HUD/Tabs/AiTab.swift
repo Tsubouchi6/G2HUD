@@ -1,8 +1,8 @@
 // AiTab.swift
 //
-// Lens tab: plain-text AI chat. Questions show as "› question" lines, answers
+// Lens tab: plain-text AI chat. Questions show as ">> question" lines, answers
 // indented below them, newest at the bottom. (Stored as "> question", the
-// format saved chats use.)
+// format saved chats use.) While waiting, the dots animate . / .. / ...
 //   1. Claude through the PC bridge, when set up in Settings (ClaudeOnPC).
 //   2. Otherwise, or when the PC can't be reached: the iPhone's on-device AI,
 //      tagged "(iPhone AI)" if Claude was supposed to answer.
@@ -38,6 +38,9 @@ final class AiTab: LensTab {
     /// The current answer's picture; cleared when the next question is asked.
     private var picture: Data?
     private static let maxLines = 200
+    /// Thinking-dots animation while an answer is pending.
+    private var thinkingFrame = 0
+    private var thinkingTask: Task<Void, Never>?
 
     init(ai: OnDeviceAI, settings: HudSettings, archive: AiChatArchive) {
         self.ai = ai
@@ -55,13 +58,29 @@ final class AiTab: LensTab {
 
     func page() -> LensPage {
         guard !lines.isEmpty else { return LensPage(lines: [HudText.t(.aiHint)], anchor: .bottom) }
-        return LensPage(lines: lines.map(Self.display), anchor: .bottom, picture: picture)
+        return LensPage(lines: lines.map(display), anchor: .bottom, picture: picture)
     }
 
-    /// "> question" -> "› question"; answers indented (every paragraph) under it.
-    private static func display(_ line: String) -> String {
-        if line.hasPrefix("> ") { return "› " + line.dropFirst(2) }
-        return "  " + line.replacingOccurrences(of: "\n", with: "\n  ")
+    /// "> question" -> ">> question"; answers indented (every paragraph) under it;
+    /// the pending "..." shows the current animation frame.
+    private func display(_ line: String) -> String {
+        if line.hasPrefix("> ") { return ">> " + line.dropFirst(2) }
+        if line == "..." { return "   " + String(repeating: ".", count: thinkingFrame % 3 + 1) }
+        return "   " + line.replacingOccurrences(of: "\n", with: "\n   ")
+    }
+
+    /// Cycles the dots until the answer replaces them.
+    private func animateThinking() {
+        thinkingTask?.cancel()
+        thinkingFrame = 0
+        thinkingTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(HudConstants.aiThinkingFrameSeconds))
+                guard let self, !Task.isCancelled, self.lines.last == "..." else { return }
+                self.thinkingFrame += 1
+                self.onChange?()
+            }
+        }
     }
 
     // MARK: - Asking
@@ -69,6 +88,7 @@ final class AiTab: LensTab {
     func ask(_ question: String) {
         picture = nil
         append(["> \(question)", "..."])
+        animateThinking()
         Task {
             let answer = await answer(question)
             if lines.last == "..." { lines.removeLast() }

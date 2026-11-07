@@ -50,6 +50,16 @@ enum HudConstants {
     /// Source: design choice (HUD mockup: "name flashes ~1 s").
     static let lensBannerSeconds: Double = 1.2
 
+    /// AI "thinking" dots: one frame (".", "..", "...") every this many seconds.
+    /// Text-only changes update in place on the glasses (no page rebuild), and
+    /// the lens takes a push every lensPushIntervalMs, so 0.4 s is safe.
+    static let aiThinkingFrameSeconds: Double = 0.4
+
+    /// Weather in the status bar: Open-Meteo current conditions (free, no key,
+    /// open-meteo.com/en/docs), refreshed every 15 min (its data updates every 15 min).
+    static let weatherRefreshSeconds: Double = 900
+    static let weatherEndpoint: String = "https://api.open-meteo.com/v1/forecast"
+
     /// How long "Listening: ..." stays on the lens after it starts, in seconds.
     /// Source: design choice (long enough to confirm it heard the request).
     static let listeningBannerSeconds: Double = 4
@@ -257,6 +267,9 @@ enum HudConstants {
     /// these, halving / doubling per "zoom in" / "zoom out"; "where is X" fits
     /// both points with this much extra margin. Source: design choice
     /// (50 m = a few buildings; 10 km = a city district).
+    /// Nav progress bar width in characters ("[=====-----]"). Design choice:
+    /// leaves room for "600m left · 8 min" on the same line.
+    static let navProgressCells: Int = 12
     static let navZoomMinMeters: Double = 50
     static let navZoomMaxMeters: Double = 10_000
     static let navPlaceFitMargin: Double = 1.3
