@@ -12,6 +12,7 @@
 //   VoicePhrases.stripOpenWords(_:) -> String       // "字幕を開いて" -> "字幕"
 //   VoicePhrases.containsAny(_:_:) -> Bool
 //   VoicePhrases.isNavigation(_:) -> Bool
+//   VoicePhrases.mentionsLiveInfo(_:) -> Bool      // needs the web (weather, news, now...)
 //   phrase tables: next, previous, scrollUp, scrollDown, yes, no, ...
 
 import Foundation
@@ -53,6 +54,20 @@ enum VoicePhrases {
                                 "me lembra", "me lembre", "lembrete", "lembrar"]
     /// Softer words that only count as a reminder when a time is also found.
     static let softReminderWords = ["知らせて", "教えて", "通知して", "avisa", "avise"]
+
+    /// Words that mean the answer needs live web data, so the command goes to
+    /// Search instead of the offline AI. Japanese is matched as substrings;
+    /// English/Portuguese as whole words (so "know" doesn't match "now").
+    static let liveInfoSubstrings = [
+        "天気", "気温", "温度", "何度", "予報", "雨", "雪", "ニュース", "株価", "値段", "価格",
+        "営業時間", "何時まで", "開いてる", "今日", "今", "現在", "最新", "為替", "地震", "渋滞",
+    ]
+    static let liveInfoWords = [
+        "weather", "temperature", "forecast", "rain", "snow", "news", "price", "prices", "stock",
+        "hours", "open", "now", "today", "tonight", "latest", "current", "score", "exchange",
+        "tempo", "temperatura", "previsão", "chuva", "notícias", "noticias", "preço", "preços",
+        "cotação", "horário", "aberto", "agora", "hoje", "atual", "últimas",
+    ]
 
     private static let politeEndings = ["してください", "ください", "して", "へ", "に"]
     private static let openWords = ["タブを開いて", "を開いて", "開いて", "タブ", "に切り替えて", "を表示", "見せて",
@@ -110,6 +125,12 @@ enum VoicePhrases {
 
     static func containsAny(_ text: String, _ words: [String]) -> Bool {
         words.contains { text.contains($0) }
+    }
+
+    static func mentionsLiveInfo(_ text: String) -> Bool {
+        if liveInfoSubstrings.contains(where: { text.contains($0) }) { return true }
+        let words = Set(text.lowercased().components(separatedBy: CharacterSet.letters.inverted))
+        return liveInfoWords.contains(where: { words.contains($0) })
     }
 
     static func isNavigation(_ text: String) -> Bool {

@@ -3,7 +3,8 @@
 // Turns finished speech phrases into actions. Cheapest path first:
 //   1. Wake word ("Claude ...") marks a command; other speech is just captions.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI.
-//   3. Anything else after the wake word goes to the on-device AI tab.
+//   3. Anything else: questions needing live data (weather, news, "now"...)
+//      go to Search; maths to the calculator; the rest to the on-device AI.
 // Destructive actions wait for "はい / yes / sim" before running.
 //
 // Public API:
@@ -77,8 +78,12 @@ final class VoiceCommandRouter {
         guard !command.isEmpty else { return }
         if runKeyPhrase(command) { return }
 
-        // Not a known phrase: maths goes to the calculator, the rest to the AI.
-        if Calculator.looksLikeMath(command) {
+        // Not a known phrase: live questions to Search (the offline AI can't
+        // know them), maths to the calculator, the rest to the AI.
+        if VoicePhrases.mentionsLiveInfo(command) {
+            open("search")
+            context.searchTab.search(command)
+        } else if Calculator.looksLikeMath(command) {
             open("calc")
             context.calcTab.calculate(command)
         } else {
