@@ -19,8 +19,12 @@
 //   @Published minimal: Bool                 // one line at the top, nothing else
 //   @Published miniMap: Data?                // map PNG, 400x200 (MiniMapRenderer)
 //   @Published mapStatus: String             // phone-only: whether the Apple Maps background loaded
-//   start(destination:match:mode:)           // directions to the nearest match (map view)
-//   showPlace(_ query:, match:)              // where the nearest match is, with the user
+//   start(destination:match:mode:) -> Task   // directions to the nearest match (map view)
+//   showPlace(_ query:, match:) -> Task      // where the nearest match is, with the user
+//   goToShownPlace(mode:) -> Task?           // "take me there": directions to the place on the map
+//                                            // (no new search, so it's the same place); nil if none
+//     (each Task ends with nil when found, or the error text)
+//   summaryForAI: String?                    // what the Nav tab shows, for the AIs' context line
 //   zoom(in:)                                // halve / double the map's reach
 //   stop()
 //   showMap()                                // back to the view with the map
@@ -122,13 +126,43 @@ final class Navigator: ObservableObject {
     // MARK: - Control
 
     /// Directions; always starts with the map (the one-line view only when asked).
-    func start(destination query: String, match: PlaceMatch, mode: DirectionsMode) {
-        begin(query: query, match: match, mode: mode, placeMode: false)
+    @discardableResult
+    func start(destination query: String, match: PlaceMatch, mode: DirectionsMode) -> Task<String?, Never> {
+        begin(label: query, mode: mode, placeMode: false) { [directions] here in
+            try await directions.nearestPlace(query, match: match, near: here)
+        }
     }
 
     /// "Where is the nearest X": the place and the user both on the map.
-    func showPlace(_ query: String, match: PlaceMatch) {
-        begin(query: query, match: match, mode: .walking, placeMode: true)
+    @discardableResult
+    func showPlace(_ query: String, match: PlaceMatch) -> Task<String?, Never> {
+        begin(label: query, mode: .walking, placeMode: true) { [directions] here in
+            try await directions.nearestPlace(query, match: match, near: here)
+        }
+    }
+
+    /// "Yes, take me there" after showPlace: the same place, not a new search.
+    func goToShownPlace(mode: DirectionsMode) -> Task<String?, Never>? {
+        guard isPlaceMode, route != nil, let place = destination else { return nil }
+        return begin(label: destinationName, mode: mode, placeMode: false) { _ in place }
+    }
+
+    /// One sentence for the AIs about what the Nav tab shows, so follow-ups
+    /// ("go there", "how far", "how much to get there") use the real place.
+    var summaryForAI: String? {
+        let address = destination?.placemark.title.map { " (\($0))" } ?? ""
+        switch state {
+        case .place(let place):
+            return "The Nav map shows \(place.name)\(address), \(Int(place.walkingMeters)) m away, "
+                + "about \(place.walkingMinutes) min on foot; not navigating there yet"
+        case .active(let progress):
+            return "Navigating (\(mode.rawValue)) to \(progress.destinationName)\(address), "
+                + "\(Int(progress.remainingMeters)) m and about \(progress.remainingMinutes) min left"
+        case .finding(let query):
+            return "Searching the map for \(query)"
+        default:
+            return nil
+        }
     }
 
     func stop() {
@@ -164,13 +198,17 @@ final class Navigator: ObservableObject {
 
     /// Finds the place first; only then replaces what's on the map. If the
     /// search fails while a map is up, that map stays and a notice is shown.
-    private func begin(query: String, match: PlaceMatch, mode: DirectionsMode, placeMode: Bool) {
+    /// `find` picks the destination; the task ends with nil, or the error text.
+    private func begin(
+        label query: String, mode: DirectionsMode, placeMode: Bool,
+        find: @escaping @MainActor (CLLocation) async throws -> MKMapItem
+    ) -> Task<String?, Never> {
         let mapIsUp = route != nil
         if mapIsUp { onNotice?(HudText.t(.navFinding, query)) } else { state = .finding(query) }
-        Task {
+        return Task {
             do {
                 let here = try await location.currentLocation()
-                let place = try await directions.nearestPlace(query, match: match, near: here)
+                let place = try await find(here)
                 let route = try await directions.route(to: place, mode: mode)
                 stop()
                 self.mode = mode
@@ -182,8 +220,10 @@ final class Navigator: ObservableObject {
                 use(route, at: here)
                 location.startUpdates { [weak self] update in self?.follow(update) }
                 heading.start { [weak self] degrees in self?.turned(to: degrees) }
+                return nil
             } catch {
                 if mapIsUp { onNotice?(error.localizedDescription) } else { state = .failed(error.localizedDescription) }
+                return error.localizedDescription
             }
         }
     }

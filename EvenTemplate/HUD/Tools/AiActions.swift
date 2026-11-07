@@ -12,9 +12,11 @@
 //                                  `language` ("ja"/"en"/"pt"; nil = the Listen-for setting),
 //                                  from `start` (nil = now) until `stop` (nil = until told)
 //   stopListening() -> Bool        — ends and keeps the clip, or cancels a planned one (false = neither)
-//   startDirections(destination, match, mode) — nearest match, turn-by-turn with the map in the Nav tab
+//   startDirections(destination, match, mode) async -> String — nearest match, turn-by-turn with the map
+//                                  in the Nav tab; returns what was found (or "Failed: ...") for the AI
+//   goToShownPlace(mode) async -> String — "take me there": directions to the place on the map
 //   stopDirections() -> Bool       — ends navigation (false = none running)
-//   showPlace(query, match)        — "where is the nearest X": X and the user together on the map
+//   showPlace(query, match) async -> String — "where is the nearest X": X and the user on the map
 //   directionsView(view) -> Bool   — "map" / "minimal" / "zoomIn" / "zoomOut" (false = no map running)
 //   calculate(expression) -> String              — exact result line, also in the Calc tab
 //   convert(value, from, to) async -> String     — units or live currency, also in the Calc tab
@@ -29,9 +31,10 @@ struct AiActions: Sendable {
     let saveChat: @MainActor @Sendable (_ title: String) -> Bool
     let startListening: @MainActor @Sendable (_ title: String, _ language: String?, _ start: Date?, _ stop: Date?) -> Bool
     let stopListening: @MainActor @Sendable () -> Bool
-    let startDirections: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: DirectionsMode) -> Void
+    let startDirections: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: DirectionsMode) async -> String
+    let goToShownPlace: @MainActor @Sendable (_ mode: DirectionsMode) async -> String
     let stopDirections: @MainActor @Sendable () -> Bool
-    let showPlace: @MainActor @Sendable (_ query: String, _ match: PlaceMatch) -> Void
+    let showPlace: @MainActor @Sendable (_ query: String, _ match: PlaceMatch) async -> String
     let directionsView: @MainActor @Sendable (_ view: String) -> Bool
     let calculate: @MainActor @Sendable (_ expression: String) -> String
     let convert: @MainActor @Sendable (_ value: Double, _ from: String, _ to: String) async -> String

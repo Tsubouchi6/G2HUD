@@ -3,18 +3,21 @@
 // The context line sent with every AI question (on-device AI and Claude on
 // the PC), so answers use the real now and the right language:
 //   "[Context: Saturday 2026-11-07 15:18, time zone Asia/Tokyo. Reply in Portuguese.]"
+// plus what the HUD is showing when it matters (the place on the Nav map), so
+// follow-ups like "go there" or "how far is it" are about the real place.
 //
-// Public API: AiContext.line(language:) -> String
+// Public API: AiContext.line(language:situation:) -> String
 
 import Foundation
 
 enum AiContext {
 
-    static func line(language: HudLanguage) -> String {
+    static func line(language: HudLanguage, situation: String? = nil) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "EEEE yyyy-MM-dd HH:mm"
         let now = formatter.string(from: Date())
-        return "[Context: \(now), time zone \(TimeZone.current.identifier). Reply in \(language.englishName).]"
+        let shown = situation.map { " \($0)." } ?? ""
+        return "[Context: \(now), time zone \(TimeZone.current.identifier).\(shown) Reply in \(language.englishName).]"
     }
 }

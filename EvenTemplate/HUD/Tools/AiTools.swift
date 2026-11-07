@@ -41,7 +41,7 @@ enum AiTools {
             SaveChatTool(save: actions.saveChat),
             StartListeningTool(start: actions.startListening),
             StopListeningTool(stop: actions.stopListening),
-            StartDirectionsTool(start: actions.startDirections),
+            StartDirectionsTool(start: actions.startDirections, goToShown: actions.goToShownPlace),
             StopDirectionsTool(stop: actions.stopDirections),
             ShowPlaceTool(show: actions.showPlace),
             DirectionsViewTool(change: actions.directionsView),
@@ -284,9 +284,11 @@ private struct StartDirectionsTool: Tool {
     let description = """
     Starts turn-by-turn directions on the user's glasses to the nearest place matching \
     the destination, from where they are now. Use for any request to go somewhere or \
-    find the way (e.g. nearest convenience store, a station, an address).
+    find the way (e.g. nearest convenience store, a station, an address). When the user \
+    wants to go to the place already on the map, use match shown. Returns the place found.
     """
-    let start: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: DirectionsMode) -> Void
+    let start: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: DirectionsMode) async -> String
+    let goToShown: @MainActor @Sendable (_ mode: DirectionsMode) async -> String
 
     @Generable
     enum Mode: String {
@@ -295,25 +297,23 @@ private struct StartDirectionsTool: Tool {
 
     @Generable
     enum Match: String {
-        case kind, brand, exact
+        case kind, brand, exact, shown
     }
 
     @Generable
     struct Arguments {
         @Guide(description: "What or where, as a map search, in the user's words, e.g. コンビニ, convenience store, Tokyo Station")
         let destination: String
-        @Guide(description: "kind = a type of place (pet shop), brand = a chain (Wendy's), exact = one place or address (Tokyo Station)")
+        @Guide(description: "kind = a type of place (pet shop), brand = a chain (Wendy's), exact = one place or address (Tokyo Station), shown = the place already on the Nav map (go there)")
         let match: Match
         @Guide(description: "walking unless the user says they are driving")
         let mode: Mode
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await start(
-            arguments.destination, PlaceMatch(rawValue: arguments.match.rawValue) ?? .kind,
-            DirectionsMode(rawValue: arguments.mode.rawValue) ?? .walking
-        )
-        return "Directions starting on the glasses."
+        let mode = DirectionsMode(rawValue: arguments.mode.rawValue) ?? .walking
+        if arguments.match == .shown { return await goToShown(mode) }
+        return await start(arguments.destination, PlaceMatch(rawValue: arguments.match.rawValue) ?? .kind, mode)
     }
 }
 
@@ -404,7 +404,7 @@ private struct ShowPlaceTool: Tool {
     the user's position (both fit), with the walking distance. Use for "where is", \
     "show me where", "how far is" questions; use startDirections to actually go there.
     """
-    let show: @MainActor @Sendable (_ query: String, _ match: PlaceMatch) -> Void
+    let show: @MainActor @Sendable (_ query: String, _ match: PlaceMatch) async -> String
 
     @Generable
     enum Match: String {
@@ -421,7 +421,6 @@ private struct ShowPlaceTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await show(arguments.query, PlaceMatch(rawValue: arguments.match.rawValue) ?? .kind)
-        return "Shown on the map."
     }
 }
 

@@ -46,6 +46,8 @@ final class OnDeviceAI {
     private static let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
 
     var tools: [any Tool] = []
+    /// What the HUD shows right now (Nav map place), added to each question's context.
+    var situation: (() -> String?)?
     private var session: LanguageModelSession?
 
     // MARK: - Availability
@@ -65,7 +67,7 @@ final class OnDeviceAI {
     // MARK: - Asking
 
     func ask(_ question: String, language: HudLanguage) async throws -> String {
-        let prompt = "\(AiContext.line(language: language))\n\(question)"
+        let prompt = "\(AiContext.line(language: language, situation: situation?()))\n\(question)"
         do {
             return try await respond(prompt)
         } catch LanguageModelSession.GenerationError.exceededContextWindowSize(_) {

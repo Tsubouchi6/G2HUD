@@ -9,7 +9,8 @@
 //   SAVE: <short title>                              -> saves this chat (Saved tab)
 //   LISTEN: <title> | <ja|en|pt|any> | <HH:mm|now> | <HH:mm|open> -> saves what people say (language, start, stop)
 //   LISTEN_STOP                                      -> stops and keeps that text (or cancels a planned one)
-//   DIRECTIONS: <place> | <walking|driving> | <kind|brand|exact> -> turn-by-turn (with the map) to the nearest match
+//   DIRECTIONS: <place|shown> | <walking|driving> | <kind|brand|exact> -> turn-by-turn (with the map) to the nearest
+//                                                    match, or to the place on the map (shown)
 //   DIRECTIONS_STOP                                  -> stops navigation
 //   DIRECTIONS_VIEW: <map|minimal|zoomin|zoomout>    -> map / one-line view / zoom
 //   PLACE: <place> | <kind|brand|exact>              -> where the nearest match is, with the user
@@ -52,6 +53,9 @@ final class ClaudeOnPC {
     private let charts: ChartService
     private let actions: AiActions
 
+    /// What the HUD shows right now (Nav map place), added to each question's context.
+    var situation: (() -> String?)?
+
     /// First question after launch starts a fresh Claude conversation.
     private var needsNewSession = true
 
@@ -73,7 +77,7 @@ final class ClaudeOnPC {
 
     func ask(_ question: String) async throws -> String {
         guard isConfigured else { throw ClaudeBridgeError.notConfigured }
-        let prompt = "\(AiContext.line(language: settings.language))\n\(question)"
+        let prompt = "\(AiContext.line(language: settings.language, situation: situation?()))\n\(question)"
         let body: [String: Any] = [
             "prompt": prompt,
             "system": HudConstants.claudeInstructions,
@@ -115,7 +119,7 @@ final class ClaudeOnPC {
                 _ = actions.directionsView(view.lowercased())
             } else if let spec = value(trimmedLine, "PLACE:") {
                 let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
-                actions.showPlace(parts[0], Self.match(parts, at: 1))
+                _ = await actions.showPlace(parts[0], Self.match(parts, at: 1))
             } else if let tab = value(trimmedLine, "OPEN:") {
                 _ = actions.openTab(tab.lowercased())
             } else if let spec = value(trimmedLine, "LANGUAGE:") {
@@ -126,7 +130,11 @@ final class ClaudeOnPC {
             } else if let spec = value(trimmedLine, "DIRECTIONS:") {
                 let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
                 let mode = parts.count > 1 ? DirectionsMode(rawValue: parts[1].lowercased()) ?? .walking : .walking
-                actions.startDirections(parts[0], Self.match(parts, at: 2), mode)
+                if parts[0].lowercased() == "shown" {
+                    _ = await actions.goToShownPlace(mode)
+                } else {
+                    _ = await actions.startDirections(parts[0], Self.match(parts, at: 2), mode)
+                }
             } else if let title = value(trimmedLine, "LISTEN:") {
                 // "LISTEN: Meeting | ja | 17:08 | 17:09" — language, start, stop (all optional).
                 let parts = title.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }

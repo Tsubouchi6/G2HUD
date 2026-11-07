@@ -127,8 +127,15 @@ final class HudController: ObservableObject {
                 return true
             },
             startDirections: { [weak lens] destination, match, mode in
-                navigator.start(destination: destination, match: match, mode: mode)
                 lens?.select(id: "nav")
+                let failure = await navigator.start(destination: destination, match: match, mode: mode).value
+                return failure.map { "Failed: \($0)" } ?? navigator.summaryForAI ?? "Started."
+            },
+            goToShownPlace: { [weak lens] mode in
+                guard let task = navigator.goToShownPlace(mode: mode) else { return "Failed: no place is shown on the map." }
+                lens?.select(id: "nav")
+                let failure = await task.value
+                return failure.map { "Failed: \($0)" } ?? navigator.summaryForAI ?? "Started."
             },
             stopDirections: {
                 guard case .idle = navigator.state else {
@@ -138,8 +145,9 @@ final class HudController: ObservableObject {
                 return false
             },
             showPlace: { [weak lens] query, match in
-                navigator.showPlace(query, match: match)
                 lens?.select(id: "nav")
+                let failure = await navigator.showPlace(query, match: match).value
+                return failure.map { "Failed: \($0)" } ?? navigator.summaryForAI ?? "Shown."
             },
             directionsView: { [weak lens] view in
                 if case .idle = navigator.state { return false }
@@ -166,6 +174,9 @@ final class HudController: ObservableObject {
         )
         ai.tools = AiTools.make(search: search, charts: charts, actions: actions)
         let claude = ClaudeOnPC(settings: settings, charts: charts, actions: actions)
+        // Both AIs know which place the Nav map shows ("go there", "how far is it").
+        ai.situation = { [weak navigator] in navigator?.summaryForAI }
+        claude.situation = { [weak navigator] in navigator?.summaryForAI }
         aiTab.claude = claude
         let searchTab = SearchTab(service: search)
         lens.setTabs([
