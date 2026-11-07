@@ -19,6 +19,7 @@
 //     calculate    — exact arithmetic (the model writes the formula, the app computes)
 //     convert      — units (Apple) or currency (live Yahoo rate)
 //     openTab      — shows one of the HUD's tabs (e.g. the Saved list)
+//     setLanguage  — HUD language (what the user reads) or the language the mic listens for
 //   Failures are returned to the model as "Failed: ..." text, not thrown.
 
 import Foundation
@@ -47,6 +48,7 @@ enum AiTools {
             CalculateTool(calculate: actions.calculate),
             ConvertTool(convert: actions.convert),
             OpenTabTool(open: actions.openTab),
+            SetLanguageTool(set: actions.setLanguage),
         ]
     }
 
@@ -405,5 +407,38 @@ private struct OpenTabTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await open(arguments.tab.rawValue) ? "Shown on the glasses." : "No such tab."
+    }
+}
+
+// MARK: - Languages
+
+private struct SetLanguageTool: Tool {
+    let name = "setLanguage"
+    let description = """
+    Changes a language. hud = what the user reads (screens, your replies, subtitles). \
+    hearing = the language the glasses listen for (what people around speak); subtitles \
+    are translated into the hud language. Use when the user asks to switch either.
+    """
+    let set: @MainActor @Sendable (_ which: String, _ language: String) -> Bool
+
+    @Generable
+    enum Which: String {
+        case hud, hearing
+    }
+
+    @Generable
+    enum Language: String {
+        case ja, en, pt
+    }
+
+    @Generable
+    struct Arguments {
+        let which: Which
+        @Guide(description: "ja = Japanese, en = English, pt = Portuguese")
+        let language: Language
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await set(arguments.which.rawValue, arguments.language.rawValue) ? "Changed." : "Not changed."
     }
 }

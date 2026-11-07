@@ -17,6 +17,7 @@
 //   calculate(expression) -> String              — exact result line, also in the Calc tab
 //   convert(value, from, to) async -> String     — units or live currency, also in the Calc tab
 //   openTab(id) -> Bool                           — shows a tab (false = unknown tab)
+//   setLanguage(which, language) -> Bool          — "hud" / "hearing" to "ja" / "en" / "pt"
 
 import Foundation
 
@@ -33,4 +34,5 @@ struct AiActions: Sendable {
     let calculate: @MainActor @Sendable (_ expression: String) -> String
     let convert: @MainActor @Sendable (_ value: Double, _ from: String, _ to: String) async -> String
     let openTab: @MainActor @Sendable (_ id: String) -> Bool
+    let setLanguage: @MainActor @Sendable (_ which: String, _ language: String) -> Bool
 }

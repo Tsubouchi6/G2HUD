@@ -63,8 +63,9 @@ final class HudController: ObservableObject {
         // What either AI can make the HUD do (charts, pictures, saving, listening, directions).
         let aiTab = AiTab(ai: ai, settings: settings, archive: aiChats)
         let calcTab = CalcTab()
+        let translator = Translator(ai: ai)
         let savedTab = SavedTab(
-            conversations: conversations, listening: listening, chats: aiChats, translator: Translator(ai: ai)
+            conversations: conversations, listening: listening, chats: aiChats, translator: translator
         )
         let actions = AiActions(
             // Charts and photos go into the AI chat like a message, not over the whole lens.
@@ -95,7 +96,7 @@ final class HudController: ObservableObject {
             startListening: { [weak lens, weak captions] title in
                 guard captions?.isRunning == true else { return false }
                 listening.endSession()
-                listening.startSession(language: settings.language, title: title)
+                listening.startSession(language: settings.hearingLanguage, title: title)
                 lens?.showBanner(HudText.t(.listeningStarted, title), seconds: HudConstants.listeningBannerSeconds)
                 return true
             },
@@ -133,6 +134,11 @@ final class HudController: ObservableObject {
             },
             calculate: { [weak calcTab] expression in calcTab?.calculate(expression) ?? "" },
             convert: { [weak calcTab] value, from, to in await calcTab?.convert(value, from: from, to: to) ?? "" },
+            setLanguage: { which, code in
+                guard let language = HudLanguage(rawValue: code) else { return false }
+                if which == "hearing" { settings.hearingLanguage = language } else { settings.language = language }
+                return true
+            },
             openTab: { [weak lens, weak savedTab] id in
                 if id == "saved" { savedTab?.showList() }  // the list, not a previously opened item
                 return lens?.select(id: id) ?? false
@@ -143,7 +149,7 @@ final class HudController: ObservableObject {
         aiTab.claude = claude
         let searchTab = SearchTab(service: search)
         lens.setTabs([
-            CaptionsTab(captions: captions),
+            CaptionsTab(captions: captions, settings: settings, translator: translator),
             aiTab,
             searchTab,
             calcTab,
@@ -212,7 +218,7 @@ final class HudController: ObservableObject {
     func start() async {
         await captions.start()
         guard captions.isRunning else { return }
-        if settings.saveConversations { conversations.startSession(language: settings.language) }
+        if settings.saveConversations { conversations.startSession(language: settings.hearingLanguage) }
         lens.activate()
         status.start()
         input.start()

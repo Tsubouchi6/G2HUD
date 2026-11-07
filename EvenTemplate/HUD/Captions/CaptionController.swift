@@ -1,7 +1,8 @@
 // CaptionController.swift
 //
 // Listening: turns the mic on/off, feeds every mic frame to the active speech
-// engine (and the raw recorder), and keeps the transcript. It does not draw on
+// engine (in settings.hearingLanguage; restarts when it changes), and keeps the
+// transcript in the language heard. It does not draw on
 // the lens; CaptionsTab shows the transcript and VoiceCommandRouter reads
 // finished phrases through `onFinalPhrase`.
 //
@@ -52,6 +53,22 @@ final class CaptionController: ObservableObject {
         session.micPcm
             .sink { [weak self] event in self?.handleMic(event.pcm) }
             .store(in: &subscriptions)
+        // A new listening language takes effect right away (restart the engine).
+        settings.$hearingLanguage
+            .dropFirst()
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.restartIfRunning() }
+            .store(in: &subscriptions)
+    }
+
+    /// Restarts listening (e.g. with a new hearing language) if it's on.
+    private func restartIfRunning() {
+        guard isRunning else { return }
+        Task {
+            await stop()
+            await start()
+        }
     }
 
     // MARK: - Start / stop
@@ -80,7 +97,7 @@ final class CaptionController: ObservableObject {
         let engine = AppleSpeechEngine()
         do {
             try await engine.start(
-                languageId: settings.language.speechLocaleId,
+                languageId: settings.hearingLanguage.speechLocaleId,
                 onUpdate: { [weak self] update in self?.handleSpeech(update) },
                 onError: { [weak self] error in self?.handleEngineFailure(error) }
             )

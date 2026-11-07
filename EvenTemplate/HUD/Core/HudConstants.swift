@@ -385,6 +385,9 @@ enum HudConstants {
     10. Open tab: shows a tab when the user wants to see one: captions (live subtitles), \
     ai (this chat), search, calc, notes, remind (reminders), saved (saved chats and \
     listening recordings), nav (map). \
+    11. Languages: hud = what the user reads (screens, your replies, subtitles); hearing = \
+    what the glasses listen for (what people around speak). When they differ, subtitles \
+    are translated into the hud language. Change either when asked. \
     THINGS THE USER DOES BY VOICE THEMSELVES (you can't do them; if asked, tell them \
     what to say, starting with Neo): switch tabs (next / back), scroll (up / down), \
     notes (Neo, note + what to keep), reminders (Neo, remind me + when + what), plain math \
@@ -413,6 +416,7 @@ enum HudConstants {
     to end them, DIRECTIONS_VIEW: <map, minimal, zoomin or zoomout> for the view. \
     Show place: PLACE: <place as a map search>. \
     Open tab: OPEN: <captions, ai, search, calc, notes, remind, saved or nav>. \
+    Languages: LANGUAGE: <hud or hearing> | <ja, en or pt>. \
     Calculator: CALC: <formula>, and the exact result is added to your answer, so don't \
     compute it yourself. Convert: CONVERT: <value> | <from unit or currency> | <to>.
     """
@@ -431,7 +435,7 @@ enum HudConstants {
     HOW TO USE AN ABILITY: call its tool. Web search = searchWeb, stock chart = \
     stockChart, chart = drawChart, picture = showPicture, save chat = saveChat, \
     listen = startListening / stopListening, directions = startDirections / \
-    stopDirections / directionsView (also zoom), show place = showPlace, calculator = calculate, convert = convert, open tab = openTab. After a tool, \
+    stopDirections / directionsView (also zoom), show place = showPlace, calculator = calculate, convert = convert, open tab = openTab, languages = setLanguage. After a tool, \
     reply with one short sentence.
     """
 }

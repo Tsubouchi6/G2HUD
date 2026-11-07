@@ -7,7 +7,7 @@
 //
 // Public API:
 //   Translator(ai:)
-//   translate(_ lines: [String], from:to:) async throws -> [String]   // same count and order
+//   translate(_ lines: [String], from:to:) async throws -> [String]   // same count and order (live captions too)
 //   static defaultTarget(for source: HudLanguage) -> HudLanguage       // English, or Japanese for English
 
 import Foundation
@@ -17,17 +17,23 @@ import Translation
 final class Translator {
 
     private let ai: OnDeviceAI
+    /// One Apple translation session per language pair, reused (live captions
+    /// translate every phrase).
+    private var sessions: [String: TranslationSession] = [:]
 
     init(ai: OnDeviceAI) {
         self.ai = ai
     }
 
     func translate(_ lines: [String], from source: HudLanguage, to target: HudLanguage) async throws -> [String] {
+        guard source != target else { return lines }
         do {
-            let session = TranslationSession(
+            let key = "\(source.rawValue)>\(target.rawValue)"
+            let session = sessions[key] ?? TranslationSession(
                 installedSource: Locale.Language(identifier: source.rawValue),
                 target: Locale.Language(identifier: target.rawValue)
             )
+            sessions[key] = session
             var result: [String] = []
             for line in lines {
                 result.append(line.isEmpty ? "" : try await session.translate(line).targetText)

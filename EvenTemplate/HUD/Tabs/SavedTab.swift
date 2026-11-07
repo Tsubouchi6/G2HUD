@@ -124,7 +124,8 @@ final class SavedTab: LensTab {
     /// Translates the open item line by line (timestamps and "> " are left out).
     func translate(to requested: HudLanguage?) {
         guard var current = opened, !current.translating else { return }
-        let target = requested ?? Translator.defaultTarget(for: current.language)
+        // Default: into the HUD language, unless it was already spoken in it.
+        let target = requested ?? (current.language != HudText.language ? HudText.language : Translator.defaultTarget(for: current.language))
         current.translating = true
         current.translationFailed = false
         current.translations = nil

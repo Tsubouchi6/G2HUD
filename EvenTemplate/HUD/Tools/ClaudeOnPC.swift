@@ -14,6 +14,7 @@
 //   DIRECTIONS_VIEW: <map|minimal|zoomin|zoomout>    -> map / one-line view / zoom
 //   PLACE: <place>                                   -> where the nearest match is, with the user
 //   OPEN: <captions|ai|search|calc|notes|remind|saved|nav> -> shows that tab
+//   LANGUAGE: <hud|hearing> | <ja|en|pt>             -> HUD language / language the mic listens for
 //   CALC: <formula>                                  -> exact result, added to the answer
 //   CONVERT: <value> | <from> | <to>                 -> units / live currency, added to the answer
 //
@@ -116,6 +117,9 @@ final class ClaudeOnPC {
                 actions.showPlace(query)
             } else if let tab = value(trimmedLine, "OPEN:") {
                 _ = actions.openTab(tab.lowercased())
+            } else if let spec = value(trimmedLine, "LANGUAGE:") {
+                let parts = spec.lowercased().components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+                if parts.count == 2 { _ = actions.setLanguage(parts[0], parts[1]) }
             } else if trimmedLine.uppercased() == "DIRECTIONS_STOP" {
                 _ = actions.stopDirections()
             } else if let spec = value(trimmedLine, "DIRECTIONS:") {

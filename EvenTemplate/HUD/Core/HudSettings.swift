@@ -4,7 +4,9 @@
 // code repo). API keys typed here stay on this iPhone.
 //
 // Public API (all @Published, auto-saved):
-//   language: HudLanguage        // speech + commands + lens + HUD screens
+//   language: HudLanguage        // HUD language: lens, screens, AI replies, subtitles shown
+//   hearingLanguage: HudLanguage // language the mic listens for (speech-to-text); subtitles
+//                                // are translated into `language` when they differ
 //   tavilyApiKey: String         // web search (with AI answer)
 //   useClaudeOnPC: Bool          // AI tab asks Claude through the PC bridge (falls back to the iPhone AI)
 //   pcBridgeUrl, pcBridgeToken: String  // Tailscale address of the PC bridge + its token.txt
@@ -30,6 +32,7 @@ final class HudSettings: ObservableObject {
             HudText.language = language
         }
     }
+    @Published var hearingLanguage: HudLanguage { didSet { save(hearingLanguage.rawValue, Key.hearingLanguage) } }
     @Published var tavilyApiKey: String { didSet { save(tavilyApiKey, Key.tavilyApiKey) } }
     @Published var useClaudeOnPC: Bool { didSet { save(useClaudeOnPC, Key.useClaudeOnPC) } }
     @Published var pcBridgeUrl: String { didSet { save(pcBridgeUrl, Key.pcBridgeUrl) } }
@@ -48,6 +51,7 @@ final class HudSettings: ObservableObject {
     private enum Key {
         static let language = "g2hud_language"
         static let legacyCaptionLanguage = "g2hud_caption_language"
+        static let hearingLanguage = "g2hud_hearing_language"
         static let tavilyApiKey = "g2hud_tavily_api_key"
         static let useClaudeOnPC = "g2hud_use_claude_on_pc"
         static let pcBridgeUrl = "g2hud_pc_bridge_url"
@@ -65,9 +69,12 @@ final class HudSettings: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
-        language = defaults.string(forKey: Key.language).flatMap(HudLanguage.init(rawValue:))
+        let hudLanguage = defaults.string(forKey: Key.language).flatMap(HudLanguage.init(rawValue:))
             ?? defaults.string(forKey: Key.legacyCaptionLanguage).flatMap(HudLanguage.init(legacyLocaleId:))
             ?? .japanese
+        language = hudLanguage
+        // Until set, the mic listens for the HUD language (the old single setting).
+        hearingLanguage = defaults.string(forKey: Key.hearingLanguage).flatMap(HudLanguage.init(rawValue:)) ?? hudLanguage
         tavilyApiKey = defaults.string(forKey: Key.tavilyApiKey) ?? ""
         useClaudeOnPC = defaults.object(forKey: Key.useClaudeOnPC) as? Bool ?? true
         pcBridgeUrl = defaults.string(forKey: Key.pcBridgeUrl) ?? ""

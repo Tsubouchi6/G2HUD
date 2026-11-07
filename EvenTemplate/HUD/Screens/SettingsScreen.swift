@@ -44,12 +44,19 @@ struct SettingsScreen: View {
 
     private var voiceSection: some View {
         Section {
+            // HUD language (what you read) and the language the mic listens for;
+            // captions are translated into the HUD language when they differ.
             Picker(HudText.t(.language), selection: $settings.language) {
                 ForEach(HudLanguage.allCases) { language in
                     Text(language.displayName).tag(language)
                 }
             }
-            .disabled(captions.isRunning || captions.isStarting)
+            Picker(HudText.t(.hearingLanguage), selection: $settings.hearingLanguage) {
+                ForEach(HudLanguage.allCases) { language in
+                    Text(language.displayName).tag(language)
+                }
+            }
+            .disabled(captions.isStarting)
             Toggle(HudText.t(.requireWakeWord), isOn: $settings.requireWakeWord)
             Toggle(HudText.t(.saveConversations), isOn: $settings.saveConversations)
             Toggle(HudText.t(.usePhoneMic), isOn: $settings.usePhoneMic)

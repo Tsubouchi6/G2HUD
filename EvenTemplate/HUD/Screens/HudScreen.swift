@@ -41,12 +41,19 @@ struct HudScreen: View {
 
     private var controlSection: some View {
         Section {
+            // HUD language (what you read) and the language the mic listens for;
+            // captions are translated into the HUD language when they differ.
             Picker(HudText.t(.language), selection: $settings.language) {
                 ForEach(HudLanguage.allCases) { language in
                     Text(language.displayName).tag(language)
                 }
             }
-            .disabled(captions.isRunning || captions.isStarting)
+            Picker(HudText.t(.hearingLanguage), selection: $settings.hearingLanguage) {
+                ForEach(HudLanguage.allCases) { language in
+                    Text(language.displayName).tag(language)
+                }
+            }
+            .disabled(captions.isStarting)
 
             Button(HudText.t(captions.isRunning ? .stopHud : .startHud)) {
                 Task {
