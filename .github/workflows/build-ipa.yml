@@ -1,0 +1,45 @@
+# Builds an UNSIGNED .ipa on a GitHub-hosted Mac.
+# Download it from the run's "Artifacts" section, then install with Sideloadly
+# (Sideloadly re-signs it with your own Apple ID).
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build (no code signing)
+        run: |
+          xcodebuild \
+            -project EvenTemplate.xcodeproj \
+            -scheme "Even Template" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package .ipa
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/*.app Payload/
+          zip -qry G2HUD.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: G2HUD-ipa
+          path: G2HUD.ipa
+          retention-days: 14
