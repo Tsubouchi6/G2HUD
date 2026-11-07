@@ -14,7 +14,15 @@
 //   nearestPlace(_ query:, match:, near:) async throws -> MKMapItem
 //   route(to:mode:) async throws -> MKRoute
 //   static coordinates(of: MKPolyline) -> [CLLocationCoordinate2D]
-//   enum DirectionsMode: walking / driving, enum PlaceMatch, /// How the AI says the user named the place.
+//   enum DirectionsMode: walking / driving, enum PlaceMatch, enum DirectionsError
+
+import MapKit
+
+enum DirectionsMode: String {
+    case walking, driving
+}
+
+/// How the AI says the user named the place.
 enum PlaceMatch: String {
     /// A kind of place ("pet shop", "convenience store"): nearest of the same kind.
     case kind
@@ -22,14 +30,6 @@ enum PlaceMatch: String {
     case brand
     /// One specific place or address ("Tokyo Station"): that place.
     case exact
-}
-
-enum DirectionsError
-
-import MapKit
-
-enum DirectionsMode: String {
-    case walking, driving
 }
 
 enum DirectionsError: LocalizedError {
