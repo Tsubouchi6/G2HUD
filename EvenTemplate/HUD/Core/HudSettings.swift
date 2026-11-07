@@ -9,7 +9,7 @@
 //   useClaudeOnPC: Bool          // AI tab asks Claude through the PC bridge (falls back to the iPhone AI)
 //   pcBridgeUrl, pcBridgeToken: String  // Tailscale address of the PC bridge + its token.txt
 //   requireWakeWord: Bool        // commands need the wake word first
-//   saveConversations: Bool      // keep transcripts of each HUD session
+//   saveConversations: Bool      // keep transcripts of every HUD session (off: only "listen" clips when asked)
 //   usePhoneMic: Bool            // testing without glasses
 //   touchControlsEnabled: Bool   // glasses touchpad / R1 ring
 //   headGesturesEnabled: Bool    // ear-to-shoulder tilt switches tabs
@@ -53,7 +53,8 @@ final class HudSettings: ObservableObject {
         static let pcBridgeUrl = "g2hud_pc_bridge_url"
         static let pcBridgeToken = "g2hud_pc_bridge_token"
         static let requireWakeWord = "g2hud_require_wake_word"
-        static let saveConversations = "g2hud_save_conversations"
+        /// v2: the default changed to off (save only when asked), so the old stored "on" is ignored.
+        static let saveConversations = "g2hud_save_conversations_v2"
         static let usePhoneMic = "g2hud_use_phone_mic"
         static let touchControls = "g2hud_touch_controls"
         static let headGestures = "g2hud_head_gestures"
@@ -72,7 +73,7 @@ final class HudSettings: ObservableObject {
         pcBridgeUrl = defaults.string(forKey: Key.pcBridgeUrl) ?? ""
         pcBridgeToken = defaults.string(forKey: Key.pcBridgeToken) ?? ""
         requireWakeWord = defaults.object(forKey: Key.requireWakeWord) as? Bool ?? true
-        saveConversations = defaults.object(forKey: Key.saveConversations) as? Bool ?? true
+        saveConversations = defaults.object(forKey: Key.saveConversations) as? Bool ?? false
         usePhoneMic = defaults.object(forKey: Key.usePhoneMic) as? Bool ?? false
         touchControlsEnabled = defaults.object(forKey: Key.touchControls) as? Bool ?? true
         headGesturesEnabled = defaults.object(forKey: Key.headGestures) as? Bool ?? false

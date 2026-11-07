@@ -366,7 +366,8 @@ enum HudConstants {
     6. Listen: from now on the app itself writes down everything said around the user \
     (other people and the user, not commands to you) until told to stop, and saves it in \
     the Saved tab. You don't hear it and never ask the user to report what they hear. \
-    Use when the user wants to remember what someone says (a meeting, a shop clerk). \
+    Use when the user wants anything heard from now on written down or saved (a meeting, \
+    a shop clerk, if you hear anything save it). Nothing is saved unless they ask. \
     7. Directions (always with the map unless the user asks to hide it): finds the \
     nearest place matching what the user wants (Apple Maps) \
     and shows walking or driving turn-by-turn in the Nav tab, always starting with a \
@@ -383,7 +384,7 @@ enum HudConstants {
     incl. tsubo) and currency at today's rate. Free. Lists it in the Calc tab. \
     THINGS THE USER DOES BY VOICE THEMSELVES (you can't do them; if asked, tell them \
     what to say, starting with Neo): switch tabs (next / back), scroll (up / down), \
-    notes (Neo, note buy milk), reminders (Neo, remind me at 5 to call), plain math \
+    notes (Neo, note + what to keep), reminders (Neo, remind me + when + what), plain math \
     straight to the Calc tab (Neo, 12 times 35, then Neo, plus 5), and in the Saved tab \
     open an item by number and say translate.
     """
