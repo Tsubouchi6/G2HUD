@@ -7,6 +7,7 @@
 // Public API:
 //   VoicePhrases.normalize(_:) -> String
 //   VoicePhrases.stripWakeWord(_:) -> String?      // nil = no wake word; "" = wake word only
+//   VoicePhrases.soundAlikeWake(_:) -> (rest, pausedAfter)?  // starts with "new" etc. (misheard "Neo")
 //   VoicePhrases.matches(_:_:) -> Bool              // whole-phrase match
 //   VoicePhrases.payload(_:_:suffixes:) -> String?  // text after a prefix / before a suffix
 //   VoicePhrases.stripOpenWords(_:) -> String       // "字幕を開いて" -> "字幕"
@@ -108,16 +109,31 @@ enum VoicePhrases {
     /// If `text` starts with a wake word, returns what follows it ("" if
     /// nothing does). Returns nil when there is no wake word.
     static func stripWakeWord(_ text: String) -> String? {
+        matchStart(text, words: HudConstants.wakeWords)?.rest
+    }
+
+    /// When `text` starts with a word speech-to-text writes instead of the wake
+    /// word ("new" for "Neo"): what follows it, and whether a comma came right
+    /// after (a pause, as when addressing someone). nil otherwise.
+    /// The router then decides from context whether it was meant as a command.
+    static func soundAlikeWake(_ text: String) -> (rest: String, pausedAfter: Bool)? {
+        guard let match = matchStart(text, words: HudConstants.wakeSoundAlikes) else { return nil }
+        let paused = match.rawRest.first.map { [",", "、", "，"].contains($0) } ?? false
+        return (match.rest, paused)
+    }
+
+    /// Skips a call prefix ("hey", "ねえ"), then matches one of `words` as a
+    /// whole word ("neon" / "ネオン" don't count as "neo" / "ネオ").
+    private static func matchStart(_ text: String, words: [String]) -> (rest: String, rawRest: Substring)? {
         var remainder = text
         for call in callPrefixes where remainder.hasPrefix(call) {
             remainder = String(remainder.dropFirst(call.count)).trimmingCharacters(in: separators)
             break
         }
-        for word in HudConstants.wakeWords where remainder.hasPrefix(word) {
+        for word in words where remainder.hasPrefix(word) {
             let rest = remainder.dropFirst(word.count)
-            // "neon" / "ネオン" are other words, not the wake word.
             if let next = rest.first, let last = word.last, sameScript(last, next) { continue }
-            return String(rest).trimmingCharacters(in: separators)
+            return (String(rest).trimmingCharacters(in: separators), rest)
         }
         return nil
     }

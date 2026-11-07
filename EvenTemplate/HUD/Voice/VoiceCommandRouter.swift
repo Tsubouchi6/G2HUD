@@ -2,6 +2,8 @@
 //
 // Turns finished speech phrases into actions. Cheapest path first:
 //   1. Wake word ("Neo ...") marks a command; other speech is just captions.
+//      Sentences starting with a sound-alike ("new ...") count when followed by
+//      a pause (comma) or when the on-device AI judges they were said to it.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI: tab
 //      navigation, notes, reminders, explicit "search ...", and in the Saved
 //      tab "2番" (open), "翻訳して" (translate), "一覧" (back to the list); in the
@@ -32,6 +34,8 @@ struct VoiceCommandContext {
     let calcTab: CalcTab
     let savedTab: SavedTab
     let navigator: Navigator
+    /// On-device AI judgement for sentences starting with a sound-alike ("new ...").
+    let isAddressedToAssistant: @MainActor (_ sentence: String) async -> Bool
 }
 
 @MainActor
@@ -62,6 +66,22 @@ final class VoiceCommandRouter {
                 context.lens.showBanner(HudText.t(.wakeAck), seconds: HudConstants.commandWindowSeconds)
             } else {
                 run(command: command)
+            }
+            return
+        }
+
+        // Starts with "new" etc. (often a misheard "Neo"): a pause after it, or
+        // the AI judging from context, decides whether it's a command.
+        if let alike = VoicePhrases.soundAlikeWake(text) {
+            if alike.rest.isEmpty {
+                commandWindowEnds = Date().addingTimeInterval(HudConstants.commandWindowSeconds)
+                context.lens.showBanner(HudText.t(.wakeAck), seconds: HudConstants.commandWindowSeconds)
+            } else if alike.pausedAfter {
+                run(command: alike.rest)
+            } else {
+                Task {
+                    if await context.isAddressedToAssistant(text) { run(command: alike.rest) }
+                }
             }
             return
         }

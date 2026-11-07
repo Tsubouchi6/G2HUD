@@ -117,6 +117,12 @@ enum HudConstants {
         "neo", "ネオ", "ねお",
     ]
 
+    /// Words speech-to-text writes instead of "Neo" (English often hears "new").
+    /// A phrase starting with one is only a command if the on-device AI judges,
+    /// from the rest of the sentence, that it was said to the assistant.
+    /// Source: observed ("Neo" -> "new"); add others the Captions tab shows.
+    static let wakeSoundAlikes: [String] = ["new", "neil", "nil", "nio", "knee", "neal"]
+
     /// After saying only the wake word, the next sentence counts as a command
     /// if it starts within this many seconds.
     static let commandWindowSeconds: Double = 8

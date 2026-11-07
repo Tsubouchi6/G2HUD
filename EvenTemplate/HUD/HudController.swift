@@ -132,7 +132,8 @@ final class HudController: ObservableObject {
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
             reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab, savedTab: savedTab,
-            navigator: navigator
+            navigator: navigator,
+            isAddressedToAssistant: { sentence in await ai.isAddressedToAssistant(sentence) }
         ))
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 

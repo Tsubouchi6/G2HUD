@@ -16,10 +16,18 @@
 //   answerOffline(query:language:) async throws -> String   // search fallback, no web, no chat history
 //   condense(answer:query:language:) async throws -> String  // web answer -> short, in the HUD language
 //   translate(_ text:, to:) async throws -> String           // fallback for Translator
+//   isAddressedToAssistant(_ sentence:) async -> Bool        // "new, what time is it" -> true
 //   reset()
 
 import Foundation
 import FoundationModels
+
+/// Guided answer for isAddressedToAssistant (a plain yes/no, no text parsing).
+@Generable
+private struct AddressCheck {
+    @Guide(description: "true if the sentence is a command or question said to the assistant Neo; false if it is ordinary speech")
+    let addressedToAssistant: Bool
+}
 
 enum OnDeviceAIError: Error {
     /// Apple's safety filter refused the topic (Claude on the PC can answer it).
@@ -111,6 +119,22 @@ final class OnDeviceAI {
         """)
         let response = try await session.respond(to: text)
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Wake word context
+
+    /// Decides whether a sentence that starts with a word like "new" was really
+    /// "Neo, ..." said to the assistant ("new, what time is it") or normal talk
+    /// ("new shoes are expensive"). Fresh session; false if the AI is unavailable.
+    func isAddressedToAssistant(_ sentence: String) async -> Bool {
+        guard availabilityMessage == nil else { return false }
+        let session = LanguageModelSession(model: Self.model, instructions: """
+        The user's voice assistant is named Neo. Speech-to-text often writes Neo as \
+        New (or Neil, Nil). Decide if the sentence is said TO the assistant, as a \
+        command or question for it, or is ordinary speech that just starts with that word.
+        """)
+        let result = try? await session.respond(to: sentence, generating: AddressCheck.self)
+        return result?.content.addressedToAssistant ?? false
     }
 
     // MARK: - Helpers
