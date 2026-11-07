@@ -77,13 +77,14 @@ enum HudConstants {
     /// Chat lines that fit above that picture (188 px / 28.8 px per line).
     static let chatLinesAbovePicture: Int = 6
 
-    /// Navigation mini-map: a square on the left, vertically centered (two
-    /// 200x100 tiles stacked), with the directions text to its right.
-    static let navMiniMapSizePx: Int = 200
-    static let navMiniMapY: Int = (lensHeightPx - navMiniMapSizePx) / 2
-    static let navTextX: Int = navMiniMapSizePx + 12
-    /// Text units per line in the narrower text column (46 units across 576 px).
-    static let navTextLineUnits: Int = lensLineUnits * (lensWidthPx - navTextX) / lensWidthPx
+    /// Navigation map: the biggest picture the glasses take (4 tiles = 400x200 px,
+    /// see imageTile*), centered at the top; the directions go in two lines under it.
+    static let navMapWidthPx: Int = imageTileWidthPx * imageTilesAcross
+    static let navMapHeightPx: Int = imageTileHeightPx * imageTilesDown
+    static let navMapX: Int = (lensWidthPx - navMapWidthPx) / 2
+    static let navTextY: Int = navMapHeightPx + 4
+    /// Lines under the map (84 px; one firmware line needs 40 px, per G2.minTextContainerHeight).
+    static let navTextLines: Int = 2
 
     /// A picture stays on the lens this long unless dismissed, in seconds.
     static let imageShowSeconds: Double = 20
@@ -191,10 +192,10 @@ enum HudConstants {
     /// the arrow has 45° steps). Source: design choice.
     static let navHeadingFilterDegrees: Double = 5
 
-    /// Mini-map: meters from the user to the map's side edge, where the user
-    /// sits (fraction of the height from the top), and how often it is redrawn.
-    /// Source: design choice (about one city block each way; G2 mini map style).
-    static let navMiniMapRadiusMeters: Double = 150
+    /// Map: meters from the user to the map's side edge (400 px wide -> 1 px/m),
+    /// where the user sits (fraction of the height from the top), and how often
+    /// it is redrawn. Source: design choice (about two city blocks each way).
+    static let navMiniMapRadiusMeters: Double = 200
     static let navMiniMapUserYFraction: CGFloat = 0.62
     static let navMiniMapRefreshSeconds: Double = 2
 
@@ -203,7 +204,13 @@ enum HudConstants {
     /// moving this far from where they were fetched, and after a refused request
     /// (HTTP 429/406) not retried for this long. Source: Overpass usage policy
     /// (wiki.openstreetmap.org/wiki/Overpass_API): cache, ≤100 queries/day, wait 30 s.
-    static let overpassEndpoint: String = "https://overpass-api.de/api/interpreter"
+    /// Tried in order. The main instance is marked overloaded on the wiki, so two
+    /// public mirrors without rate limits go first (wiki "Public Overpass API instances").
+    static let overpassEndpoints: [String] = [
+        "https://overpass.private.coffee/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "https://overpass-api.de/api/interpreter",
+    ]
     static let overpassUserAgent: String = "G2HUD/1.0 (personal navigation mini-map)"
     static let overpassTimeoutSeconds: Double = 20
     static let streetsFetchRadiusMeters: Double = 600
@@ -211,8 +218,8 @@ enum HudConstants {
     static let overpassRetrySeconds: Double = 30
 
     /// Mini-map street line widths, in pixels (route is navMapRouteWidthPx).
-    static let navMapMajorStreetWidthPx: CGFloat = 2.5
-    static let navMapMinorStreetWidthPx: CGFloat = 1.2
+    static let navMapMajorStreetWidthPx: CGFloat = 3
+    static let navMapMinorStreetWidthPx: CGFloat = 1.5
 
     /// Nearest-place search: try these radii in order until something is found,
     /// in meters (500, 1000, ... 5000), with results restricted to the area

@@ -6,7 +6,7 @@
 // commands to test without speaking (or without glasses).
 //
 // Public API: HudScreen (SwiftUI view; needs HudController, LensController,
-// CaptionController, HudSettings, BluetoothSession in the environment).
+// CaptionController, HudSettings, BluetoothSession, Navigator in the environment).
 
 import SwiftUI
 
@@ -19,6 +19,7 @@ struct HudScreen: View {
     @EnvironmentObject private var captions: CaptionController
     @EnvironmentObject private var settings: HudSettings
     @EnvironmentObject private var session: BluetoothSession
+    @EnvironmentObject private var navigator: Navigator
 
     @State private var typedCommand = ""
 
@@ -88,11 +89,11 @@ struct HudScreen: View {
                         Text(picture.caption)
                     }
                 } else {
-                    // Picture placed like on the lens: under the chat, or left of the directions.
-                    if lens.previewPictureSpot == .left, let picture = previewPictureView {
-                        HStack(alignment: .center, spacing: 8) {
-                            picture.frame(width: 130, height: 130)
-                            previewLines
+                    // Picture placed like on the lens: under the chat, or the nav map above its two lines.
+                    if lens.previewPictureSpot == .top, let picture = previewPictureView {
+                        VStack(alignment: .center, spacing: 4) {
+                            picture.frame(maxWidth: 260)
+                            previewLines.frame(maxWidth: .infinity, alignment: .leading)
                         }
                     } else {
                         VStack(alignment: .leading, spacing: 2) {
@@ -111,6 +112,11 @@ struct HudScreen: View {
             .padding(8)
             .background(Color.black)
             .cornerRadius(8)
+
+            // Phone-only check for the map's street lines (count, or why they failed).
+            if lens.activeTab?.id == "nav", !navigator.streetsStatus.isEmpty {
+                Text("Map: \(navigator.streetsStatus)").font(.footnote).foregroundColor(.secondary)
+            }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {

@@ -5,7 +5,7 @@
 //
 // Public API:
 //   struct LensPage { lines, anchor, picture, pictureSpot }
-//   enum LensPictureSpot: bottom (chat) / left (navigation mini-map) — boxes in lens px
+//   enum LensPictureSpot: bottom (chat) / top (navigation map) — boxes in lens px
 //   protocol LensTab
 //     id, title, voiceNames
 //     page() -> LensPage
@@ -28,8 +28,8 @@ struct LensPage {
 enum LensPictureSpot {
     /// Chat: text on top, a 400x100 picture under the newest lines.
     case bottom
-    /// Navigation: a 200x200 mini-map on the left, text in a column on the right.
-    case left
+    /// Navigation: the biggest picture (400x200) at the top, two text lines under it.
+    case top
 
     struct Box {
         let x: Int, y: Int, width: Int, height: Int
@@ -40,9 +40,9 @@ enum LensPictureSpot {
         case .bottom:
             return Box(x: 0, y: HudConstants.chatPictureY,
                        width: HudConstants.chatPictureWidthPx, height: HudConstants.chatPictureHeightPx)
-        case .left:
-            return Box(x: 0, y: HudConstants.navMiniMapY,
-                       width: HudConstants.navMiniMapSizePx, height: HudConstants.navMiniMapSizePx)
+        case .top:
+            return Box(x: HudConstants.navMapX, y: 0,
+                       width: HudConstants.navMapWidthPx, height: HudConstants.navMapHeightPx)
         }
     }
 
@@ -50,19 +50,17 @@ enum LensPictureSpot {
         switch self {
         case .bottom:
             return Box(x: 0, y: 0, width: HudConstants.lensWidthPx, height: HudConstants.chatPictureY)
-        case .left:
-            return Box(x: HudConstants.navTextX, y: 0,
-                       width: HudConstants.lensWidthPx - HudConstants.navTextX, height: HudConstants.lensHeightPx)
+        case .top:
+            return Box(x: 0, y: HudConstants.navTextY,
+                       width: HudConstants.lensWidthPx, height: HudConstants.lensHeightPx - HudConstants.navTextY)
         }
     }
 
     /// Text lines that fit, and text units per line.
     var textLines: Int {
-        self == .bottom ? HudConstants.chatLinesAbovePicture : HudConstants.lensLinesPerScreen
+        self == .bottom ? HudConstants.chatLinesAbovePicture : HudConstants.navTextLines
     }
-    var lineUnits: Int {
-        self == .bottom ? HudConstants.lensLineUnits : HudConstants.navTextLineUnits
-    }
+    var lineUnits: Int { HudConstants.lensLineUnits }
 }
 
 @MainActor

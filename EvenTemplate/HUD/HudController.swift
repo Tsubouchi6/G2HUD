@@ -8,7 +8,7 @@
 //
 // Public API:
 //   HudController(session:)
-//   settings, captions, lens, notes, reminders, tilt, conversations, claude, aiChats, listening   (exposed parts)
+//   settings, captions, lens, notes, reminders, tilt, conversations, claude, aiChats, listening, navigator   (exposed parts)
 //   start() async / stop() async
 //   runTyped(_ command: String)      // phone test box: runs like a spoken command
 
@@ -30,6 +30,7 @@ final class HudController: ObservableObject {
     let claude: ClaudeOnPC
     let aiChats: AiChatArchive
     let listening: ListeningLog
+    let navigator: Navigator
 
     private let search: WebSearchService
     private let router: VoiceCommandRouter
@@ -154,6 +155,7 @@ final class HudController: ObservableObject {
         self.claude = claude
         self.aiChats = aiChats
         self.listening = listening
+        self.navigator = navigator
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
             reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab, savedTab: savedTab,

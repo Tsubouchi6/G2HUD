@@ -1,7 +1,7 @@
 // StreetMapClient.swift
 //
-// Streets around a point from OpenStreetMap, for the navigation mini-map,
-// via the public Overpass API (free, no key). Usage policy: identify the app
+// Streets around a point from OpenStreetMap, for the navigation map, via the
+// public Overpass API (free, no key), trying each public server in turn. Usage policy: identify the app
 // (User-Agent), cache, stay well under 100 queries/day for regular use, and
 // wait 30 s after HTTP 429/406. Source: wiki.openstreetmap.org/wiki/Overpass_API
 // The caller (Navigator) caches by area, so a walk makes only a few requests.
@@ -45,19 +45,33 @@ enum StreetMapClient {
         way(around:\(Int(radiusMeters)),\(center.latitude),\(center.longitude))[highway~"\(highwayPattern)"];
         out geom;
         """
-        guard let url = URL(string: HudConstants.overpassEndpoint) else { return [] }
-        var request = URLRequest(url: url, timeoutInterval: HudConstants.overpassTimeoutSeconds)
-        request.httpMethod = "POST"
-        request.setValue(HudConstants.overpassUserAgent, forHTTPHeaderField: "User-Agent")
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
-        request.httpBody = Data(("data=" + (query.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")).utf8)
+        let body = Data(("data=" + (query.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")).utf8)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard status == 200 else { throw StreetMapError.http(status) }
-        return try JSONDecoder().decode(Response.self, from: data).elements.compactMap { element in
+        // Each public server in turn until one answers.
+        var lastError: Error = StreetMapError.http(0)
+        for endpoint in HudConstants.overpassEndpoints {
+            guard let url = URL(string: endpoint) else { continue }
+            var request = URLRequest(url: url, timeoutInterval: HudConstants.overpassTimeoutSeconds)
+            request.httpMethod = "POST"
+            request.setValue(HudConstants.overpassUserAgent, forHTTPHeaderField: "User-Agent")
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                guard status == 200 else { throw StreetMapError.http(status) }
+                return try decode(data)
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
+    }
+
+    private static func decode(_ data: Data) throws -> [Street] {
+        try JSONDecoder().decode(Response.self, from: data).elements.compactMap { element in
             guard let geometry = element.geometry, geometry.count >= 2 else { return nil }
             return Street(
                 points: geometry.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) },
@@ -67,7 +81,13 @@ enum StreetMapClient {
     }
 }
 
-enum StreetMapError: Error {
+enum StreetMapError: LocalizedError {
     /// 429 / 406 = too many requests: wait overpassRetrySeconds before asking again.
     case http(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .http(let code): return "map server error (HTTP \(code))"
+        }
+    }
 }

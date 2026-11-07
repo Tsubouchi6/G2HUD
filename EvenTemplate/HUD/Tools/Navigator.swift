@@ -11,7 +11,8 @@
 //     compass turns the arrow and the mini-map (phone held like a map).
 //   @Published state: NavState
 //   @Published minimal: Bool                 // one line at the top, nothing else
-//   @Published miniMap: Data?                // G2-style mini-map PNG (MiniMapRenderer)
+//   @Published miniMap: Data?                // G2-style map PNG, 400x200 (MiniMapRenderer)
+//   @Published streetsStatus: String         // phone-only: street count or fetch error
 //   start(destination:mode:minimal:)         // finds the nearest match, routes, follows
 //   stop()
 //   showMap()                                // back to the full view with the mini-map
@@ -53,6 +54,8 @@ final class Navigator: ObservableObject {
     @Published private(set) var state: NavState = .idle
     @Published var minimal = false
     @Published private(set) var miniMap: Data?
+    /// Phone-only note on the street lines ("312 streets" / the error), for checking.
+    @Published private(set) var streetsStatus = ""
 
     var onArrived: ((String) -> Void)?
 
@@ -223,9 +226,11 @@ final class Navigator: ObservableObject {
                     around: here.coordinate, radiusMeters: HudConstants.streetsFetchRadiusMeters
                 )
                 streetsCenter = here
+                streetsStatus = "\(streets.count) streets"
                 miniMapDrawnAt = .distantPast
                 if let latest = lastLocation { drawMiniMap(at: latest) }
             } catch {
+                streetsStatus = error.localizedDescription
                 streetsBlockedUntil = Date().addingTimeInterval(HudConstants.overpassRetrySeconds)
             }
             isFetchingStreets = false

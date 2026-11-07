@@ -1,8 +1,8 @@
 // NavTab.swift
 //
 // Lens tab: turn-by-turn directions from Navigator. Two views:
-//   full    — G2-style mini-map on the left (MiniMapRenderer); next turn, the
-//             one after, distance/time left and destination on the right
+//   full    — G2-style map (400x200, MiniMapRenderer, the biggest picture the
+//             glasses take) with two lines under it: next turn; distance/time · destination
 //   minimal — one line at the top ("120m 左折 ..."), the rest of the lens clear
 // Without glasses connected, an arrow from the phone's compass points to the next turn.
 // Switched by voice while this tab is open ("シンプル" / "詳しく" / "地図"),
@@ -33,11 +33,11 @@ final class NavTab: LensTab {
 
     func page() -> LensPage {
         if navigator.minimal { return LensPage(lines: minimalLines(), anchor: .top) }
-        // Full view: G2-style mini-map on the left, directions in a column on the right.
-        guard case .active = navigator.state, let miniMap = navigator.miniMap else {
+        // Full view: the map as big as the glasses allow, only two lines under it.
+        guard case .active(let progress) = navigator.state, let miniMap = navigator.miniMap else {
             return LensPage(lines: fullLines(), anchor: .top)
         }
-        return LensPage(lines: fullLines(), anchor: .top, picture: miniMap, pictureSpot: .left)
+        return LensPage(lines: mapLines(progress), anchor: .top, picture: miniMap, pictureSpot: .top)
     }
 
     // MARK: - Views
@@ -64,6 +64,14 @@ final class NavTab: LensTab {
             if progress.rerouting { lines.append(HudText.t(.navRerouting)) }
             return lines
         }
+    }
+
+    /// The two lines under the map: the next turn, then distance/time left and where to.
+    private func mapLines(_ progress: NavProgress) -> [String] {
+        let units = HudConstants.lensLineUnits
+        let overview = HudText.t(.navRemaining, Self.distance(progress.remainingMeters), progress.remainingMinutes)
+            + (progress.rerouting ? "  " + HudText.t(.navRerouting) : "  → \(progress.destinationName)")
+        return [LensTextLayout.truncate(turnLine(progress), units: units), LensTextLayout.truncate(overview, units: units)]
     }
 
     /// A single line at the top; everything else on the lens stays empty.

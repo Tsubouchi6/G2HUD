@@ -1,7 +1,7 @@
 // MiniMapRenderer.swift
 //
-// Draws the navigation mini-map, in the style of the G2's own Navigate mini
-// map: a small game-style map around the user that turns with the direction
+// Draws the navigation map (400x200, the biggest picture the glasses take),
+// in the style of the G2's own Navigate mini map: a game-style map around the user that turns with the direction
 // they face (heading-up): nearby streets as thin lines (OpenStreetMap), the
 // route thick on top, the next turn point, the destination ring, and the
 // user's arrow. White on black (black
@@ -31,11 +31,10 @@ enum MiniMapRenderer {
         destination: CLLocationCoordinate2D,
         headingDegrees: Double?
     ) -> Data? {
-        let side = CGFloat(HudConstants.navMiniMapSizePx)
-        let size = CGSize(width: side, height: side)
+        let size = CGSize(width: HudConstants.navMapWidthPx, height: HudConstants.navMapHeightPx)
         // User a bit below center, so more of the way ahead is visible.
-        let center = CGPoint(x: side / 2, y: side * HudConstants.navMiniMapUserYFraction)
-        let pixelsPerMeter = (side / 2) / HudConstants.navMiniMapRadiusMeters
+        let center = CGPoint(x: size.width / 2, y: size.height * HudConstants.navMiniMapUserYFraction)
+        let pixelsPerMeter = (size.width / 2) / HudConstants.navMiniMapRadiusMeters
         let rotation = (headingDegrees ?? 0) * .pi / 180
 
         /// Meters east/north of the user, rotated so the facing direction is up, to pixels.
@@ -55,16 +54,11 @@ enum MiniMapRenderer {
             cg.setFillColor(UIColor.black.cgColor)
             cg.fill(CGRect(origin: .zero, size: size))
 
-            // Thin frame so the map reads as a panel, like the G2 mini map.
-            cg.setStrokeColor(UIColor.white.withAlphaComponent(0.5).cgColor)
-            cg.setLineWidth(2)
-            cg.stroke(CGRect(origin: .zero, size: size).insetBy(dx: 1, dy: 1))
-
             // Streets: thin and dimmer, so the route stands out on top.
             cg.setLineJoin(.round)
             cg.setLineCap(.round)
             for street in streets {
-                cg.setStrokeColor(UIColor.white.withAlphaComponent(street.isMajor ? 0.6 : 0.4).cgColor)
+                cg.setStrokeColor(UIColor.white.withAlphaComponent(street.isMajor ? 0.75 : 0.5).cgColor)
                 cg.setLineWidth(street.isMajor ? HudConstants.navMapMajorStreetWidthPx : HudConstants.navMapMinorStreetWidthPx)
                 for (index, coordinate) in street.points.enumerated() {
                     let p = point(coordinate)
