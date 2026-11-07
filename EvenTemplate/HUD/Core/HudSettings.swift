@@ -7,6 +7,7 @@
 //   language: HudLanguage        // HUD language: lens, screens, AI replies, subtitles shown
 //   hearingLanguage: HudLanguage // language the mic listens for (speech-to-text); subtitles
 //                                // are translated into `language` when they differ
+//   autoLanguage: Bool           // also listen for the HUD language and keep whichever fits each sentence
 //   tavilyApiKey: String         // web search (with AI answer)
 //   useClaudeOnPC: Bool          // AI tab asks Claude through the PC bridge (falls back to the iPhone AI)
 //   pcBridgeUrl, pcBridgeToken: String  // Tailscale address of the PC bridge + its token.txt
@@ -33,6 +34,7 @@ final class HudSettings: ObservableObject {
         }
     }
     @Published var hearingLanguage: HudLanguage { didSet { save(hearingLanguage.rawValue, Key.hearingLanguage) } }
+    @Published var autoLanguage: Bool { didSet { save(autoLanguage, Key.autoLanguage) } }
     @Published var tavilyApiKey: String { didSet { save(tavilyApiKey, Key.tavilyApiKey) } }
     @Published var useClaudeOnPC: Bool { didSet { save(useClaudeOnPC, Key.useClaudeOnPC) } }
     @Published var pcBridgeUrl: String { didSet { save(pcBridgeUrl, Key.pcBridgeUrl) } }
@@ -52,6 +54,7 @@ final class HudSettings: ObservableObject {
         static let language = "g2hud_language"
         static let legacyCaptionLanguage = "g2hud_caption_language"
         static let hearingLanguage = "g2hud_hearing_language"
+        static let autoLanguage = "g2hud_auto_language"
         static let tavilyApiKey = "g2hud_tavily_api_key"
         static let useClaudeOnPC = "g2hud_use_claude_on_pc"
         static let pcBridgeUrl = "g2hud_pc_bridge_url"
@@ -75,6 +78,7 @@ final class HudSettings: ObservableObject {
         language = hudLanguage
         // Until set, the mic listens for the HUD language (the old single setting).
         hearingLanguage = defaults.string(forKey: Key.hearingLanguage).flatMap(HudLanguage.init(rawValue:)) ?? hudLanguage
+        autoLanguage = defaults.object(forKey: Key.autoLanguage) as? Bool ?? true
         tavilyApiKey = defaults.string(forKey: Key.tavilyApiKey) ?? ""
         useClaudeOnPC = defaults.object(forKey: Key.useClaudeOnPC) as? Bool ?? true
         pcBridgeUrl = defaults.string(forKey: Key.pcBridgeUrl) ?? ""

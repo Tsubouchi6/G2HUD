@@ -57,6 +57,8 @@ struct SettingsScreen: View {
                 }
             }
             .disabled(captions.isStarting)
+            Toggle(HudText.t(.autoLanguage), isOn: $settings.autoLanguage)
+                .disabled(captions.isStarting || settings.hearingLanguage == settings.language)
             Toggle(HudText.t(.requireWakeWord), isOn: $settings.requireWakeWord)
             Toggle(HudText.t(.saveConversations), isOn: $settings.saveConversations)
             Toggle(HudText.t(.usePhoneMic), isOn: $settings.usePhoneMic)

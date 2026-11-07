@@ -47,7 +47,7 @@ enum HudText {
         // Phone: tab bar
         case screenHud, screenCaptions, screenSettings
         // Phone: HUD screen
-        case startHud, stopHud, language, loadingModel, statusHeader, connected, notConnected, hearingLanguage
+        case startHud, stopHud, language, loadingModel, statusHeader, connected, notConnected, hearingLanguage, autoLanguage
         case micPhone, micGlasses, hudFooter, lensPreview, tryCommand, commandPlaceholder
         case runCommand, commandFooter, dashboardOpen, micPermission, engineStopped
         // Phone: Captions screen
@@ -116,6 +116,7 @@ enum HudText {
         .stopHud: ("HUDを停止", "Stop HUD", "Parar HUD"),
         .language: ("HUDの言語", "HUD language", "Idioma do HUD"),
         .hearingLanguage: ("聞き取る言語", "Listen for", "Ouvir em"),
+        .autoLanguage: ("自動 (HUDの言語も聞いて文ごとに判断)", "Auto (also listen for the HUD language, per sentence)", "Automático (ouvir também o idioma do HUD, por frase)"),
         .loadingModel: ("音声モデルを読み込み中 (初回はダウンロード)...", "Loading speech model (first time downloads it)...",
                         "Carregando modelo de voz (baixa na primeira vez)..."),
         .statusHeader: ("メガネ: %@ · マイク: %@", "Glasses: %@ · Mic: %@", "Óculos: %@ · Microfone: %@"),

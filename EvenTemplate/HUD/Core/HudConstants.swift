@@ -162,6 +162,13 @@ enum HudConstants {
     /// Source: observed ("Neo" -> "new"); add others the Captions tab shows.
     static let wakeSoundAlikes: [String] = ["new", "neil", "nil", "nio", "knee", "neal"]
 
+    /// Two-language listening (DualSpeechEngine): how long a finished sentence
+    /// waits for the other language's version before it's kept alone, and the
+    /// overlap slack when dropping the other language's copy, in seconds.
+    /// Source: design choice (finals arrive within ~1 s of each other).
+    static let dualSpeechPairWaitSeconds: Double = 1.2
+    static let dualSpeechOverlapSlackSeconds: Double = 0.1
+
     /// Listening after "Neo" (ListeningWindow): closes after this much silence
     /// (after "Neo" or an instant action), or this long without a response after
     /// an answer appears; paused while the user talks. Source: user's choice.
@@ -386,8 +393,9 @@ enum HudConstants {
     ai (this chat), search, calc, notes, remind (reminders), saved (saved chats and \
     listening recordings), nav (map). \
     11. Languages: hud = what the user reads (screens, your replies, subtitles); hearing = \
-    what the glasses listen for (what people around speak). When they differ, subtitles \
-    are translated into the hud language. Change either when asked. \
+    what the glasses listen for (what people around speak). With auto on, the glasses \
+    listen for both and keep whichever fits each sentence. Subtitles are translated into \
+    the hud language. Change either when asked. \
     THINGS THE USER DOES BY VOICE THEMSELVES (you can't do them; if asked, tell them \
     what to say, starting with Neo): switch tabs (next / back), scroll (up / down), \
     notes (Neo, note + what to keep), reminders (Neo, remind me + when + what), plain math \

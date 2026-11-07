@@ -40,7 +40,13 @@ final class CaptionsTab: LensTab {
             }
     }
 
+    /// Could anything need translating (heard in another language than the HUD's)?
     private var needsTranslation: Bool { settings.hearingLanguage != settings.language }
+
+    /// Language a phrase was heard as (auto listening knows per phrase).
+    private func source(of phrase: String) -> HudLanguage {
+        captions.language(of: phrase) ?? settings.hearingLanguage
+    }
 
     func page() -> LensPage {
         let recent = captions.phrases.suffix(HudConstants.captionPhrasesOnLens)
@@ -55,9 +61,14 @@ final class CaptionsTab: LensTab {
     /// Translates finished phrases not translated yet (shown as heard until done).
     private func translateNewPhrases() {
         guard needsTranslation else { return }
-        let from = settings.hearingLanguage, to = settings.language
+        let to = settings.language
         for phrase in captions.phrases.suffix(HudConstants.captionPhrasesOnLens)
         where translations[phrase] == nil && !translating.contains(phrase) {
+            let from = source(of: phrase)
+            if from == to {
+                translations[phrase] = phrase  // heard in the HUD language already
+                continue
+            }
             translating.insert(phrase)
             Task {
                 if let text = try? await translator.translate([phrase], from: from, to: to).first {

@@ -51,8 +51,14 @@ final class AppleSpeechEngine: SpeechEngine {
             throw SpeechEngineError.unsupportedLanguage(languageId)
         }
 
-        // progressiveTranscription = live, in-progress (volatile) results + fast results.
-        let transcriber = AppleTranscriber(locale: locale, preset: .progressiveTranscription)
+        // Like the progressiveTranscription preset (live volatile + fast results),
+        // plus per-word confidence so two languages can be compared (DualSpeechEngine).
+        let transcriber = AppleTranscriber(
+            locale: locale,
+            transcriptionOptions: [],
+            reportingOptions: [.volatileResults, .fastResults],
+            attributeOptions: [.transcriptionConfidence]
+        )
 
         // Download the language model the first time it's needed.
         if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
@@ -72,7 +78,14 @@ final class AppleSpeechEngine: SpeechEngine {
         resultsTask = Task { @MainActor in
             do {
                 for try await result in transcriber.results {
-                    onUpdate(SpeechUpdate(text: String(result.text.characters), isFinal: result.isFinal))
+                    onUpdate(SpeechUpdate(
+                        text: String(result.text.characters),
+                        isFinal: result.isFinal,
+                        confidence: Self.meanConfidence(result.text),
+                        audioStart: result.range.start.seconds,
+                        audioEnd: result.range.end.seconds,
+                        languageId: languageId
+                    ))
                 }
             } catch {
                 if !(error is CancellationError) { onError(error) }
@@ -116,6 +129,18 @@ final class AppleSpeechEngine: SpeechEngine {
         resultsTask = nil
         converter = nil
         analyzerFormat = nil
+    }
+
+    /// Character-weighted mean of the per-run transcription confidence (0-1).
+    private static func meanConfidence(_ text: AttributedString) -> Double? {
+        var total = 0.0, weight = 0.0
+        for run in text.runs {
+            guard let confidence = run[AttributeScopes.SpeechAttributes.ConfidenceAttribute.self] else { continue }
+            let characters = Double(text[run.range].characters.count)
+            total += confidence * characters
+            weight += characters
+        }
+        return weight > 0 ? total / weight : nil
     }
 
     // MARK: - Audio conversion

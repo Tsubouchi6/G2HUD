@@ -54,6 +54,8 @@ struct HudScreen: View {
                 }
             }
             .disabled(captions.isStarting)
+            Toggle(HudText.t(.autoLanguage), isOn: $settings.autoLanguage)
+                .disabled(captions.isStarting || settings.hearingLanguage == settings.language)
 
             Button(HudText.t(captions.isRunning ? .stopHud : .startHud)) {
                 Task {

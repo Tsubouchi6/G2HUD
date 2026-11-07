@@ -10,7 +10,7 @@
 //     func start(languageId:onUpdate:onError:) async throws
 //     func append(pcm16: Data)           // 16 kHz mono Int16 frames from the mic
 //     func stop() async
-//   struct SpeechUpdate                  // one finished or in-progress phrase
+//   struct SpeechUpdate                  // one finished or in-progress phrase (+ confidence, audio time, language)
 //   enum SpeechEngineError
 
 import Foundation
@@ -19,9 +19,16 @@ import Foundation
 
 /// One result from an engine. `isFinal == false` means the text may still
 /// change (shown live); `true` means it is settled and will not change.
+/// confidence: the engine's mean certainty (0-1), audioStart/End: where in the
+/// audio it was said (seconds), languageId: the language it was heard as.
+/// These let DualSpeechEngine pick between two languages; nil when unknown.
 struct SpeechUpdate {
     let text: String
     let isFinal: Bool
+    var confidence: Double? = nil
+    var audioStart: Double? = nil
+    var audioEnd: Double? = nil
+    var languageId: String? = nil
 }
 
 enum SpeechEngineError: LocalizedError {
