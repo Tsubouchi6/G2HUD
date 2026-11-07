@@ -1,3 +1,26 @@
+# G2HUD
+
+Personal HUD app for Even Realities G2 glasses, built on top of
+[even-realities-app-template](https://github.com/r4stl1n/even-realities-app-template) (MIT).
+
+## Where things live
+
+| Folder | Job |
+| --- | --- |
+| `EvenTemplate/HUD/Core/` | `HudConstants` (every tunable number, with units + source), shared PCM helpers |
+| `EvenTemplate/HUD/Speech/` | `SpeechEngine` protocol + engines (`AppleSpeechEngine` = iOS 26 on-device) |
+| `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> lens), `RawAudioRecorder` (test .wav files) |
+| `EvenTemplate/HUD/Screens/` | Phone UI for the HUD features |
+| `EvenTemplate/Bluetooth/` | Template's G2 / R1 Bluetooth stack (unchanged) |
+
+## Building (no Mac needed)
+
+Every push to `main` runs `.github/workflows/build-ipa.yml` on a GitHub macOS runner and
+uploads an unsigned `G2HUD.ipa` artifact. Install it with Sideloadly using your Apple ID.
+Requires iOS 26+.
+
+---
+
 # Even Template — smart glasses + ring template
 
 A native iOS (SwiftUI) template app for building against:

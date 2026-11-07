@@ -24,6 +24,7 @@ struct EvenTemplateApp: App {
     @StateObject private var session: BluetoothSession
     @StateObject private var store: NotificationStore
     @StateObject private var viewer: GlassesNotificationViewer
+    @StateObject private var captions: CaptionController
 
     init() {
         let session = BluetoothSession()
@@ -31,11 +32,14 @@ struct EvenTemplateApp: App {
         _session = StateObject(wrappedValue: session)
         _store = StateObject(wrappedValue: store)
         _viewer = StateObject(wrappedValue: GlassesNotificationViewer(session: session, store: store))
+        _captions = StateObject(wrappedValue: CaptionController(session: session))
     }
 
     var body: some Scene {
         WindowGroup {
             TabView {
+                CaptionsScreen()
+                    .tabItem { Label("Captions", systemImage: "captions.bubble") }
                 DevicesScreen()
                     .tabItem { Label("Devices", systemImage: "eyeglasses") }
                 NotificationsScreen()
@@ -50,6 +54,8 @@ struct EvenTemplateApp: App {
             .environmentObject(session)
             .environmentObject(store)
             .environmentObject(viewer)
+            .environmentObject(captions)
+            .environmentObject(captions.recorder)
         }
     }
 }
