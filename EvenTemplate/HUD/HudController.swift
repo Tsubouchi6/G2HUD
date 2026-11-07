@@ -101,8 +101,8 @@ final class HudController: ObservableObject {
                 lens?.showBanner(HudText.t(.listeningSaved))
                 return true
             },
-            startDirections: { [weak lens] destination, mode, minimal in
-                navigator.start(destination: destination, mode: mode, minimal: minimal)
+            startDirections: { [weak lens] destination, mode in
+                navigator.start(destination: destination, mode: mode)
                 lens?.select(id: "nav")
             },
             stopDirections: {

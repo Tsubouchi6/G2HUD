@@ -9,7 +9,7 @@
 //   SAVE: <short title>                              -> saves this chat (Saved tab)
 //   LISTEN: <short title>                            -> saves what people say from now on
 //   LISTEN_STOP                                      -> stops and keeps that text
-//   DIRECTIONS: <place> | <walking|driving> | <full|minimal> -> turn-by-turn to the nearest match
+//   DIRECTIONS: <place> | <walking|driving>          -> turn-by-turn (with the map) to the nearest match
 //   DIRECTIONS_STOP                                  -> stops navigation
 //   DIRECTIONS_VIEW: <map|full|minimal>              -> route map / full / one-line view
 //   CALC: <formula>                                  -> exact result, added to the answer
@@ -115,8 +115,7 @@ final class ClaudeOnPC {
             } else if let spec = value(trimmedLine, "DIRECTIONS:") {
                 let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
                 let mode = parts.count > 1 ? DirectionsMode(rawValue: parts[1].lowercased()) ?? .walking : .walking
-                let minimal = parts.count > 2 && parts[2].lowercased() == "minimal"
-                actions.startDirections(parts[0], mode, minimal)
+                actions.startDirections(parts[0], mode)
             } else if let title = value(trimmedLine, "LISTEN:") {
                 _ = actions.startListening(title)
             } else if let terms = value(trimmedLine, "IMAGE:") {

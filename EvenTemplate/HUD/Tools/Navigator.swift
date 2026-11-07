@@ -13,7 +13,7 @@
 //   @Published minimal: Bool                 // one line at the top, nothing else
 //   @Published miniMap: Data?                // G2-style map PNG, 400x200 (MiniMapRenderer)
 //   @Published mapStatus: String             // phone-only: whether the Apple Maps background loaded
-//   start(destination:mode:minimal:)         // finds the nearest match, routes, follows
+//   start(destination:mode:)                 // finds the nearest match, routes, follows (map view)
 //   stop()
 //   showMap()                                // back to the full view with the mini-map
 //   onArrived: ((String) -> Void)?
@@ -90,10 +90,11 @@ final class Navigator: ObservableObject {
 
     // MARK: - Control
 
-    func start(destination query: String, mode: DirectionsMode, minimal: Bool) {
+    /// Always starts with the map; the one-line view only when asked (showMap / minimal).
+    func start(destination query: String, mode: DirectionsMode) {
         stop()
         self.mode = mode
-        self.minimal = minimal
+        minimal = false
         state = .finding(query)
         Task {
             do {

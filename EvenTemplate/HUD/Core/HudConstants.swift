@@ -206,7 +206,18 @@ enum HudConstants {
     /// Source: design choice; MKMapSnapshotter is free in native apps.
     static let navBackgroundScale: CGFloat = 3
     static let navBackgroundRefetchMeters: Double = 150
-    static let navBackgroundBlackLevel: CGFloat = 0.25
+
+    /// Street picture cleaning (StreetBackground), in pixels of the 2x render:
+    /// brightness above which a pixel is road (dark style: background is darker,
+    /// roads lighter; the first version used 0.25 and roads came through), the
+    /// radius that erases label text strokes (thinner than 2x this), the radius
+    /// that fills label holes in roads (narrower than 2x this), and the even road
+    /// brightness (0-1) under the full-white route. Source: design choice.
+    static let navBackgroundRenderScale: CGFloat = 2
+    static let navBackgroundRoadThreshold: CGFloat = 0.22
+    static let navBackgroundTextRadiusPx: CGFloat = 2
+    static let navBackgroundHoleRadiusPx: CGFloat = 12
+    static let navBackgroundRoadBrightness: CGFloat = 0.45
 
     /// Nearest-place search: try these radii in order until something is found,
     /// in meters (500, 1000, ... 5000), with results restricted to the area
@@ -327,10 +338,9 @@ enum HudConstants {
     Use when the user wants to remember what someone says (a meeting, a shop clerk). \
     7. Directions (always with the map unless the user asks to hide it): finds the \
     nearest place matching what the user wants (Apple Maps) \
-    and shows walking or driving turn-by-turn in the Nav tab, either full (a small \
-    mini-map that turns with the user, plus next turns and distance) or minimal (one \
-    line at the top, rest of the screen clear). While directions run you can switch \
-    the view: map (= full with the mini-map), full, or minimal. \
+    and shows walking or driving turn-by-turn in the Nav tab, always starting with a \
+    street map plus the next turn and distance. Only if the user asks for no map or \
+    a clear screen, switch the view to minimal (one line at the top); map brings it back. \
     For nearest, give just the kind of place (convenience store), not the word nearest. \
     8. Calculator: computes a formula exactly (+ - * / ^ ( ) %, phone-style percent) and \
     lists it in the Calc tab. Use it for ANY math instead of computing yourself: turn \
@@ -361,9 +371,8 @@ enum HudConstants {
     Picture: IMAGE: <2-5 English search words>. \
     Save chat: SAVE: <short title>. \
     Listen: LISTEN: <short title>, and LISTEN_STOP to end it. \
-    Directions: DIRECTIONS: <place as a map search> | <walking or driving> | <full, or minimal only if \
-    the user explicitly asks for no map>, \
-    and DIRECTIONS_STOP to end them; DIRECTIONS_VIEW: <map, full or minimal> to switch the view. \
+    Directions: DIRECTIONS: <place as a map search> | <walking or driving>, DIRECTIONS_STOP \
+    to end them, DIRECTIONS_VIEW: <map or minimal> to switch the view. \
     Calculator: CALC: <formula>, and the exact result is added to your answer, so don't \
     compute it yourself. Convert: CONVERT: <value> | <from unit or currency> | <to>.
     """

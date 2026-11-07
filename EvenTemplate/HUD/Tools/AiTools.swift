@@ -248,7 +248,7 @@ private struct StartDirectionsTool: Tool {
     the destination, from where they are now. Use for any request to go somewhere or \
     find the way (e.g. nearest convenience store, a station, an address).
     """
-    let start: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode, _ minimal: Bool) -> Void
+    let start: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode) -> Void
 
     @Generable
     enum Mode: String {
@@ -261,12 +261,10 @@ private struct StartDirectionsTool: Tool {
         let destination: String
         @Guide(description: "walking unless the user says they are driving")
         let mode: Mode
-        @Guide(description: "false (map shown) unless the user explicitly asks in this request for no map or a clear screen")
-        let minimal: Bool
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await start(arguments.destination, DirectionsMode(rawValue: arguments.mode.rawValue) ?? .walking, arguments.minimal)
+        await start(arguments.destination, DirectionsMode(rawValue: arguments.mode.rawValue) ?? .walking)
         return "Directions starting on the glasses."
     }
 }

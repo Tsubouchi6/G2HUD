@@ -10,7 +10,7 @@
 //   saveChat(title) -> Bool        — saves the AI chat (false = empty)
 //   startListening(title) -> Bool  — saves what people say from now on (false = HUD not listening)
 //   stopListening() -> Bool        — ends and keeps the clip (false = nothing was being saved)
-//   startDirections(destination, mode, minimal) — nearest match, turn-by-turn in the Nav tab
+//   startDirections(destination, mode) — nearest match, turn-by-turn with the map in the Nav tab
 //   stopDirections() -> Bool       — ends navigation (false = none running)
 //   directionsView(view) -> Bool   — "map" / "full" / "minimal" (false = no navigation running)
 //   calculate(expression) -> String              — exact result line, also in the Calc tab
@@ -24,7 +24,7 @@ struct AiActions: Sendable {
     let saveChat: @MainActor @Sendable (_ title: String) -> Bool
     let startListening: @MainActor @Sendable (_ title: String) -> Bool
     let stopListening: @MainActor @Sendable () -> Bool
-    let startDirections: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode, _ minimal: Bool) -> Void
+    let startDirections: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode) -> Void
     let stopDirections: @MainActor @Sendable () -> Bool
     let directionsView: @MainActor @Sendable (_ view: String) -> Bool
     let calculate: @MainActor @Sendable (_ expression: String) -> String
