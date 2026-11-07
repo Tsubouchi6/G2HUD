@@ -18,6 +18,7 @@
 //   claude: ClaudeOnPC?            // set by HudController (built after the tab, since its
 //                                  // actions put pictures into this tab)
 //   addPicture(_ png:, caption:)   // png must be chatPictureWidthPx x chatPictureHeightPx
+//   say(_ text:)                   // Neo speaks first (directions: the next step), as an answer line
 
 import Foundation
 
@@ -118,6 +119,11 @@ final class AiTab: LensTab {
         } catch {
             return HudText.t(.aiError, error.localizedDescription)
         }
+    }
+
+    /// A message from Neo nobody asked for yet (the next direction step).
+    func say(_ text: String) {
+        append([text])
     }
 
     func addPicture(_ png: Data, caption: String) {

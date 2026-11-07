@@ -36,6 +36,9 @@
 //   stop()
 //   showMap()                                // back to the view with the map
 //   onArrived: ((String) -> Void)?
+//   onGuidance: ((String) -> Void)?          // Neo's next instruction, one at a time: the first
+//                                            // step when a route starts, then the next one when
+//                                            // the user gets within navAnnounceMeters of it
 //   onNotice: ((String) -> Void)?            // "Finding..." / failed search while a map is already up
 
 import CoreLocation
@@ -63,6 +66,10 @@ final class Navigator: ObservableObject {
     @Published private(set) var mapStatus = ""
 
     var onArrived: ((String) -> Void)?
+    /// One instruction at a time, like a person guiding you (not the whole plan at once).
+    var onGuidance: ((String) -> Void)?
+    /// Step whose instruction was last announced (nil = none yet for this route).
+    private var announcedStep: Int?
     /// Short notices while a map is already up ("Finding...", a failed search),
     /// so a new request never wipes the current map before it succeeds.
     var onNotice: ((String) -> Void)?
@@ -301,6 +308,25 @@ final class Navigator: ObservableObject {
         miniMapDrawnAt = .distantPast  // new route: draw it right away
         lastLocation = here
         publishProgress(at: here)
+        if !isPlaceMode {
+            // First thing to do: step 0's instruction ("Head north", "Walk to Shibuya"), or step 1's.
+            announcedStep = nil
+            if let first = steps.indices.first(where: { !steps[$0].instruction.isEmpty }) { announce(first) }
+        }
+    }
+
+    private func announce(_ index: Int) {
+        guard announcedStep.map({ index > $0 }) ?? true else { return }
+        announcedStep = index
+        onGuidance?(steps[index].guidance)
+    }
+
+    /// Close to the end of the current step: tell the next instruction now.
+    private func announceIfClose(_ here: CLLocation) {
+        guard let next = steps.indices.dropFirst(stepIndex + 1).first(where: { !steps[$0].instruction.isEmpty }) else { return }
+        let step = steps[stepIndex]
+        let lead = max(HudConstants.navAnnounceMeters, step.endRadiusMeters)
+        if here.distance(from: step.end) <= lead { announce(next) }
     }
 
     // MARK: - Following
@@ -328,6 +354,7 @@ final class Navigator: ObservableObject {
                 stepIndex = reached + 1
             }
             if route.canReroute, isOffRoute(here) { reroute(from: here) }
+            announceIfClose(here)
         }
         publishProgress(at: here)
     }

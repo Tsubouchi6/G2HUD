@@ -202,6 +202,11 @@ final class HudController: ObservableObject {
         ])
         navigator.onArrived = { [weak lens] name in lens?.showBanner(HudText.t(.navArrived, name), seconds: HudConstants.reminderAlertSeconds) }
         navigator.onNotice = { [weak lens] text in lens?.showBanner(text, seconds: HudConstants.reminderAlertSeconds) }
+        // Directions, one step at a time: on the lens and in the AI chat (so "what now?" has it).
+        navigator.onGuidance = { [weak lens, weak aiTab] text in
+            aiTab?.say(text)
+            lens?.showBanner(text, seconds: HudConstants.reminderAlertSeconds)
+        }
 
         self.settings = settings
         self.captions = captions

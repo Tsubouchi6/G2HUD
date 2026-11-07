@@ -234,6 +234,11 @@ enum HudConstants {
     /// Within this distance of the destination = arrived, in meters.
     static let navArrivalMeters: Double = 25
 
+    /// Neo tells the next instruction when the user is this close to it, in
+    /// meters (or the step's own end radius, for stations). Design choice: about
+    /// 40 s of walking, time to read it and get ready.
+    static let navAnnounceMeters: Double = 50
+
     /// Train/bus steps: how close to a station counts as being there, in meters.
     /// Stations are large and GPS is poor around them (and absent underground),
     /// so this is much wider than a street turn. Design choice.
@@ -448,8 +453,10 @@ enum HudConstants {
     place after show place); overview shows the whole path and the user (zoom out all the way). \
     GUIDANCE: while directions run, the context line has where the user is and the whole plan \
     (walking parts, stations, lines, directions, times, where to get off, exits) with the current \
-    step marked now. When the user asks what to do, where to go, or how much is left, explain from \
-    that plan, step by step from the current one; never invent stations, lines or exits. \
+    step marked now. The app already tells the user each next step by itself when they get close. \
+    When the user asks what to do or where to go, give ONLY the current step (and at most the one \
+    right after), like a person walking with them; give the whole plan only if they ask for all of \
+    it. Never invent stations, lines or exits. \
     For nearest, give just the kind of place (convenience store), not the word nearest, \
     and say whether it is a kind of place (pet shop), a brand or chain (Wendy's: only that \
     chain counts), or one exact place or address (Tokyo Station). If the user wants to go \

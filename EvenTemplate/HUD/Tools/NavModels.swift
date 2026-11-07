@@ -48,6 +48,22 @@ struct NavStep {
     let ride: RideInfo?
 }
 
+extension NavStep {
+    /// What Neo tells the user for this step, in the HUD language: the turn and
+    /// distance, or the ride (line, direction, time, where to get off, exit).
+    @MainActor
+    var guidance: String {
+        guard let ride else {
+            let meters = distanceMeters < 1000 ? "\(Int((distanceMeters / 10).rounded()) * 10)m"
+                : String(format: "%.1fkm", distanceMeters / 1000)
+            return "\(instruction) (\(meters))"
+        }
+        let getOff = HudText.t(.navGetOff, ride.toStop) + (ride.arrives.map { " (\($0))" } ?? "")
+        let exit = ride.exitGate.map { ", " + HudText.t(.navExitGate, $0) } ?? ""
+        return "\(instruction) -> \(getOff)\(exit)"
+    }
+}
+
 struct NavRoute {
     let points: [CLLocationCoordinate2D]
     let steps: [NavStep]
