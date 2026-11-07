@@ -3,6 +3,7 @@
 // Lens tab: turn-by-turn directions from Navigator. Two views:
 //   full    — destination, distance/time left, the next turn, the one after
 //   minimal — one line at the top ("120m 左折 ..."), the rest of the lens clear
+// Without glasses connected, an arrow from the phone's compass points to the next turn.
 // Switched by voice while this tab is open ("シンプル" / "詳しく" / "地図"),
 // or the AI picks minimal when asked for a clear screen.
 //
@@ -74,12 +75,20 @@ final class NavTab: LensTab {
         }
     }
 
-    /// "120m  Turn left onto ..." or "450m  到着" when only the arrival is left.
+    /// "↗ 120m  Turn left onto ..." or "↑ 450m  到着" when only the arrival is left.
+    /// The arrow (phone compass, without glasses) points to the next turn point.
     private func turnLine(_ progress: NavProgress) -> String {
+        let arrow = progress.relativeBearing.map { Self.arrow($0) + " " } ?? ""
         guard let turn = progress.nextTurn else {
-            return "\(Self.distance(progress.remainingMeters))  \(HudText.t(.navToArrival))"
+            return "\(arrow)\(Self.distance(progress.remainingMeters))  \(HudText.t(.navToArrival))"
         }
-        return "\(Self.distance(progress.metersToNextTurn))  \(turn)"
+        return "\(arrow)\(Self.distance(progress.metersToNextTurn))  \(turn)"
+    }
+
+    /// 0° = ahead ↑, 90° = right →, in 45° steps.
+    private static func arrow(_ degrees: Double) -> String {
+        let arrows = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]
+        return arrows[Int(((degrees + 22.5) / 45).rounded(.down)) % 8]
     }
 
     /// "80m", "1.2km"

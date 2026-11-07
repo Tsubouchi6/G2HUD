@@ -183,6 +183,10 @@ enum HudConstants {
     /// Within this distance of the destination = arrived, in meters.
     static let navArrivalMeters: Double = 25
 
+    /// Phone compass updates only after turning this many degrees (saves redraws;
+    /// the arrow has 45° steps). Source: design choice.
+    static let navHeadingFilterDegrees: Double = 5
+
     /// Route map picture: line width and marker radius, in pixels (400x200 picture).
     static let navMapRouteWidthPx: CGFloat = 5
     static let navMapMarkerRadiusPx: CGFloat = 6

@@ -6,7 +6,9 @@
 // "next turn" is step i+1's instruction, reached at the end of step i.
 //
 // Public API:
-//   Navigator(location:directions:)
+//   Navigator(location:directions:heading:useCompass:)
+//     useCompass: true while the glasses aren't connected — then the phone's
+//     compass turns an arrow toward the next turn (phone held like a map).
 //   @Published state: NavState
 //   @Published minimal: Bool                 // one line at the top, nothing else
 //   start(destination:mode:minimal:)         // finds the nearest match, routes, follows
@@ -29,6 +31,9 @@ struct NavProgress {
     let metersToNextTurn: Double
     /// The turn after that, for a heads-up.
     let turnAfter: String?
+    /// Direction to the next turn point relative to where the phone points,
+    /// degrees clockwise (0 = straight ahead). nil without the compass.
+    let relativeBearing: Double?
     let rerouting: Bool
 }
 
@@ -53,6 +58,9 @@ final class Navigator: ObservableObject {
 
     private let location: LocationService
     private let directions: DirectionsService
+    private let heading: HeadingService
+    private let useCompass: () -> Bool
+    private var headingDegrees: Double?
 
     private var destination: MKMapItem?
     private var destinationName = ""
@@ -66,9 +74,11 @@ final class Navigator: ObservableObject {
     private var lastRerouteAt = Date.distantPast
     private var isRerouting = false
 
-    init(location: LocationService, directions: DirectionsService) {
+    init(location: LocationService, directions: DirectionsService, heading: HeadingService, useCompass: @escaping () -> Bool) {
         self.location = location
         self.directions = directions
+        self.heading = heading
+        self.useCompass = useCompass
     }
 
     // MARK: - Control
@@ -87,6 +97,7 @@ final class Navigator: ObservableObject {
                 try await loadRoute(from: here)
                 if !minimal { await sendMapPicture() }
                 location.startUpdates { [weak self] update in self?.follow(update) }
+                heading.start { [weak self] degrees in self?.turned(to: degrees) }
             } catch {
                 state = .failed(error.localizedDescription)
             }
@@ -95,6 +106,8 @@ final class Navigator: ObservableObject {
 
     func stop() {
         location.stopUpdates()
+        heading.stop()
+        headingDegrees = nil
         route = nil
         destination = nil
         state = .idle
@@ -139,6 +152,7 @@ final class Navigator: ObservableObject {
         let target = destination.placemark.coordinate
         if here.distance(from: CLLocation(latitude: target.latitude, longitude: target.longitude)) <= HudConstants.navArrivalMeters {
             location.stopUpdates()
+            heading.stop()
             state = .arrived(destinationName)
             onArrived?(destinationName)
             return
@@ -152,6 +166,12 @@ final class Navigator: ObservableObject {
 
         if isOffRoute(here) { reroute(from: here) }
         publishProgress(at: here)
+    }
+
+    /// Phone compass moved: redraw the arrow.
+    private func turned(to degrees: Double) {
+        headingDegrees = degrees
+        if let here = lastLocation, case .active = state { publishProgress(at: here) }
     }
 
     private func isOffRoute(_ here: CLLocation) -> Bool {
@@ -178,6 +198,11 @@ final class Navigator: ObservableObject {
         let minutes = route.distance > 0 ? Int((route.expectedTravelTime * remaining / route.distance / 60).rounded(.up)) : 0
 
         let upcoming = steps.dropFirst(stepIndex + 1).filter { !$0.instructions.isEmpty }
+        var relative: Double?
+        if useCompass(), let headingDegrees {
+            let bearing = HeadingService.bearing(from: here.coordinate, to: stepEnds[stepIndex].coordinate)
+            relative = (bearing - headingDegrees + 360).truncatingRemainder(dividingBy: 360)
+        }
         state = .active(NavProgress(
             destinationName: destinationName,
             remainingMeters: remaining,
@@ -185,6 +210,7 @@ final class Navigator: ObservableObject {
             nextTurn: upcoming.first?.instructions,
             metersToNextTurn: toStepEnd,
             turnAfter: upcoming.dropFirst().first?.instructions,
+            relativeBearing: relative,
             rerouting: isRerouting
         ))
     }

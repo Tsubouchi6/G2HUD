@@ -52,7 +52,11 @@ final class HudController: ObservableObject {
         let search = WebSearchService(settings: settings, ai: ai)
         let charts = ChartService()
         let aiChats = AiChatArchive()
-        let navigator = Navigator(location: LocationService(), directions: DirectionsService())
+        // Without glasses connected, the phone's compass drives the directions arrow.
+        let navigator = Navigator(
+            location: LocationService(), directions: DirectionsService(), heading: HeadingService(),
+            useCompass: { [weak session] in session?.glasses.connected != true }
+        )
 
         // What either AI can make the HUD do (charts, pictures, saving, listening, directions).
         let aiTab = AiTab(ai: ai, settings: settings, archive: aiChats)
