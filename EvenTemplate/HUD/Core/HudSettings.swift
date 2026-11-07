@@ -5,7 +5,8 @@
 //
 // Public API (all @Published, auto-saved):
 //   language: HudLanguage        // speech + commands + lens + HUD screens
-//   braveApiKey: String
+//   tavilyApiKey: String         // main search (with AI answer)
+//   braveApiKey: String          // fallback search (on-device AI summary)
 //   requireWakeWord: Bool        // commands need the wake word first
 //   usePhoneMic: Bool            // testing without glasses
 //   touchControlsEnabled: Bool   // glasses touchpad / R1 ring
@@ -27,6 +28,7 @@ final class HudSettings: ObservableObject {
             HudText.language = language
         }
     }
+    @Published var tavilyApiKey: String { didSet { save(tavilyApiKey, Key.tavilyApiKey) } }
     @Published var braveApiKey: String { didSet { save(braveApiKey, Key.braveApiKey) } }
     @Published var requireWakeWord: Bool { didSet { save(requireWakeWord, Key.requireWakeWord) } }
     @Published var usePhoneMic: Bool { didSet { save(usePhoneMic, Key.usePhoneMic) } }
@@ -41,6 +43,7 @@ final class HudSettings: ObservableObject {
     private enum Key {
         static let language = "g2hud_language"
         static let legacyCaptionLanguage = "g2hud_caption_language"
+        static let tavilyApiKey = "g2hud_tavily_api_key"
         static let braveApiKey = "g2hud_brave_api_key"
         static let requireWakeWord = "g2hud_require_wake_word"
         static let usePhoneMic = "g2hud_use_phone_mic"
@@ -56,6 +59,7 @@ final class HudSettings: ObservableObject {
         language = defaults.string(forKey: Key.language).flatMap(HudLanguage.init(rawValue:))
             ?? defaults.string(forKey: Key.legacyCaptionLanguage).flatMap(HudLanguage.init(legacyLocaleId:))
             ?? .japanese
+        tavilyApiKey = defaults.string(forKey: Key.tavilyApiKey) ?? ""
         braveApiKey = defaults.string(forKey: Key.braveApiKey) ?? ""
         requireWakeWord = defaults.object(forKey: Key.requireWakeWord) as? Bool ?? true
         usePhoneMic = defaults.object(forKey: Key.usePhoneMic) as? Bool ?? false

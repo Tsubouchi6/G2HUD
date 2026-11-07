@@ -102,7 +102,15 @@ enum HudConstants {
 
     // MARK: - Search
 
-    /// Brave Search web endpoint.
+    /// Tavily search endpoint (search + AI answer).
+    /// Source: docs.tavily.com/api-reference/endpoint/search
+    static let tavilySearchEndpoint: String = "https://api.tavily.com/search"
+
+    /// Tavily depth: "basic" costs 1 credit (free tier = 1,000 credits/month);
+    /// "advanced" costs 2. Source: same docs page.
+    static let tavilySearchDepth: String = "basic"
+
+    /// Brave Search web endpoint (fallback when Tavily is unavailable).
     /// Source: api-dashboard.search.brave.com/documentation/services/web-search
     static let braveSearchEndpoint: String = "https://api.search.brave.com/res/v1/web/search"
 

@@ -9,6 +9,7 @@
 //   OnDeviceAI()
 //   availabilityMessage: String?     // nil when the model is ready
 //   ask(_ question: String) async throws -> String
+//   summarize(query:results:language:) async throws -> String   // one-off, no chat history
 //   reset()
 
 import Foundation
@@ -49,6 +50,21 @@ final class OnDeviceAI {
 
     func reset() {
         session = nil
+    }
+
+    /// Answers `query` in 1-2 sentences using only the given search results.
+    /// Uses its own short-lived session so search doesn't fill the chat context.
+    func summarize(query: String, results: [SearchResult], language: HudLanguage) async throws -> String {
+        let sources = results.prefix(HudConstants.searchResultCount).enumerated().map { index, result in
+            "[\(index + 1)] \(result.title): \(result.snippet)"
+        }.joined(separator: "\n")
+        let instructions = """
+        Answer the user's search in 1-2 short sentences (under 120 characters) in \(language.englishName), \
+        using only the search results provided. Plain text only. If the results don't answer it, say so briefly.
+        """
+        let session = LanguageModelSession(instructions: instructions)
+        let response = try await session.respond(to: "Search: \(query)\n\nResults:\n\(sources)")
+        return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func respond(_ question: String) async throws -> String {

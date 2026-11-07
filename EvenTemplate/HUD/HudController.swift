@@ -41,8 +41,9 @@ final class HudController: ObservableObject {
         let reminders = ReminderService()
         let tilt = HeadTiltDetector()
 
-        let aiTab = AiTab(ai: OnDeviceAI())
-        let searchTab = SearchTab(settings: settings)
+        let ai = OnDeviceAI()
+        let aiTab = AiTab(ai: ai)
+        let searchTab = SearchTab(service: WebSearchService(settings: settings, ai: ai))
         let calcTab = CalcTab()
         lens.setTabs([
             CaptionsTab(captions: captions),

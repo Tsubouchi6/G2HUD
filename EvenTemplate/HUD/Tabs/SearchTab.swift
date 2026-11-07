@@ -1,9 +1,9 @@
 // SearchTab.swift
 //
-// Lens tab: web search results (Brave). Each result is a title line plus a
-// shortened snippet line.
+// Lens tab: web search. Shows the query, a short AI summary (from Tavily, or
+// from the on-device AI when falling back to Brave), then result titles.
 //
-// Public API: SearchTab(settings:)  — LensTab with id "search"; search(_ query:)
+// Public API: SearchTab(service:)  — LensTab with id "search"; search(_ query:)
 
 import Foundation
 
@@ -15,11 +15,11 @@ final class SearchTab: LensTab {
     let voiceNames = ["検索", "けんさく", "サーチ", "search", "google", "グーグル", "pesquisa", "busca"]
     var onChange: (() -> Void)?
 
-    private let settings: HudSettings
+    private let service: WebSearchService
     private var lines: [String] = []
 
-    init(settings: HudSettings) {
-        self.settings = settings
+    init(service: WebSearchService) {
+        self.service = service
     }
 
     func page() -> LensPage {
@@ -29,33 +29,41 @@ final class SearchTab: LensTab {
     // MARK: - Searching
 
     func search(_ query: String) {
-        lines = [HudText.t(.searchLabel, query), "..."]
-        onChange?()
-        let apiKey = settings.braveApiKey
+        show([HudText.t(.searchLabel, query), "..."])
         Task {
             do {
-                let results = try await BraveSearchClient.search(query, apiKey: apiKey)
-                show(query: query, results: results)
+                let outcome = try await service.search(query)
+                show(Self.format(query: query, outcome: outcome))
+            } catch SearchError.missingApiKey {
+                show([HudText.t(.searchLabel, query), HudText.t(.noSearchKey)])
             } catch {
-                lines = [HudText.t(.searchLabel, query), error.localizedDescription]
-                onChange?()
+                show([HudText.t(.searchLabel, query), error.localizedDescription])
             }
         }
     }
 
-    private func show(query: String, results: [SearchResult]) {
-        guard !results.isEmpty else {
-            lines = [HudText.t(.searchLabel, query), HudText.t(.noResults)]
-            onChange?()
-            return
-        }
-        let snippetUnits = HudConstants.lensLineUnits * 2 - 3
-        lines = [HudText.t(.searchLabel, query)] + results.enumerated().flatMap { index, result in
-            [
-                "\(index + 1). \(LensTextLayout.truncate(result.title, units: HudConstants.lensLineUnits - 3))",
-                "   " + LensTextLayout.truncate(result.snippet, units: snippetUnits),
-            ]
-        }
+    private func show(_ newLines: [String]) {
+        lines = newLines
         onChange?()
+    }
+
+    // MARK: - Formatting
+
+    /// Query, summary, a divider, then one title line per result.
+    private static func format(query: String, outcome: SearchOutcome) -> [String] {
+        var result = [HudText.t(.searchLabel, query)]
+        if let summary = outcome.summary {
+            result.append(summary)
+        }
+        guard !outcome.results.isEmpty else {
+            if outcome.summary == nil { result.append(HudText.t(.noResults)) }
+            return result
+        }
+        result.append("──")
+        let titleUnits = HudConstants.lensLineUnits - 3
+        for (index, item) in outcome.results.enumerated() {
+            result.append("\(index + 1). \(LensTextLayout.truncate(item.title, units: titleUnits))")
+        }
+        return result
     }
 }

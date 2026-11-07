@@ -1,12 +1,14 @@
 // BraveSearchClient.swift
 //
 // Web search through the Brave Search API (free tier: $5 credit/month,
-// about 1,000 searches). The API key is entered in the app's Settings tab.
+// about 1,000 searches). Results only, no AI: WebSearchService uses it as the
+// fallback when Tavily is unavailable and has the on-device AI summarize it.
+// The API key is entered in the app's Settings tab.
 //
 // Public API:
 //   BraveSearchClient.search(_ query: String, apiKey: String) async throws -> [SearchResult]
 //   struct SearchResult { title, url, snippet }
-//   enum SearchError
+//   enum SearchError (shared by all search clients)
 
 import Foundation
 
@@ -18,11 +20,13 @@ struct SearchResult: Equatable {
 
 enum SearchError: LocalizedError {
     case missingApiKey
+    case quotaExceeded
     case badResponse(Int)
 
     var errorDescription: String? {
         switch self {
-        case .missingApiKey: return "Add a Brave Search API key in Settings"
+        case .missingApiKey: return "Add a Tavily or Brave API key in Settings"
+        case .quotaExceeded: return "Search quota used up"
         case .badResponse(let code): return "Search failed (HTTP \(code))"
         }
     }

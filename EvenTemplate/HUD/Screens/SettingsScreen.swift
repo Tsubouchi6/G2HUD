@@ -56,6 +56,9 @@ struct SettingsScreen: View {
 
     private var searchSection: some View {
         Section {
+            SecureField(HudText.t(.tavilyKeyPlaceholder), text: $settings.tavilyApiKey)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
             SecureField(HudText.t(.braveKeyPlaceholder), text: $settings.braveApiKey)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()

@@ -7,6 +7,7 @@
 //   enum HudLanguage: japanese / english / portuguese
 //     displayName      // "日本語", "English", "Português"
 //     speechLocaleId   // locale for the speech engine
+//     englishName      // "Japanese", ... (for AI instructions)
 //     init?(legacyLocaleId:)   // reads the old "ja-JP"-style setting
 
 import Foundation
@@ -23,6 +24,14 @@ enum HudLanguage: String, CaseIterable, Identifiable {
         case .japanese: return "日本語"
         case .english: return "English"
         case .portuguese: return "Português"
+        }
+    }
+
+    var englishName: String {
+        switch self {
+        case .japanese: return "Japanese"
+        case .english: return "English"
+        case .portuguese: return "Brazilian Portuguese"
         }
     }
 
