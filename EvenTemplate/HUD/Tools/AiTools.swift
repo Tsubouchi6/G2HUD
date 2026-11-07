@@ -17,7 +17,7 @@
 //                    ways there with a pick (Apple Maps; trains and buses NAVITIME)
 //     chooseRoute  — start one of the listed ways
 //     showPlace    — where the nearest X is, with the user, on one map (no turn-by-turn)
-//     directionsView — map / minimal / zoom in / zoom out
+//     directionsView — map / minimal / zoom in / zoom out / overview (whole path)
 //     calculate    — exact arithmetic (the model writes the formula, the app computes)
 //     convert      — units (Apple) or currency (live Yahoo rate)
 //     openTab      — shows one of the HUD's tabs (e.g. the Saved list)
@@ -400,13 +400,14 @@ private struct DirectionsViewTool: Tool {
     let name = "directionsView"
     let description = """
     Changes the map in the Nav tab (directions or a shown place): map shows it, \
-    minimal hides it (one line at the top), zoomIn / zoomOut zoom the map.
+    minimal hides it (one line at the top), zoomIn / zoomOut zoom the map, overview \
+    shows the whole path and the user (zoom out all the way).
     """
     let change: @MainActor @Sendable (_ view: String) -> Bool
 
     @Generable
     enum ViewKind: String {
-        case map, minimal, zoomIn, zoomOut
+        case map, minimal, zoomIn, zoomOut, overview
     }
 
     @Generable

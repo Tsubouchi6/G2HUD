@@ -64,6 +64,9 @@ enum VoicePhrases {
     static let navMinimalWords = ["シンプル", "シンプルにして", "ミニマル", "画面をすっきり", "simple", "minimal", "clear screen", "simples", "mínimo", "minimo"]
     static let navFullWords = ["詳しく", "詳細", "全部表示", "full", "details", "detailed", "completo", "detalhes"]
     static let navZoomInWords = ["ズームイン", "拡大", "大きく", "zoom in", "closer", "aproximar", "aproxima", "mais perto"]
+    /// Checked before zoom out: "zoom out all the way" shows the whole path.
+    static let navOverviewWords = ["全体", "ルート全体", "全部見せて", "all the way", "whole route", "whole path",
+                                   "entire route", "overview", "rota inteira", "o caminho todo"]
     static let navZoomOutWords = ["ズームアウト", "縮小", "小さく", "zoom out", "further", "afastar", "afasta", "mais longe"]
     static let navMapWords = ["地図", "マップ", "地図を見せて", "map", "show map", "mapa", "mostra o mapa"]
 

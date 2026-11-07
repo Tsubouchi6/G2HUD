@@ -13,7 +13,7 @@
 //                                                    or the place on the map (shown); choose lists the ways
 //   ROUTE: <number|best>                             -> starts a listed way
 //   DIRECTIONS_STOP                                  -> stops navigation
-//   DIRECTIONS_VIEW: <map|minimal|zoomin|zoomout>    -> map / one-line view / zoom
+//   DIRECTIONS_VIEW: <map|minimal|zoomin|zoomout|overview> -> map / one-line view / zoom / whole path
 //   PLACE: <place> | <kind|brand|exact>              -> where the nearest match is, with the user
 //   OPEN: <captions|ai|search|calc|notes|remind|saved|nav> -> shows that tab
 //   LANGUAGE: <hud|hearing> | <ja|en|pt>             -> HUD language / language the mic listens for

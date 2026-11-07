@@ -30,7 +30,9 @@
 //     (each Task ends with nil when found, or the error text)
 //   choose(_ number:) -> Bool                // pick a listed way (1-based; 0 = Neo's pick)
 //   summaryForAI: String?                    // what the Nav tab shows, for the AIs' context line
-//   zoom(in:)                                // halve / double the map's reach
+//   zoom(in:)                                // halve / double the map's reach; zooming out
+//                                            // slides toward the path ahead
+//   zoomToOverview()                         // the whole remaining path and the user
 //   stop()
 //   showMap()                                // back to the view with the map
 //   onArrived: ((String) -> Void)?
@@ -85,6 +87,9 @@ final class Navigator: ObservableObject {
     /// Where the user was when the place was found ("Shibuya, Tokyo"), so the AI
     /// can search fares from there. Apple reverse geocoding (free).
     private var startArea: String?
+    /// Where the user is now, refreshed every navAreaRefreshMeters while moving.
+    private var currentArea: String?
+    private var areaLookedUpAt: CLLocation?
     private var lastRerouteAt = Date.distantPast
     private var isRerouting = false
     private var miniMapDrawnAt = Date.distantPast
@@ -147,6 +152,17 @@ final class Navigator: ObservableObject {
         return true
     }
 
+    /// Zoom out "all the way": the whole remaining path and the user (or, after
+    /// "where is X", the place and the user).
+    func zoomToOverview() {
+        guard let here = lastLocation, route != nil else { return }
+        minimal = false
+        focusOnPlace = false
+        viewRadiusMeters = isPlaceMode ? nil : pathFit(from: here)?.radiusMeters
+        miniMapDrawnAt = .distantPast
+        drawMiniMap(at: here)
+    }
+
     /// "Shibuya, Tokyo" for a location; nil if Apple can't tell.
     private static func area(of location: CLLocation) async -> String? {
         guard let mark = try? await CLGeocoder().reverseGeocodeLocation(location).first else { return nil }
@@ -154,44 +170,13 @@ final class Navigator: ObservableObject {
         return parts.isEmpty ? nil : parts.joined(separator: ", ")
     }
 
-    /// One sentence for the AIs about what the Nav tab shows, so follow-ups
-    /// ("go there", "how far", "how much to get there", "number 2") use the real place.
+    /// What the AIs are told about the Nav tab (NavBriefing): the place, where the
+    /// user is, and the whole plan, so they can guide the user any time.
     var summaryForAI: String? {
-        let address = destination?.placemark.title.map { " (\($0))" } ?? ""
-        let from = startArea.map { ", from the user's area \($0)" } ?? ""
-        switch state {
-        case .place(let place):
-            return "The Nav map shows \(place.name)\(address), \(Int(place.walkingMeters)) m away\(from), "
-                + "about \(place.walkingMinutes) min on foot; not navigating there yet"
-        case .choosing(let trip):
-            let list = trip.choices.enumerated().map { index, choice in
-                "\(index + 1)) \(Self.describe(choice))"
-            }.joined(separator: "; ")
-            return "Ways to \(trip.destinationName)\(address) are listed: \(list). The app recommends "
-                + "\(trip.recommended + 1). Waiting for the user to pick one (chooseRoute)"
-        case .active(let progress):
-            let riding = progress.ride.map { "; now on \(TransitService.rideName($0)), get off at \($0.toStop)" } ?? ""
-            return "Navigating to \(progress.destinationName)\(address)\(from), "
-                + "\(Int(progress.remainingMeters)) m and about \(progress.remainingMinutes) min left\(riding)"
-        case .finding(let query):
-            return "Searching the map for \(query)"
-        default:
-            return nil
-        }
-    }
-
-    /// "Train 11 min, ¥180, JR Yamanote" (English, for the AI).
-    private static func describe(_ choice: RouteChoice) -> String {
-        let kind: String
-        switch choice.kind {
-        case .walk: kind = "Walk"
-        case .train: kind = "Train"
-        case .bus: kind = "Bus"
-        case .mixed: kind = "Train and bus"
-        }
-        let fare = choice.kind == .walk ? ", free" : choice.fare.map { ", \($0)" } ?? ""
-        let lines = choice.route.rides.map(\.line).joined(separator: " > ")
-        return "\(kind) \(choice.minutes) min\(fare)\(lines.isEmpty ? "" : ", \(lines)")"
+        NavBriefing.summary(
+            state: state, address: destination?.placemark.title, area: currentArea ?? startArea,
+            steps: steps, stepIndex: stepIndex
+        )
     }
 
     func stop() {
@@ -205,6 +190,8 @@ final class Navigator: ObservableObject {
         viewRadiusMeters = nil
         focusOnPlace = false
         placeFit = nil
+        currentArea = nil
+        areaLookedUpAt = nil
         state = .idle
     }
 
@@ -276,7 +263,7 @@ final class Navigator: ObservableObject {
                 lastLocation = here
                 startArea = nil
                 Task { [weak self] in self?.startArea = await Self.area(of: here) }
-                if placeMode { placeFit = Self.fit(user: here.coordinate, place: place.placemark.coordinate) }
+                if placeMode { placeFit = MapFrame.fit([here.coordinate, place.placemark.coordinate]) }
                 switch planned {
                 case .follow(let route, let appleMode):
                     mode = appleMode
@@ -320,6 +307,7 @@ final class Navigator: ObservableObject {
     private func follow(_ here: CLLocation) {
         guard let route, let destination else { return }
         lastLocation = here
+        refreshArea(at: here)
 
         if !isPlaceMode {
             let target = destination.placemark.coordinate
@@ -341,6 +329,15 @@ final class Navigator: ObservableObject {
             if route.canReroute, isOffRoute(here) { reroute(from: here) }
         }
         publishProgress(at: here)
+    }
+
+    /// Looks up "where am I" again after moving navAreaRefreshMeters (for the AI).
+    private func refreshArea(at here: CLLocation) {
+        if let last = areaLookedUpAt, here.distance(from: last) < HudConstants.navAreaRefreshMeters { return }
+        areaLookedUpAt = here
+        Task { [weak self] in
+            if let area = await Self.area(of: here) { self?.currentArea = area }
+        }
     }
 
     /// Phone compass moved: redraw the arrow.
@@ -373,32 +370,42 @@ final class Navigator: ObservableObject {
     // MARK: - Map
 
     /// What the map shows: its center, its reach, and where the center sits.
+    /// Directions: around the user; zooming out slides the middle toward the
+    /// rest of the path (you zoom out to see more of the path, not more of
+    /// where you are), reaching "the whole path" at its fit-all reach.
     private func currentFrame(at here: CLLocation) -> MapFrame {
+        let near = HudConstants.navMiniMapRadiusMeters
         guard isPlaceMode, let target = destination?.placemark.coordinate else {
-            return MapFrame(
-                center: here.coordinate,
-                radiusMeters: viewRadiusMeters ?? HudConstants.navMiniMapRadiusMeters,
-                anchorYFraction: HudConstants.navMiniMapUserYFraction
+            let radius = viewRadiusMeters ?? near
+            guard radius > near, let fit = pathFit(from: here) else {
+                return MapFrame(center: here.coordinate, radiusMeters: radius,
+                                anchorYFraction: HudConstants.navMiniMapUserYFraction)
+            }
+            // 0 at the normal zoom, 1 at the zoom that fits the whole path (log scale, like the zoom steps).
+            let share = fit.radiusMeters > near ? min(log(radius / near) / log(fit.radiusMeters / near), 1) : 1
+            let center = CLLocationCoordinate2D(
+                latitude: here.coordinate.latitude + (fit.center.latitude - here.coordinate.latitude) * share,
+                longitude: here.coordinate.longitude + (fit.center.longitude - here.coordinate.longitude) * share
             )
+            let anchor = HudConstants.navMiniMapUserYFraction + (0.5 - HudConstants.navMiniMapUserYFraction) * CGFloat(share)
+            return MapFrame(center: center, radiusMeters: radius, anchorYFraction: anchor)
         }
         if focusOnPlace {
-            return MapFrame(center: target, radiusMeters: viewRadiusMeters ?? HudConstants.navMiniMapRadiusMeters, anchorYFraction: 0.5)
+            return MapFrame(center: target, radiusMeters: viewRadiusMeters ?? near, anchorYFraction: 0.5)
         }
-        let fit = placeFit ?? Self.fit(user: here.coordinate, place: target)
-        return MapFrame(center: fit.center, radiusMeters: viewRadiusMeters ?? fit.radiusMeters, anchorYFraction: 0.5)
+        let fit = placeFit ?? MapFrame.fit([here.coordinate, target])
+        return MapFrame(center: fit?.center ?? target, radiusMeters: viewRadiusMeters ?? fit?.radiusMeters ?? near,
+                        anchorYFraction: 0.5)
     }
 
-    /// Middle and reach that show both points plus a margin (the map is half
-    /// as tall as wide, so north-south distance counts double).
-    private static func fit(user: CLLocationCoordinate2D, place: CLLocationCoordinate2D) -> (center: CLLocationCoordinate2D, radiusMeters: Double) {
-        let middle = CLLocationCoordinate2D(latitude: (user.latitude + place.latitude) / 2,
-                                            longitude: (user.longitude + place.longitude) / 2)
-        let eastWest = CLLocation(latitude: middle.latitude, longitude: user.longitude)
-            .distance(from: CLLocation(latitude: middle.latitude, longitude: place.longitude)) / 2
-        let northSouth = CLLocation(latitude: user.latitude, longitude: middle.longitude)
-            .distance(from: CLLocation(latitude: place.latitude, longitude: middle.longitude)) / 2
-        let radius = max(eastWest, northSouth * 2) * HudConstants.navPlaceFitMargin
-        return (middle, max(radius, HudConstants.navZoomMinMeters))
+    /// Fit for the user plus the path still ahead (from the route point nearest
+    /// the user to the destination).
+    private func pathFit(from here: CLLocation) -> (center: CLLocationCoordinate2D, radiusMeters: Double)? {
+        let distances = routePoints.map { here.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude)) }
+        let nearest = distances.indices.min { distances[$0] < distances[$1] } ?? 0
+        var points = [here.coordinate] + routePoints.dropFirst(nearest)
+        if let target = destination?.placemark.coordinate { points.append(target) }
+        return MapFrame.fit(points)
     }
 
     /// Redraws the map at most every navMiniMapRefreshSeconds (each new picture

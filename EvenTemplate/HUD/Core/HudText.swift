@@ -65,7 +65,7 @@ enum HudText {
         case navPlaceWalk, navAngleRight, navAngleLeft, navStraight
         case tabNav, navHint, navFinding, navArrived, navRemaining, navThen, navRerouting, navToArrival
         case navWalk, navTrain, navBus, navMixed, navFree, navBoard, navLineToward, navGetOff, navStops
-        case navNoTransitKey, navNoTransit, navWalkTo, transitKeyPlaceholder, transitHeader, transitFooter
+        case navNoTransitKey, navNoTransit, navWalkTo, navExitGate, transitKeyPlaceholder, transitHeader, transitFooter
         case listeningStarted, listeningSaved, listeningScheduled, listeningUntil, savedListenTag, listenedClips
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
         case checkConnection, connectionOk, iphoneAiTag
@@ -201,6 +201,7 @@ enum HudText {
         .navNoTransitKey: ("電車・バスは設定でRapidAPIのキーを入れてください", "Add a RapidAPI key in Settings for trains and buses",
                            "Adicione uma chave RapidAPI nos Ajustes para trem e ônibus"),
         .navWalkTo: ("%@まで歩く", "Walk to %@", "Caminhe até %@"),
+        .navExitGate: ("出口: %@", "exit: %@", "saída: %@"),
         .navNoTransit: ("電車・バスのルートが見つからない", "No train or bus route found", "Nenhuma rota de trem ou ônibus"),
         .transitKeyPlaceholder: ("RapidAPIキー (NAVITIME)", "RapidAPI key (NAVITIME)", "Chave RapidAPI (NAVITIME)"),
         .transitHeader: ("電車・バス (NAVITIME)", "Trains and buses (NAVITIME)", "Trem e ônibus (NAVITIME)"),

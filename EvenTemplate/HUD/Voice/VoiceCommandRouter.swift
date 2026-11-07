@@ -246,6 +246,7 @@ final class VoiceCommandRouter {
         guard context.lens.activeTab?.id == "nav" else { return false }
         // Contains, not exact: "let me see the map" counts. Other wording goes to the AI,
         // which has a directionsView ability for the same three views.
+        if VoicePhrases.containsAny(command, VoicePhrases.navOverviewWords) { context.navigator.zoomToOverview(); return true }
         if VoicePhrases.containsAny(command, VoicePhrases.navZoomInWords) { context.navigator.zoom(in: true); return true }
         if VoicePhrases.containsAny(command, VoicePhrases.navZoomOutWords) { context.navigator.zoom(in: false); return true }
         if VoicePhrases.containsAny(command, VoicePhrases.navMapWords) { context.navigator.showMap(); return true }

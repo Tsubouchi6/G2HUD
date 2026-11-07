@@ -19,7 +19,7 @@
 //   chooseRoute(number) -> String  — starts a listed way (1-based; 0 = the recommended one)
 //   stopDirections() -> Bool       — ends navigation (false = none running)
 //   showPlace(query, match) async -> String — "where is the nearest X": X and the user on the map
-//   directionsView(view) -> Bool   — "map" / "minimal" / "zoomIn" / "zoomOut" (false = no map running)
+//   directionsView(view) -> Bool   — "map" / "minimal" / "zoomIn" / "zoomOut" / "overview" (false = no map running)
 //   calculate(expression) -> String              — exact result line, also in the Calc tab
 //   convert(value, from, to) async -> String     — units or live currency, also in the Calc tab
 //   openTab(id) -> Bool                           — shows a tab (false = unknown tab)

@@ -291,6 +291,13 @@ enum HudConstants {
     /// leaves room for "600m left · 8 min" on the same line.
     static let navProgressCells: Int = 12
     static let navZoomMinMeters: Double = 50
+    /// While following a route, how far the user must move before "where am I"
+    /// (Apple reverse geocoding, rate-limited) is looked up again, in meters.
+    static let navAreaRefreshMeters: Double = 300
+    /// What the AIs get about the route: at most this many steps and characters
+    /// (the iPhone AI's whole context is ~4k tokens).
+    static let navAiPlanMaxSteps: Int = 8
+    static let navAiBriefMaxChars: Int = 900
     static let navZoomMaxMeters: Double = 10_000
     static let navPlaceFitMargin: Double = 1.3
 
@@ -433,7 +440,12 @@ enum HudConstants {
     a clear screen, switch the view to minimal (one line at the top); map brings it back. \
     Show place: for where is / show me where / how far is, shows the nearest match and \
     the user together on the map with the walking distance, without turn-by-turn. \
-    Zoom: zoom in / out the map (around the user in directions, around the place after show place). \
+    Zoom: zoom in / out the map (zooming out in directions moves toward the path ahead; around the \
+    place after show place); overview shows the whole path and the user (zoom out all the way). \
+    GUIDANCE: while directions run, the context line has where the user is and the whole plan \
+    (walking parts, stations, lines, directions, times, where to get off, exits) with the current \
+    step marked now. When the user asks what to do, where to go, or how much is left, explain from \
+    that plan, step by step from the current one; never invent stations, lines or exits. \
     For nearest, give just the kind of place (convenience store), not the word nearest, \
     and say whether it is a kind of place (pet shop), a brand or chain (Wendy's: only that \
     chain counts), or one exact place or address (Tokyo Station). If the user wants to go \
@@ -482,7 +494,7 @@ enum HudConstants {
     Directions: DIRECTIONS: <place as a map search, or shown for the place already on the map> | \
     <choose, walking, driving or transit> | <kind, brand or exact>, ROUTE: <listed number, or best> \
     to start one of the listed ways, \
-    DIRECTIONS_STOP to end them, DIRECTIONS_VIEW: <map, minimal, zoomin or zoomout> for the view. \
+    DIRECTIONS_STOP to end them, DIRECTIONS_VIEW: <map, minimal, zoomin, zoomout or overview> for the view. \
     Show place: PLACE: <place as a map search> | <kind, brand or exact>. \
     Open tab: OPEN: <captions, ai, search, calc, notes, remind, saved or nav>. \
     Languages: LANGUAGE: <hud or hearing> | <ja, en or pt>. \

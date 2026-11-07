@@ -32,6 +32,8 @@ struct RideInfo {
     let arrives: String?
     /// Stops to ride; 0 when not known.
     let stopCount: Int
+    /// The station exit / gate to use after getting off ("A3", "表参道口"), if known.
+    let exitGate: String?
 }
 
 struct NavStep {
@@ -146,4 +148,22 @@ struct MapFrame {
     let anchorYFraction: CGFloat
 
     var metersPerPixel: Double { radiusMeters / (Double(HudConstants.navMapWidthPx) / 2) }
+
+    /// Middle and reach that show all `points` plus a margin (the map is half
+    /// as tall as wide, so north-south distance counts double).
+    static func fit(_ points: [CLLocationCoordinate2D]) -> (center: CLLocationCoordinate2D, radiusMeters: Double)? {
+        guard let first = points.first else { return nil }
+        var south = first.latitude, north = first.latitude, west = first.longitude, east = first.longitude
+        for point in points {
+            south = min(south, point.latitude); north = max(north, point.latitude)
+            west = min(west, point.longitude); east = max(east, point.longitude)
+        }
+        let middle = CLLocationCoordinate2D(latitude: (south + north) / 2, longitude: (west + east) / 2)
+        let eastWest = CLLocation(latitude: middle.latitude, longitude: west)
+            .distance(from: CLLocation(latitude: middle.latitude, longitude: east)) / 2
+        let northSouth = CLLocation(latitude: south, longitude: middle.longitude)
+            .distance(from: CLLocation(latitude: north, longitude: middle.longitude)) / 2
+        let radius = max(eastWest, northSouth * 2) * HudConstants.navPlaceFitMargin
+        return (middle, max(radius, HudConstants.navZoomMinMeters))
+    }
 }

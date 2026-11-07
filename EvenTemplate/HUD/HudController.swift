@@ -165,6 +165,7 @@ final class HudController: ObservableObject {
                 case "minimal": navigator.minimal = true
                 case "zoomin": navigator.zoom(in: true)
                 case "zoomout": navigator.zoom(in: false)
+                case "overview": navigator.zoomToOverview()
                 default: navigator.showMap()
                 }
                 lens?.select(id: "nav")

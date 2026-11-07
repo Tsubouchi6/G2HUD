@@ -11,7 +11,7 @@
 //
 // Response, as used here: items[] (one per route) with summary.move {time
 // (min), distance (m), fare {unit_N: yen}} and sections[] alternating
-// point {name, coord {lat, lon}} / move {move: walk | local_train | local_bus ...,
+// point {name, coord {lat, lon}, gateway (exit)} / move {move: walk | local_train | local_bus ...,
 // line_name, from_time, to_time, time, distance, transport {destination, getoff}};
 // shapes: GeoJSON FeatureCollection (LineString coordinates are [lon, lat]).
 // NAVITIME walking sections have no turn-by-turn, so each is one "walk to X" step.
@@ -103,7 +103,8 @@ final class TransitService {
                   let from = sections[safe: index - 1], let to = sections[safe: index + 1],
                   let end = coordinate(to["coord"])
             else { continue }
-            if let step = parseMove(section, from: from["name"] as? String ?? "", to: to["name"] as? String ?? "", end: end) {
+            if let step = parseMove(section, from: from["name"] as? String ?? "", to: to["name"] as? String ?? "",
+                                    gate: to["gateway"] as? String, end: end) {
                 steps.append(step)
             }
         }
@@ -120,7 +121,9 @@ final class TransitService {
         return (route, fareText(move["fare"]))
     }
 
-    private static func parseMove(_ section: [String: Any], from: String, to: String, end: CLLocationCoordinate2D) -> NavStep? {
+    /// `gate`: the arrival point's gateway (station exit) from NAVITIME, if any.
+    private static func parseMove(_ section: [String: Any], from: String, to: String, gate: String?,
+                                  end: CLLocationCoordinate2D) -> NavStep? {
         let kind = section["move"] as? String ?? ""
         let distance = number(section["distance"]) ?? 0
         let seconds = (number(section["time"]) ?? 0) * 60
@@ -141,7 +144,8 @@ final class TransitService {
             toStop: to,
             departs: clock(section["from_time"]),
             arrives: clock(section["to_time"]),
-            stopCount: 0
+            stopCount: 0,
+            exitGate: gate
         )
         return NavStep(
             instruction: HudText.t(.navBoard, rideName(ride), ride.departs ?? from),
