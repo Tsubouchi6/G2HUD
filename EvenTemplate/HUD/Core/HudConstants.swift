@@ -199,27 +199,14 @@ enum HudConstants {
     static let navMiniMapUserYFraction: CGFloat = 0.62
     static let navMiniMapRefreshSeconds: Double = 2
 
-    /// Street lines for the mini-map from OpenStreetMap (Overpass API, free).
-    /// Streets are fetched for this radius around the user, refetched only after
-    /// moving this far from where they were fetched, and after a refused request
-    /// (HTTP 429/406) not retried for this long. Source: Overpass usage policy
-    /// (wiki.openstreetmap.org/wiki/Overpass_API): cache, ≤100 queries/day, wait 30 s.
-    /// Tried in order. The main instance is marked overloaded on the wiki, so two
-    /// public mirrors without rate limits go first (wiki "Public Overpass API instances").
-    static let overpassEndpoints: [String] = [
-        "https://overpass.private.coffee/api/interpreter",
-        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-        "https://overpass-api.de/api/interpreter",
-    ]
-    static let overpassUserAgent: String = "G2HUD/1.0 (personal navigation mini-map)"
-    static let overpassTimeoutSeconds: Double = 20
-    static let streetsFetchRadiusMeters: Double = 600
-    static let streetsRefetchMeters: Double = 300
-    static let overpassRetrySeconds: Double = 30
-
-    /// Mini-map street line widths, in pixels (route is navMapRouteWidthPx).
-    static let navMapMajorStreetWidthPx: CGFloat = 3
-    static let navMapMinorStreetWidthPx: CGFloat = 1.5
+    /// Apple Maps street background: this many times the map's size (so it can be
+    /// reused while walking), refetched after moving this far from its center (the
+    /// view reaches ~124 m north of the user; a 3x background has 300 m), and the
+    /// tone-curve level below which its dark grey background becomes black.
+    /// Source: design choice; MKMapSnapshotter is free in native apps.
+    static let navBackgroundScale: CGFloat = 3
+    static let navBackgroundRefetchMeters: Double = 150
+    static let navBackgroundBlackLevel: CGFloat = 0.25
 
     /// Nearest-place search: try these radii in order until something is found,
     /// in meters (500, 1000, ... 5000), with results restricted to the area

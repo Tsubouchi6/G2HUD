@@ -113,9 +113,9 @@ struct HudScreen: View {
             .background(Color.black)
             .cornerRadius(8)
 
-            // Phone-only check for the map's street lines (count, or why they failed).
-            if lens.activeTab?.id == "nav", !navigator.streetsStatus.isEmpty {
-                Text("Map: \(navigator.streetsStatus)").font(.footnote).foregroundColor(.secondary)
+            // Phone-only check for the map's street background.
+            if lens.activeTab?.id == "nav", !navigator.mapStatus.isEmpty {
+                Text("Map: \(navigator.mapStatus)").font(.footnote).foregroundColor(.secondary)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {

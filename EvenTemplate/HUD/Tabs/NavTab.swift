@@ -1,8 +1,8 @@
 // NavTab.swift
 //
 // Lens tab: turn-by-turn directions from Navigator. Two views:
-//   full    — G2-style map (400x200, MiniMapRenderer, the biggest picture the
-//             glasses take) with two lines under it: next turn; distance/time · destination
+//   full    — map (400x200, MiniMapRenderer: Apple Maps streets, north-up, route,
+//             user arrow; the biggest picture the glasses take) with two lines under it: next turn; distance/time · destination
 //   minimal — one line at the top ("120m 左折 ..."), the rest of the lens clear
 // Without glasses connected, an arrow from the phone's compass points to the next turn.
 // Switched by voice while this tab is open ("シンプル" / "詳しく" / "地図"),

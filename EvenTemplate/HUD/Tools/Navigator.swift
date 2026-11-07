@@ -8,11 +8,11 @@
 // Public API:
 //   Navigator(location:directions:heading:useCompass:)
 //     useCompass: true while the glasses aren't connected — then the phone's
-//     compass turns the arrow and the mini-map (phone held like a map).
+//     compass turns the arrows (phone held like a map).
 //   @Published state: NavState
 //   @Published minimal: Bool                 // one line at the top, nothing else
 //   @Published miniMap: Data?                // G2-style map PNG, 400x200 (MiniMapRenderer)
-//   @Published streetsStatus: String         // phone-only: street count or fetch error
+//   @Published mapStatus: String             // phone-only: whether the Apple Maps background loaded
 //   start(destination:mode:minimal:)         // finds the nearest match, routes, follows
 //   stop()
 //   showMap()                                // back to the full view with the mini-map
@@ -54,8 +54,8 @@ final class Navigator: ObservableObject {
     @Published private(set) var state: NavState = .idle
     @Published var minimal = false
     @Published private(set) var miniMap: Data?
-    /// Phone-only note on the street lines ("312 streets" / the error), for checking.
-    @Published private(set) var streetsStatus = ""
+    /// Phone-only note on the street background ("Apple Maps" / why it's missing).
+    @Published private(set) var mapStatus = ""
 
     var onArrived: ((String) -> Void)?
 
@@ -77,11 +77,9 @@ final class Navigator: ObservableObject {
     private var lastRerouteAt = Date.distantPast
     private var isRerouting = false
     private var miniMapDrawnAt = Date.distantPast
-    /// Streets around `streetsCenter` (OpenStreetMap), refetched after moving away.
-    private var streets: [Street] = []
-    private var streetsCenter: CLLocation?
-    private var streetsBlockedUntil = Date.distantPast
-    private var isFetchingStreets = false
+    /// Apple Maps street picture around the user, refetched after moving away.
+    private var background: StreetBackground?
+    private var isFetchingBackground = false
 
     init(location: LocationService, directions: DirectionsService, heading: HeadingService, useCompass: @escaping () -> Bool) {
         self.location = location
@@ -119,8 +117,7 @@ final class Navigator: ObservableObject {
         route = nil
         destination = nil
         miniMap = nil
-        streets = []
-        streetsCenter = nil
+        background = nil
         state = .idle
     }
 
@@ -202,10 +199,10 @@ final class Navigator: ObservableObject {
               let destination
         else { return }
         miniMapDrawnAt = Date()
-        fetchStreetsIfNeeded(around: here)
+        fetchBackgroundIfNeeded(around: here)
         miniMap = MiniMapRenderer.png(
+            background: background,
             route: routePoints.map(\.coordinate),
-            streets: streets,
             user: here.coordinate,
             nextTurn: stepIndex < stepEnds.count - 1 ? stepEnds[stepIndex].coordinate : nil,
             destination: destination.placemark.coordinate,
@@ -213,27 +210,22 @@ final class Navigator: ObservableObject {
         )
     }
 
-    /// Gets streets for the mini-map when there are none yet or the user has
-    /// moved streetsRefetchMeters from where they were fetched (Overpass policy:
-    /// cache, few requests, back off after 429/406). Redraws when they arrive.
-    private func fetchStreetsIfNeeded(around here: CLLocation) {
-        if let center = streetsCenter, here.distance(from: center) < HudConstants.streetsRefetchMeters { return }
-        guard !isFetchingStreets, Date() >= streetsBlockedUntil else { return }
-        isFetchingStreets = true
+    /// Gets the Apple Maps street picture when there is none yet or the user
+    /// has moved navBackgroundRefetchMeters from its center. Redraws when it arrives.
+    private func fetchBackgroundIfNeeded(around here: CLLocation) {
+        if let background, here.distance(from: background.center) < HudConstants.navBackgroundRefetchMeters { return }
+        guard !isFetchingBackground else { return }
+        isFetchingBackground = true
         Task {
-            do {
-                streets = try await StreetMapClient.streets(
-                    around: here.coordinate, radiusMeters: HudConstants.streetsFetchRadiusMeters
-                )
-                streetsCenter = here
-                streetsStatus = "\(streets.count) streets"
+            if let fresh = await StreetBackground.make(around: here) {
+                background = fresh
+                mapStatus = "Apple Maps"
                 miniMapDrawnAt = .distantPast
                 if let latest = lastLocation { drawMiniMap(at: latest) }
-            } catch {
-                streetsStatus = error.localizedDescription
-                streetsBlockedUntil = Date().addingTimeInterval(HudConstants.overpassRetrySeconds)
+            } else {
+                mapStatus = "Apple Maps streets didn't load (route only)"
             }
-            isFetchingStreets = false
+            isFetchingBackground = false
         }
     }
 
