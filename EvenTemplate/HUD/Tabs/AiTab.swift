@@ -73,6 +73,8 @@ final class AiTab: LensTab {
         do {
             let local = try await ai.ask(question, language: settings.language)
             return claudeFailure == nil ? local : "\(HudText.t(.iphoneAiTag)) \(local)"
+        } catch OnDeviceAIError.blocked {
+            return HudText.t(.aiBlocked)
         } catch {
             return HudText.t(.aiError, error.localizedDescription)
         }

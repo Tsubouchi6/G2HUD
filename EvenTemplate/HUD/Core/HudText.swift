@@ -39,7 +39,7 @@ enum HudText {
         case tabCaptions, tabAI, tabSearch, tabCalc, tabNotes, tabRemind
         // Lens content
         case listening, captionsOff, aiHint, searchHint, calcHint, notesHint, remindHint
-        case searchLabel, noResults, aiError, aiUnavailable
+        case searchLabel, noResults, aiError, aiUnavailable, aiBlocked
         // Lens feedback
         case wakeAck, noted, timeUnknown, reminderSet, reminderAlert
         case confirmDeleteLastNote, confirmDeleteAllNotes, confirmDeleteAllReminders, confirmSuffix
@@ -87,6 +87,8 @@ enum HudText {
         .searchLabel: ("検索: %@", "Search: %@", "Pesquisa: %@"),
         .noResults: ("結果なし", "No results", "Sem resultados"),
         .aiError: ("AIエラー: %@", "AI error: %@", "Erro da IA: %@"),
+        .aiBlocked: ("iPhoneのAIはこの話題に答えられないみたい。PCのClaudeなら答えられるよ", "The iPhone AI won't answer this one. Claude on your PC can.",
+                     "A IA do iPhone não responde isso. O Claude no seu PC responde."),
         .aiUnavailable: ("AIが使えません (Apple Intelligenceをオンに)", "AI unavailable (turn on Apple Intelligence)",
                          "IA indisponível (ative a Apple Intelligence)"),
 

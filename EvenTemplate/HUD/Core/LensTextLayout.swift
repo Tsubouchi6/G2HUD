@@ -38,24 +38,41 @@ enum LensTextLayout {
     // MARK: - Wrapping
 
     /// Splits on newlines, then wraps each line at `HudConstants.lensLineUnits`.
+    /// Latin text breaks at the last space so words stay whole; text without
+    /// spaces (Japanese) breaks between any two characters, as it should.
     static func wrap(_ text: String) -> [String] {
-        let limit = HudConstants.lensLineUnits
         var result: [String] = []
         for rawLine in text.components(separatedBy: "\n") {
-            var current = ""
-            var currentUnits = 0
-            for character in rawLine {
-                let width = units(of: character)
-                if currentUnits + width > limit {
+            result.append(contentsOf: wrapLine(rawLine))
+        }
+        return result
+    }
+
+    private static func wrapLine(_ line: String) -> [String] {
+        let limit = HudConstants.lensLineUnits
+        var result: [String] = []
+        var current = ""
+        for character in line {
+            if units(of: current) + units(of: character) > limit {
+                if character == " " {
+                    // The break falls on a space: drop it.
                     result.append(current)
                     current = ""
-                    currentUnits = 0
+                    continue
                 }
-                current.append(character)
-                currentUnits += width
+                if let lastSpace = current.lastIndex(of: " "), lastSpace != current.startIndex {
+                    // Move the unfinished word to the next line.
+                    result.append(String(current[..<lastSpace]))
+                    current = String(current[current.index(after: lastSpace)...])
+                } else {
+                    // One word longer than a line, or no spaces (Japanese): hard break.
+                    result.append(current)
+                    current = ""
+                }
             }
-            result.append(current)
+            current.append(character)
         }
+        result.append(current)
         return result
     }
 

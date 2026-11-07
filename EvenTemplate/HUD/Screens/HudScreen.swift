@@ -88,7 +88,15 @@ struct HudScreen: View {
                         Text(picture.caption)
                     }
                 } else {
-                    Text(lens.previewText.isEmpty ? " " : lens.previewText)
+                    // One lens line per row, shrunk to fit, so the phone doesn't
+                    // wrap lines a second time and the preview matches the lens.
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(Array(lens.previewText.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
+                            Text(line.isEmpty ? " " : line)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.5)
+                        }
+                    }
                 }
             }
             .font(.system(size: 13, design: .monospaced))

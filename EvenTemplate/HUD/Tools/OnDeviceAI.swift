@@ -12,7 +12,7 @@
 //   OnDeviceAI()
 //   tools: [any Tool]                // set once by HudController, before the first question
 //   availabilityMessage: String?     // nil when the model is ready
-//   ask(_ question:, language:) async throws -> String
+//   ask(_ question:, language:) async throws -> String   // throws OnDeviceAIError.blocked on Apple's safety filter
 //   answerOffline(query:language:) async throws -> String   // search fallback, no web, no chat history
 //   condense(answer:query:language:) async throws -> String  // web answer -> short, in the HUD language
 //   translate(_ text:, to:) async throws -> String           // fallback for Translator
@@ -21,10 +21,21 @@
 import Foundation
 import FoundationModels
 
+enum OnDeviceAIError: Error {
+    /// Apple's safety filter refused the topic (Claude on the PC can answer it).
+    case blocked
+}
+
 @MainActor
 final class OnDeviceAI {
 
     // MARK: - State
+
+    /// Apple's default guardrails block ordinary adult questions (e.g. comparing
+    /// crime statistics). This documented mode skips them for text answers; the
+    /// model keeps its own safety layer, and tool arguments still use the default.
+    /// Source: developer.apple.com/documentation/foundationmodels/improving-the-safety-of-generative-model-output
+    private static let model = SystemLanguageModel(guardrails: .permissiveContentTransformations)
 
     var tools: [any Tool] = []
     private var session: LanguageModelSession?
@@ -53,6 +64,8 @@ final class OnDeviceAI {
             // Conversation got too long: start fresh and retry once.
             reset()
             return try await respond(prompt)
+        } catch LanguageModelSession.GenerationError.guardrailViolation(_) {
+            throw OnDeviceAIError.blocked
         }
     }
 
@@ -70,7 +83,7 @@ final class OnDeviceAI {
         If it needs live or recent information (weather, news, prices, hours), say briefly \
         that you can't know without the web. Plain text only. \(HudConstants.aiPersonality)
         """
-        let session = LanguageModelSession(instructions: instructions)
+        let session = LanguageModelSession(model: Self.model, instructions: instructions)
         let response = try await session.respond(to: "\(AiContext.line(language: language))\n\(query)")
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -84,7 +97,7 @@ final class OnDeviceAI {
         Keep only what the question asks for, for the user's own place and time unless \
         the question names another. Keep numbers exactly. Plain text only. \(HudConstants.aiPersonality)
         """
-        let session = LanguageModelSession(instructions: instructions)
+        let session = LanguageModelSession(model: Self.model, instructions: instructions)
         let prompt = "\(AiContext.line(language: language))\nQuestion: \(query)\n\nAnswer: \(answer)"
         let response = try await session.respond(to: prompt)
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -92,7 +105,7 @@ final class OnDeviceAI {
 
     /// One line, translated. Fresh session each time (no chat history).
     func translate(_ text: String, to language: HudLanguage) async throws -> String {
-        let session = LanguageModelSession(instructions: """
+        let session = LanguageModelSession(model: Self.model, instructions: """
         Translate the user's text into \(language.englishName). Reply with the translation only.
         """)
         let response = try await session.respond(to: text)
@@ -102,7 +115,7 @@ final class OnDeviceAI {
     // MARK: - Helpers
 
     private func respond(_ prompt: String) async throws -> String {
-        let session = self.session ?? LanguageModelSession(tools: tools, instructions: HudConstants.aiInstructions)
+        let session = self.session ?? LanguageModelSession(model: Self.model, tools: tools, instructions: HudConstants.aiInstructions)
         self.session = session
         let response = try await session.respond(to: prompt)
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
