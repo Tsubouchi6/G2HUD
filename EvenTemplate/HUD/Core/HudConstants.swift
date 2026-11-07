@@ -199,9 +199,10 @@ enum HudConstants {
     static let navMiniMapRefreshSeconds: Double = 2
 
     /// Nearest-place search: try these radii in order until something is found,
-    /// in meters, with results restricted to the area (MKLocalSearch regionPriority
-    /// .required, iOS 18; without it Apple may return far-away matches).
-    static let navSearchRadiiMeters: [Double] = [800, 2000, 5000]
+    /// in meters (500, 1000, ... 5000), with results restricted to the area
+    /// (MKLocalSearch regionPriority .required, iOS 18; without it Apple may
+    /// return far-away matches). Source: user's choice of 500 m steps.
+    static let navSearchRadiiMeters: [Double] = Array(stride(from: 500.0, through: 5000.0, by: 500.0))
 
     /// Map drawing: line width and marker radius, in pixels.
     static let navMapRouteWidthPx: CGFloat = 5
