@@ -1,7 +1,7 @@
 // ChartRenderer.swift
 //
-// Draws a line or bar chart (Swift Charts) into a PNG sized for the lens
-// picture area. White on black: the glasses show it as bright green, and
+// Draws a line or bar chart (Swift Charts) into a PNG sized for a picture
+// inside the AI chat (chatPictureWidthPx x chatPictureHeightPx). White on black: the glasses show it as bright green, and
 // black is see-through. Labels are kept few and large, since the lens is
 // only ~23 pixels per degree.
 //
@@ -29,8 +29,9 @@ enum ChartRenderer {
 
     static func png(points: [ChartPoint], kind: ChartKind) -> Data? {
         guard !points.isEmpty else { return nil }
-        let width = CGFloat(HudConstants.imageTileWidthPx * HudConstants.imageTilesAcross)
-        let height = CGFloat(HudConstants.imageTileHeightPx * HudConstants.imageTilesDown)
+        // Sized for a picture inside the AI chat (not the full lens).
+        let width = CGFloat(HudConstants.chatPictureWidthPx)
+        let height = CGFloat(HudConstants.chatPictureHeightPx)
 
         let chart: AnyView = kind == .line
             ? AnyView(LineChartView(points: points))

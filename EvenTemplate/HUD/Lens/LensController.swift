@@ -7,13 +7,13 @@
 //
 // Public API:
 //   LensController(pusher:)
-//   @Published activeIndex: Int, previewText: String, isActive: Bool
+//   @Published activeIndex: Int, previewText: String, previewPicture: Data?, isActive: Bool
 //   tabs: [LensTab]
 //   setTabs(_:)
 //   activate() / deactivate()
 //   next() / previous() / select(id:) -> Bool / tab(named:) -> LensTab?
 //   scroll(linesUp:) / scroll(linesDown:)
-//   showBanner(_ text: String, seconds: Double)
+//   showBanner(_ text: String, seconds: Double) / hideBanner()
 //   showImage(_ data: Data, caption: String) / dismissImage()
 //   @Published image: LensImage?            // picture currently on the lens
 //   render()
@@ -33,6 +33,8 @@ final class LensController: ObservableObject {
 
     @Published private(set) var activeIndex = 0
     @Published private(set) var previewText = ""
+    /// Picture shown under the text (chat pictures), for the phone preview.
+    @Published private(set) var previewPicture: Data?
     @Published private(set) var isActive = false
     @Published private(set) var image: LensImage?
 
@@ -161,6 +163,13 @@ final class LensController: ObservableObject {
         }
     }
 
+    /// Removes the banner now (e.g. "Finding a picture..." once it's found).
+    func hideBanner() {
+        bannerTask?.cancel()
+        banner = nil
+        render()
+    }
+
     // MARK: - Rendering
 
     /// Rebuilds the lens text from the active tab and pushes it.
@@ -168,9 +177,12 @@ final class LensController: ObservableObject {
         guard let tab = activeTab else { return }
         let page = tab.page()
         let wrapped = page.lines.flatMap(LensTextLayout.wrap)
-        let height = HudConstants.lensLinesPerScreen - (banner == nil ? 0 : 1)
-
         let offset = scrollOffsets[tab.id] ?? 0
+        // A chat picture sits under the newest lines, only while scrolled to them.
+        let picture = offset == 0 ? page.picture : nil
+        let screenLines = picture == nil ? HudConstants.lensLinesPerScreen : HudConstants.chatLinesAbovePicture
+        let height = screenLines - (banner == nil ? 0 : 1)
+
         let window = LensTextLayout.window(wrapped, anchor: page.anchor, scroll: offset, height: height)
         if offset > window.maxScroll { scrollOffsets[tab.id] = window.maxScroll }
 
@@ -179,8 +191,10 @@ final class LensController: ObservableObject {
         let text = lines.joined(separator: "\n")
 
         previewText = text
-        // While a picture is up, keep it; the text is pushed when it's dismissed.
-        if isActive, image == nil { pusher.show(text) }
+        previewPicture = picture
+        // While a full-lens picture is up, keep it; the text is pushed when it's dismissed.
+        guard isActive, image == nil else { return }
+        if let picture { pusher.showChat(text: text, picture: picture) } else { pusher.show(text) }
     }
 
     // MARK: - Private

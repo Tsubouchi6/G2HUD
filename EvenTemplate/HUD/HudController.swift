@@ -55,13 +55,23 @@ final class HudController: ObservableObject {
         let navigator = Navigator(location: LocationService(), directions: DirectionsService())
 
         // What either AI can make the HUD do (charts, pictures, saving, listening, directions).
+        let aiTab = AiTab(ai: ai, settings: settings, archive: aiChats)
         let actions = AiActions(
-            showChart: { [weak lens] chart in lens?.showImage(chart.png, caption: chart.caption) },
-            showPicture: { [weak lens] terms, caption in
+            // Charts and photos go into the AI chat like a message, not over the whole lens.
+            showChart: { [weak lens, weak aiTab] chart in
+                aiTab?.addPicture(chart.png, caption: chart.caption)
+                lens?.select(id: "ai")
+            },
+            showPicture: { [weak lens, weak aiTab] terms, caption in
                 lens?.showBanner(HudText.t(.findingImage), seconds: HudConstants.searchTimeoutSeconds)
                 Task {
-                    if let data = await search.findImage(terms) {
-                        lens?.showImage(data, caption: caption)
+                    if let data = await search.findImage(terms),
+                       let fitted = LensImageTiler.fitted(
+                           data, width: HudConstants.chatPictureWidthPx, height: HudConstants.chatPictureHeightPx
+                       ) {
+                        aiTab?.addPicture(fitted, caption: caption)
+                        lens?.hideBanner()
+                        lens?.select(id: "ai")
                     } else {
                         lens?.showBanner(HudText.t(.imageNotFound))
                     }
@@ -99,7 +109,7 @@ final class HudController: ObservableObject {
         )
         ai.tools = AiTools.make(search: search, charts: charts, actions: actions)
         let claude = ClaudeOnPC(settings: settings, charts: charts, actions: actions)
-        let aiTab = AiTab(ai: ai, claude: claude, settings: settings, archive: aiChats)
+        aiTab.claude = claude
         let savedTab = SavedTab(
             conversations: conversations, listening: listening, chats: aiChats, translator: Translator(ai: ai)
         )

@@ -96,6 +96,16 @@ struct HudScreen: View {
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.5)
                         }
+                        // Chat picture under the newest lines, as on the lens.
+                        if let data = lens.previewPicture, let uiImage = UIImage(data: data) {
+                            Spacer(minLength: 0)
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                                .grayscale(1)
+                                .colorMultiply(Self.lensGreen)
+                                .frame(maxWidth: 260, alignment: .leading)
+                        }
                     }
                 }
             }

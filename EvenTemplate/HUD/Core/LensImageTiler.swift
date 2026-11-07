@@ -7,6 +7,7 @@
 //
 // Public API:
 //   LensImageTiler.tiles(from imageData: Data) -> [LensImageTile]
+//   LensImageTiler.fitted(_ imageData: Data, width:height:) -> Data?   // PNG, centered on black
 //   struct LensImageTile { png, x, y, width, height }   // lens pixel coordinates
 
 import UIKit
@@ -62,5 +63,22 @@ enum LensImageTiler {
             }
         }
         return result
+    }
+
+    /// The picture scaled to fit `width` x `height` (shape kept), centered on
+    /// black (see-through on the lens), as a PNG. nil if it isn't an image.
+    static func fitted(_ imageData: Data, width: Int, height: Int) -> Data? {
+        guard let image = UIImage(data: imageData), image.size.width > 0, image.size.height > 0 else { return nil }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let size = CGSize(width: width, height: height)
+        let scale = min(size.width / image.size.width, size.height / image.size.height)
+        let drawn = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor.black.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            image.draw(in: CGRect(x: (size.width - drawn.width) / 2, y: (size.height - drawn.height) / 2,
+                                  width: drawn.width, height: drawn.height))
+        }.pngData()
     }
 }

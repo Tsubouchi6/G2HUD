@@ -7,9 +7,15 @@
 //      tagged "(iPhone AI)" if Claude was supposed to answer.
 // Both may search, draw charts, or show pictures by themselves.
 //
+// Charts and photos either AI asks for appear in the chat like a message: a
+// "[▣ caption]" line plus the picture under the newest lines (LensPage.picture),
+// until the next question.
 // The chat on screen is what "save this chat" saves (AiChatArchive).
 //
-// Public API: AiTab(ai:claude:settings:archive:)  — LensTab with id "ai"; ask(_ question:)
+// Public API: AiTab(ai:settings:archive:)  — LensTab with id "ai"; ask(_ question:)
+//   claude: ClaudeOnPC?            // set by HudController (built after the tab, since its
+//                                  // actions put pictures into this tab)
+//   addPicture(_ png:, caption:)   // png must be chatPictureWidthPx x chatPictureHeightPx
 
 import Foundation
 
@@ -22,14 +28,15 @@ final class AiTab: LensTab {
     var onChange: (() -> Void)?
 
     private let ai: OnDeviceAI
-    private let claude: ClaudeOnPC
+    var claude: ClaudeOnPC?
     private let settings: HudSettings
     private var lines: [String] = []
+    /// The current answer's picture; cleared when the next question is asked.
+    private var picture: Data?
     private static let maxLines = 200
 
-    init(ai: OnDeviceAI, claude: ClaudeOnPC, settings: HudSettings, archive: AiChatArchive) {
+    init(ai: OnDeviceAI, settings: HudSettings, archive: AiChatArchive) {
         self.ai = ai
-        self.claude = claude
         self.settings = settings
         archive.currentTranscript = { [weak self] in self?.transcriptForSaving ?? [] }
     }
@@ -43,12 +50,13 @@ final class AiTab: LensTab {
     }
 
     func page() -> LensPage {
-        LensPage(lines: lines.isEmpty ? [HudText.t(.aiHint)] : lines, anchor: .bottom)
+        LensPage(lines: lines.isEmpty ? [HudText.t(.aiHint)] : lines, anchor: .bottom, picture: picture)
     }
 
     // MARK: - Asking
 
     func ask(_ question: String) {
+        picture = nil
         append(["> \(question)", "..."])
         Task {
             let answer = await answer(question)
@@ -60,7 +68,7 @@ final class AiTab: LensTab {
     /// Claude first (if set up), the iPhone AI as fallback.
     private func answer(_ question: String) async -> String {
         var claudeFailure: Error?
-        if claude.isConfigured {
+        if let claude, claude.isConfigured {
             do {
                 return try await claude.ask(question)
             } catch {
@@ -78,6 +86,15 @@ final class AiTab: LensTab {
         } catch {
             return HudText.t(.aiError, error.localizedDescription)
         }
+    }
+
+    func addPicture(_ png: Data, caption: String) {
+        // Keep a pending "..." last, so the answer still replaces it.
+        let pendingIndex = lines.last == "..." ? lines.count - 1 : nil
+        let line = "[▣ \(caption)]"
+        if let pendingIndex { lines.insert(line, at: pendingIndex) } else { lines.append(line) }
+        picture = png
+        onChange?()
     }
 
     private func append(_ newLines: [String]) {

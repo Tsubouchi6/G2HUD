@@ -8,6 +8,7 @@
 //   LensPusher(session:)
 //   show(_ text: String)                    // throttled; the newest text always wins
 //   showImage(tiles:caption:)               // picture tiles + caption under them
+//   showChat(text:picture:)                 // text block with a picture under it (one scene)
 //   clear()                                 // blank the lens immediately
 
 import Foundation
@@ -22,6 +23,10 @@ final class LensPusher {
     private var lastSentText = ""
     private var lastSendDate = Date.distantPast
     private var sendTask: Task<Void, Never>?
+
+    /// Last chat scene sent (the G2 code diffs elements by id, so unchanged
+    /// parts, especially the slow picture, aren't re-sent). nil = text mode.
+    private var lastScene: (text: String, picture: Data)?
 
     init(session: BluetoothSession) {
         self.session = session
@@ -68,12 +73,48 @@ final class LensPusher {
         }
     }
 
+    /// Text in the top area and a picture under it, as one scene frame
+    /// (template DeviceManager "scene" event: elements with per-id change
+    /// marks; G2.applySceneFrame skips "unchanged" ones). Used by chat tabs.
+    func showChat(text: String, picture: Data) {
+        sendTask?.cancel()
+        sendTask = nil
+        pendingText = nil
+        if let last = lastScene, last.text == text, last.picture == picture { return }
+
+        let replay = lastScene == nil  // coming from text mode: paint everything fresh
+        let textChange = replay ? "created" : (lastScene?.text == text ? "unchanged" : "updated")
+        let pictureChange = replay ? "created" : (lastScene?.picture == picture ? "unchanged" : "updated")
+        lastScene = (text, picture)
+        lastSentText = ""  // the next plain-text push must be sent again
+
+        let scene: [String: Any] = [
+            "appId": "g2hud",
+            "replay": replay,
+            "removed": [String](),
+            "elements": [
+                [
+                    "id": "chat-text", "type": "text", "text": text, "change": textChange,
+                    "box": ["x": 0, "y": 0, "w": HudConstants.lensWidthPx, "h": HudConstants.chatPictureY],
+                ],
+                [
+                    "id": "chat-picture", "type": "image", "data": picture.base64EncodedString(), "change": pictureChange,
+                    "box": ["x": 0, "y": HudConstants.chatPictureY,
+                            "w": HudConstants.chatPictureWidthPx, "h": HudConstants.chatPictureHeightPx],
+                ],
+            ],
+        ]
+        let sdk = session.sdk
+        Task { try? await sdk.displayEvent(DisplayEventRequest(values: ["view": "main", "scene": scene])) }
+    }
+
     /// A main-view display event in the template's layout format.
     private static func layoutEvent(_ layout: [String: Any]) -> DisplayEventRequest {
         DisplayEventRequest(values: ["view": "main", "layout": layout])
     }
 
     func clear() {
+        lastScene = nil
         sendTask?.cancel()
         sendTask = nil
         pendingText = nil
@@ -91,6 +132,14 @@ final class LensPusher {
         lastSentText = text
         lastSendDate = Date()
         let sdk = session.sdk
-        Task { try? await sdk.displayText(text) }
+        // Leaving a chat scene: a "clear_view" layout makes the template drop the
+        // stored scene and blank its elements (plain displayText bypasses that,
+        // and the old scene would come back after the head-up dashboard).
+        let leavingScene = lastScene != nil
+        lastScene = nil
+        Task {
+            if leavingScene { try? await sdk.displayEvent(Self.layoutEvent(["layoutType": "clear_view"])) }
+            try? await sdk.displayText(text)
+        }
     }
 }

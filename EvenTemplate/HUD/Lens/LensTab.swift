@@ -4,7 +4,7 @@
 // LensController decides what part of it is visible and sends it to the glasses.
 //
 // Public API:
-//   struct LensPage { lines, anchor }
+//   struct LensPage { lines, anchor, picture }   // picture: shown under the newest lines (chat)
 //   protocol LensTab
 //     id, title, voiceNames
 //     page() -> LensPage
@@ -16,6 +16,10 @@ struct LensPage {
     /// Logical lines (LensController wraps long ones).
     var lines: [String]
     var anchor: LensAnchor
+    /// A picture (PNG, chatPictureWidthPx x chatPictureHeightPx) shown under the
+    /// newest lines while the page is scrolled to its newest end. Chats use it
+    /// so a chart or photo sits in the conversation like a message.
+    var picture: Data? = nil
 }
 
 @MainActor
