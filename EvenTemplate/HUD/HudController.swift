@@ -247,6 +247,10 @@ final class HudController: ObservableObject {
             .sink { [weak lens] _ in lens?.render() }
         reminders.onDue = { [weak self] reminder in self?.showReminder(reminder) }
         reminders.start()
+        // Time, battery and weather tick from launch, so the preview shows them
+        // before the HUD starts (the lens itself only draws while active).
+        status.start()
+        weather.start()
     }
 
     // MARK: - On / off
@@ -257,15 +261,11 @@ final class HudController: ObservableObject {
         guard captions.isRunning else { return }
         if settings.saveConversations { conversations.startSession(language: settings.hearingLanguage) }
         lens.activate()
-        status.start()
-        weather.start()
         input.start()
     }
 
     func stop() async {
         input.stop()
-        status.stop()
-        weather.stop()
         await captions.stop()
         conversations.endSession()
         _ = listenSchedule.cancel()
