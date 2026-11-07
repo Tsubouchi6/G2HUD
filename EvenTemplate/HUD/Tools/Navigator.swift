@@ -25,6 +25,7 @@
 //   stop()
 //   showMap()                                // back to the view with the map
 //   onArrived: ((String) -> Void)?
+//   onNotice: ((String) -> Void)?            // "Finding..." / failed search while a map is already up
 //   enum NavState, struct NavProgress, struct PlaceInfo
 
 import CoreLocation
@@ -73,6 +74,9 @@ final class Navigator: ObservableObject {
     @Published private(set) var mapStatus = ""
 
     var onArrived: ((String) -> Void)?
+    /// Short notices while a map is already up ("Finding...", a failed search),
+    /// so a new request never wipes the current map before it succeeds.
+    var onNotice: ((String) -> Void)?
 
     private let location: LocationService
     private let directions: DirectionsService
@@ -99,6 +103,10 @@ final class Navigator: ObservableObject {
     private var viewRadiusMeters: Double?
     /// Place mode after "zoom in": the map centers on the place instead of fitting both.
     private var focusOnPlace = false
+    /// Place mode: the fit-both reach and middle, fixed when the place is found
+    /// (recomputing them from every GPS fix changed the zoom slightly each time,
+    /// which threw away the street picture and made the map flicker).
+    private var placeFit: (center: CLLocationCoordinate2D, radiusMeters: Double)?
 
     /// Apple Maps street picture, refetched after moving away or zooming.
     private var background: StreetBackground?
@@ -133,6 +141,7 @@ final class Navigator: ObservableObject {
         background = nil
         viewRadiusMeters = nil
         focusOnPlace = false
+        placeFit = nil
         state = .idle
     }
 
@@ -153,23 +162,28 @@ final class Navigator: ObservableObject {
         drawMiniMap(at: here)
     }
 
+    /// Finds the place first; only then replaces what's on the map. If the
+    /// search fails while a map is up, that map stays and a notice is shown.
     private func begin(query: String, mode: DirectionsMode, placeMode: Bool) {
-        stop()
-        self.mode = mode
-        isPlaceMode = placeMode
-        minimal = false
-        state = .finding(query)
+        let mapIsUp = route != nil
+        if mapIsUp { onNotice?(HudText.t(.navFinding, query)) } else { state = .finding(query) }
         Task {
             do {
                 let here = try await location.currentLocation()
                 let place = try await directions.nearestPlace(query, near: here)
+                let route = try await directions.route(to: place, mode: mode)
+                stop()
+                self.mode = mode
+                isPlaceMode = placeMode
+                minimal = false
                 destination = place
                 destinationName = place.name ?? query
-                try await loadRoute(from: here)
+                if placeMode { placeFit = Self.fit(user: here.coordinate, place: place.placemark.coordinate) }
+                use(route, at: here)
                 location.startUpdates { [weak self] update in self?.follow(update) }
                 heading.start { [weak self] degrees in self?.turned(to: degrees) }
             } catch {
-                state = .failed(error.localizedDescription)
+                if mapIsUp { onNotice?(error.localizedDescription) } else { state = .failed(error.localizedDescription) }
             }
         }
     }
@@ -178,7 +192,10 @@ final class Navigator: ObservableObject {
 
     private func loadRoute(from here: CLLocation) async throws {
         guard let destination else { return }
-        let route = try await directions.route(to: destination, mode: mode)
+        use(try await directions.route(to: destination, mode: mode), at: here)
+    }
+
+    private func use(_ route: MKRoute, at here: CLLocation) {
         self.route = route
         steps = route.steps
         stepEnds = steps.map { step in
@@ -259,17 +276,21 @@ final class Navigator: ObservableObject {
         if focusOnPlace {
             return MapFrame(center: target, radiusMeters: viewRadiusMeters ?? HudConstants.navMiniMapRadiusMeters, anchorYFraction: 0.5)
         }
-        // Fit both: center between them, reach to cover both plus a margin
-        // (the map is half as tall as wide, so north-south distance counts double).
-        let user = here.coordinate
-        let middle = CLLocationCoordinate2D(latitude: (user.latitude + target.latitude) / 2,
-                                            longitude: (user.longitude + target.longitude) / 2)
+        let fit = placeFit ?? Self.fit(user: here.coordinate, place: target)
+        return MapFrame(center: fit.center, radiusMeters: viewRadiusMeters ?? fit.radiusMeters, anchorYFraction: 0.5)
+    }
+
+    /// Middle and reach that show both points plus a margin (the map is half
+    /// as tall as wide, so north-south distance counts double).
+    private static func fit(user: CLLocationCoordinate2D, place: CLLocationCoordinate2D) -> (center: CLLocationCoordinate2D, radiusMeters: Double) {
+        let middle = CLLocationCoordinate2D(latitude: (user.latitude + place.latitude) / 2,
+                                            longitude: (user.longitude + place.longitude) / 2)
         let eastWest = CLLocation(latitude: middle.latitude, longitude: user.longitude)
-            .distance(from: CLLocation(latitude: middle.latitude, longitude: target.longitude)) / 2
+            .distance(from: CLLocation(latitude: middle.latitude, longitude: place.longitude)) / 2
         let northSouth = CLLocation(latitude: user.latitude, longitude: middle.longitude)
-            .distance(from: CLLocation(latitude: target.latitude, longitude: middle.longitude)) / 2
-        let fit = max(eastWest, northSouth * 2) * HudConstants.navPlaceFitMargin
-        return MapFrame(center: middle, radiusMeters: viewRadiusMeters ?? max(fit, HudConstants.navZoomMinMeters), anchorYFraction: 0.5)
+            .distance(from: CLLocation(latitude: place.latitude, longitude: middle.longitude)) / 2
+        let radius = max(eastWest, northSouth * 2) * HudConstants.navPlaceFitMargin
+        return (middle, max(radius, HudConstants.navZoomMinMeters))
     }
 
     /// Redraws the map at most every navMiniMapRefreshSeconds (each new picture
@@ -278,9 +299,12 @@ final class Navigator: ObservableObject {
         guard Date().timeIntervalSince(miniMapDrawnAt) >= HudConstants.navMiniMapRefreshSeconds,
               let destination
         else { return }
-        miniMapDrawnAt = Date()
         let frame = currentFrame(at: here)
         fetchBackgroundIfNeeded(for: frame)
+        // Zoom changed and the new street picture isn't here yet: keep the old map
+        // up instead of flashing a streetless one (it redraws when the picture lands).
+        if let background, !background.matches(frame), miniMap != nil, isFetchingBackground { return }
+        miniMapDrawnAt = Date()
         miniMap = MiniMapRenderer.png(
             background: background?.matches(frame) == true ? background : nil,
             frame: frame,

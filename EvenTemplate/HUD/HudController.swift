@@ -149,6 +149,7 @@ final class HudController: ObservableObject {
             NavTab(navigator: navigator),
         ])
         navigator.onArrived = { [weak lens] name in lens?.showBanner(HudText.t(.navArrived, name), seconds: HudConstants.reminderAlertSeconds) }
+        navigator.onNotice = { [weak lens] text in lens?.showBanner(text, seconds: HudConstants.reminderAlertSeconds) }
 
         self.settings = settings
         self.captions = captions
