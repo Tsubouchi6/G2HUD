@@ -13,6 +13,11 @@
 import AVFoundation
 import Speech
 
+/// Apple's transcriber. Qualified with the module name because the template
+/// has its own `SpeechTranscriber` class (old SFSpeechRecognizer wrapper)
+/// that would otherwise shadow it.
+private typealias AppleTranscriber = Speech.SpeechTranscriber
+
 @MainActor
 final class AppleSpeechEngine: SpeechEngine {
 
@@ -40,14 +45,14 @@ final class AppleSpeechEngine: SpeechEngine {
         guard !isRunning else { return }
         try await Self.requestPermission()
 
-        guard let locale = await SpeechTranscriber.supportedLocale(
+        guard let locale = await AppleTranscriber.supportedLocale(
             equivalentTo: Locale(identifier: languageId)
         ) else {
             throw SpeechEngineError.unsupportedLanguage(languageId)
         }
 
         // progressiveTranscription = live, in-progress (volatile) results + fast results.
-        let transcriber = SpeechTranscriber(locale: locale, preset: .progressiveTranscription)
+        let transcriber = AppleTranscriber(locale: locale, preset: .progressiveTranscription)
 
         // Download the language model the first time it's needed.
         if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
