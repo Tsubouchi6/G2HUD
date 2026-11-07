@@ -109,9 +109,26 @@ enum VoicePhrases {
             break
         }
         for word in HudConstants.wakeWords where remainder.hasPrefix(word) {
-            return String(remainder.dropFirst(word.count)).trimmingCharacters(in: separators)
+            let rest = remainder.dropFirst(word.count)
+            // "neon" / "ネオン" are other words, not the wake word.
+            if let next = rest.first, let last = word.last, sameScript(last, next) { continue }
+            return String(rest).trimmingCharacters(in: separators)
         }
         return nil
+    }
+
+    /// True when both characters are Latin letters, both katakana, or both
+    /// hiragana, i.e. the second continues the same word.
+    private static func sameScript(_ a: Character, _ b: Character) -> Bool {
+        func script(_ c: Character) -> Int? {
+            guard let value = c.unicodeScalars.first?.value else { return nil }
+            if c.isASCII && c.isLetter { return 0 }
+            if (0x30A0...0x30FF).contains(value) { return 1 }  // katakana (incl. ー)
+            if (0x3040...0x309F).contains(value) { return 2 }  // hiragana
+            return nil
+        }
+        guard let first = script(a) else { return false }
+        return first == script(b)
     }
 
     // MARK: - Matching

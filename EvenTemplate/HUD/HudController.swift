@@ -122,7 +122,7 @@ final class HudController: ObservableObject {
 
         captions.onFinalPhrase = { [weak self] phrase in
             self?.conversations.append(phrase)
-            // "Listen to this" clips keep only what others say, not "Claude ..." commands.
+            // "Listen to this" clips keep only what others say, not "Neo ..." commands.
             if VoicePhrases.stripWakeWord(VoicePhrases.normalize(phrase)) == nil { self?.listening.append(phrase) }
             self?.router.handle(phrase: phrase)
         }

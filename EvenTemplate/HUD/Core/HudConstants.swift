@@ -107,13 +107,14 @@ enum HudConstants {
 
     // MARK: - Voice commands
 
-    /// Wake word ("Claude"): a phrase starting with one of these is a command.
+    /// Wake word ("Neo"): a phrase starting with one of these is a command.
+    /// Chosen because speech-to-text spells it the same in Japanese, English and
+    /// Portuguese and it's rare in conversation ("Claude" was often misheard).
     /// Includes the spellings speech-to-text may produce in each language
     /// (Japanese writes it in katakana). Matched on the transcript, so no extra
     /// model is needed. Add variants here if the Captions tab shows another spelling.
     static let wakeWords: [String] = [
-        "claude", "claud", "clode",
-        "クロード", "くろーど", "クロウド",
+        "neo", "ネオ", "ねお",
     ]
 
     /// After saying only the wake word, the next sentence counts as a command

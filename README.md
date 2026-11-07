@@ -26,7 +26,7 @@ Settings → Language (日本語 / English / Português) switches speech recogni
 voice commands, wake word, lens text and the HUD screens together. All strings live
 in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
 
-## Voice commands (say the wake word "Claude" first, e.g. "Claude, next")
+## Voice commands (say the wake word "Neo" (ネオ) first, e.g. "Neo, next")
 
 | 日本語 | English | Português | Does |
 | --- | --- | --- | --- |
