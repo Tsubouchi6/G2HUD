@@ -8,7 +8,7 @@
 //   LensPusher(session:)
 //   show(_ text: String)                    // throttled; the newest text always wins
 //   showImage(tiles:caption:)               // picture tiles + caption under them
-//   showChat(text:picture:)                 // text block with a picture under it (one scene)
+//   showScene(text:picture:spot:)           // text block + picture placed by LensPictureSpot (one scene)
 //   clear()                                 // blank the lens immediately
 
 import Foundation
@@ -26,7 +26,7 @@ final class LensPusher {
 
     /// Last chat scene sent (the G2 code diffs elements by id, so unchanged
     /// parts, especially the slow picture, aren't re-sent). nil = text mode.
-    private var lastScene: (text: String, picture: Data)?
+    private var lastScene: (text: String, picture: Data, spot: LensPictureSpot)?
 
     init(session: BluetoothSession) {
         self.session = session
@@ -73,19 +73,22 @@ final class LensPusher {
         }
     }
 
-    /// Text in the top area and a picture under it, as one scene frame
-    /// (template DeviceManager "scene" event: elements with per-id change
-    /// marks; G2.applySceneFrame skips "unchanged" ones). Used by chat tabs.
-    func showChat(text: String, picture: Data) {
+    /// Text and a picture placed by `spot`, as one scene frame (template
+    /// DeviceManager "scene" event: elements with per-id change marks;
+    /// G2.applySceneFrame skips "unchanged" ones, so the slow picture is only
+    /// re-sent when it changes). Used by the AI chat and the nav mini-map.
+    func showScene(text: String, picture: Data, spot: LensPictureSpot) {
         sendTask?.cancel()
         sendTask = nil
         pendingText = nil
-        if let last = lastScene, last.text == text, last.picture == picture { return }
+        if let last = lastScene, last.text == text, last.picture == picture, last.spot == spot { return }
 
-        let replay = lastScene == nil  // coming from text mode: paint everything fresh
+        // Coming from text mode or another layout: paint everything fresh.
+        let replay = lastScene == nil || lastScene?.spot != spot
         let textChange = replay ? "created" : (lastScene?.text == text ? "unchanged" : "updated")
         let pictureChange = replay ? "created" : (lastScene?.picture == picture ? "unchanged" : "updated")
-        lastScene = (text, picture)
+        lastScene = (text, picture, spot)
+        let textBox = spot.textBox, pictureBox = spot.pictureBox
         lastSentText = ""  // the next plain-text push must be sent again
 
         let scene: [String: Any] = [
@@ -94,13 +97,12 @@ final class LensPusher {
             "removed": [String](),
             "elements": [
                 [
-                    "id": "chat-text", "type": "text", "text": text, "change": textChange,
-                    "box": ["x": 0, "y": 0, "w": HudConstants.lensWidthPx, "h": HudConstants.chatPictureY],
+                    "id": "scene-text", "type": "text", "text": text, "change": textChange,
+                    "box": ["x": textBox.x, "y": textBox.y, "w": textBox.width, "h": textBox.height],
                 ],
                 [
-                    "id": "chat-picture", "type": "image", "data": picture.base64EncodedString(), "change": pictureChange,
-                    "box": ["x": 0, "y": HudConstants.chatPictureY,
-                            "w": HudConstants.chatPictureWidthPx, "h": HudConstants.chatPictureHeightPx],
+                    "id": "scene-picture", "type": "image", "data": picture.base64EncodedString(), "change": pictureChange,
+                    "box": ["x": pictureBox.x, "y": pictureBox.y, "w": pictureBox.width, "h": pictureBox.height],
                 ],
             ],
         ]

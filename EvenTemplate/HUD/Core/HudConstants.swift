@@ -77,6 +77,14 @@ enum HudConstants {
     /// Chat lines that fit above that picture (188 px / 28.8 px per line).
     static let chatLinesAbovePicture: Int = 6
 
+    /// Navigation mini-map: a square on the left, vertically centered (two
+    /// 200x100 tiles stacked), with the directions text to its right.
+    static let navMiniMapSizePx: Int = 200
+    static let navMiniMapY: Int = (lensHeightPx - navMiniMapSizePx) / 2
+    static let navTextX: Int = navMiniMapSizePx + 12
+    /// Text units per line in the narrower text column (46 units across 576 px).
+    static let navTextLineUnits: Int = lensLineUnits * (lensWidthPx - navTextX) / lensWidthPx
+
     /// A picture stays on the lens this long unless dismissed, in seconds.
     static let imageShowSeconds: Double = 20
 
@@ -159,10 +167,6 @@ enum HudConstants {
 
     // MARK: - Directions
 
-    /// Search area around the user for "nearest ..." places, in meters (radius).
-    /// Source: design choice (walking distance; Apple returns the closest matches it finds).
-    static let navSearchRadiusMeters: Double = 3000
-
     /// First location fix good enough to search from, in meters of accuracy, and how
     /// long to wait for one before using the best so far, in seconds.
     /// Source: GPS.gov — smartphones are typically accurate to ~5 m in open sky; cities are worse.
@@ -187,7 +191,19 @@ enum HudConstants {
     /// the arrow has 45° steps). Source: design choice.
     static let navHeadingFilterDegrees: Double = 5
 
-    /// Route map picture: line width and marker radius, in pixels (400x200 picture).
+    /// Mini-map: meters from the user to the map's side edge, where the user
+    /// sits (fraction of the height from the top), and how often it is redrawn.
+    /// Source: design choice (about one city block each way; G2 mini map style).
+    static let navMiniMapRadiusMeters: Double = 150
+    static let navMiniMapUserYFraction: CGFloat = 0.62
+    static let navMiniMapRefreshSeconds: Double = 2
+
+    /// Nearest-place search: try these radii in order until something is found,
+    /// in meters, with results restricted to the area (MKLocalSearch regionPriority
+    /// .required, iOS 18; without it Apple may return far-away matches).
+    static let navSearchRadiiMeters: [Double] = [800, 2000, 5000]
+
+    /// Map drawing: line width and marker radius, in pixels.
     static let navMapRouteWidthPx: CGFloat = 5
     static let navMapMarkerRadiusPx: CGFloat = 6
 
@@ -299,9 +315,11 @@ enum HudConstants {
     (you can't hear it yourself) until told to stop; it appears in the Saved tab. \
     Use when the user wants to remember what someone says (a meeting, a shop clerk). \
     7. Directions: finds the nearest place matching what the user wants (Apple Maps) \
-    and shows walking or driving turn-by-turn in the Nav tab, either full (route map \
-    first, distance, next turns) or minimal (one line at the top, rest of the screen clear). \
-    While directions run you can switch the view: route map, full, or minimal. \
+    and shows walking or driving turn-by-turn in the Nav tab, either full (a small \
+    mini-map that turns with the user, plus next turns and distance) or minimal (one \
+    line at the top, rest of the screen clear). While directions run you can switch \
+    the view: map (= full with the mini-map), full, or minimal. \
+    For nearest, give just the kind of place (convenience store), not the word nearest. \
     8. Calculator: computes a formula exactly (+ - * / ^ ( ) %, phone-style percent) and \
     lists it in the Calc tab. Use it for ANY math instead of computing yourself: turn \
     everyday wording into a formula (a 15% tip on 4800 = 4800*15%, split 9600 among 3 = 9600/3). \

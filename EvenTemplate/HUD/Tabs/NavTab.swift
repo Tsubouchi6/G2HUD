@@ -1,7 +1,8 @@
 // NavTab.swift
 //
 // Lens tab: turn-by-turn directions from Navigator. Two views:
-//   full    — destination, distance/time left, the next turn, the one after
+//   full    — G2-style mini-map on the left (MiniMapRenderer); next turn, the
+//             one after, distance/time left and destination on the right
 //   minimal — one line at the top ("120m 左折 ..."), the rest of the lens clear
 // Without glasses connected, an arrow from the phone's compass points to the next turn.
 // Switched by voice while this tab is open ("シンプル" / "詳しく" / "地図"),
@@ -31,7 +32,12 @@ final class NavTab: LensTab {
     }
 
     func page() -> LensPage {
-        LensPage(lines: navigator.minimal ? minimalLines() : fullLines(), anchor: .top)
+        if navigator.minimal { return LensPage(lines: minimalLines(), anchor: .top) }
+        // Full view: G2-style mini-map on the left, directions in a column on the right.
+        guard case .active = navigator.state, let miniMap = navigator.miniMap else {
+            return LensPage(lines: fullLines(), anchor: .top)
+        }
+        return LensPage(lines: fullLines(), anchor: .top, picture: miniMap, pictureSpot: .left)
     }
 
     // MARK: - Views
@@ -47,13 +53,14 @@ final class NavTab: LensTab {
         case .arrived(let name):
             return [HudText.t(.navArrived, name)]
         case .active(let progress):
-            var lines = [
-                "→ \(progress.destinationName)",
-                HudText.t(.navRemaining, Self.distance(progress.remainingMeters), progress.remainingMinutes),
+            // Next turn first (biggest need), then the overview, like the G2 Navigate screen.
+            var lines = [turnLine(progress)]
+            if let after = progress.turnAfter { lines.append(HudText.t(.navThen, after)) }
+            lines += [
                 "──",
-                turnLine(progress),
+                HudText.t(.navRemaining, Self.distance(progress.remainingMeters), progress.remainingMinutes),
+                "→ \(progress.destinationName)",
             ]
-            if let after = progress.turnAfter { lines += ["", HudText.t(.navThen, after)] }
             if progress.rerouting { lines.append(HudText.t(.navRerouting)) }
             return lines
         }

@@ -8,13 +8,13 @@
 // Public API:
 //   Navigator(location:directions:heading:useCompass:)
 //     useCompass: true while the glasses aren't connected — then the phone's
-//     compass turns an arrow toward the next turn (phone held like a map).
+//     compass turns the arrow and the mini-map (phone held like a map).
 //   @Published state: NavState
 //   @Published minimal: Bool                 // one line at the top, nothing else
+//   @Published miniMap: Data?                // G2-style mini-map PNG (MiniMapRenderer)
 //   start(destination:mode:minimal:)         // finds the nearest match, routes, follows
 //   stop()
-//   showMap()                                // route picture on the lens again
-//   onMapPicture: ((Data, String) -> Void)?  // HudController shows it on the lens
+//   showMap()                                // back to the full view with the mini-map
 //   onArrived: ((String) -> Void)?
 //   enum NavState, struct NavProgress
 
@@ -52,8 +52,8 @@ final class Navigator: ObservableObject {
 
     @Published private(set) var state: NavState = .idle
     @Published var minimal = false
+    @Published private(set) var miniMap: Data?
 
-    var onMapPicture: ((Data, String) -> Void)?
     var onArrived: ((String) -> Void)?
 
     private let location: LocationService
@@ -73,6 +73,7 @@ final class Navigator: ObservableObject {
     private var lastLocation: CLLocation?
     private var lastRerouteAt = Date.distantPast
     private var isRerouting = false
+    private var miniMapDrawnAt = Date.distantPast
 
     init(location: LocationService, directions: DirectionsService, heading: HeadingService, useCompass: @escaping () -> Bool) {
         self.location = location
@@ -95,7 +96,6 @@ final class Navigator: ObservableObject {
                 destination = place
                 destinationName = place.name ?? query
                 try await loadRoute(from: here)
-                if !minimal { await sendMapPicture() }
                 location.startUpdates { [weak self] update in self?.follow(update) }
                 heading.start { [weak self] degrees in self?.turned(to: degrees) }
             } catch {
@@ -110,11 +110,12 @@ final class Navigator: ObservableObject {
         headingDegrees = nil
         route = nil
         destination = nil
+        miniMap = nil
         state = .idle
     }
 
     func showMap() {
-        Task { await sendMapPicture() }
+        minimal = false
     }
 
     // MARK: - Route
@@ -132,15 +133,9 @@ final class Navigator: ObservableObject {
             CLLocation(latitude: $0.latitude, longitude: $0.longitude)
         }
         stepIndex = 0
+        miniMapDrawnAt = .distantPast  // new route: draw it right away
         lastLocation = here
         publishProgress(at: here)
-    }
-
-    private func sendMapPicture() async {
-        guard let route, let here = lastLocation,
-              let png = await directions.mapPicture(route: route, user: here.coordinate)
-        else { return }
-        onMapPicture?(png, destinationName)
     }
 
     // MARK: - Following
@@ -190,6 +185,22 @@ final class Navigator: ObservableObject {
         }
     }
 
+    /// Redraws the mini-map at most every navMiniMapRefreshSeconds (each new
+    /// picture takes the glasses 0.5-2 s to receive).
+    private func drawMiniMap(at here: CLLocation) {
+        guard Date().timeIntervalSince(miniMapDrawnAt) >= HudConstants.navMiniMapRefreshSeconds,
+              let destination
+        else { return }
+        miniMapDrawnAt = Date()
+        miniMap = MiniMapRenderer.png(
+            route: routePoints.map(\.coordinate),
+            user: here.coordinate,
+            nextTurn: stepIndex < stepEnds.count - 1 ? stepEnds[stepIndex].coordinate : nil,
+            destination: destination.placemark.coordinate,
+            headingDegrees: useCompass() ? headingDegrees : nil
+        )
+    }
+
     private func publishProgress(at here: CLLocation) {
         guard let route, !steps.isEmpty else { return }
         let toStepEnd = here.distance(from: stepEnds[stepIndex])
@@ -203,6 +214,7 @@ final class Navigator: ObservableObject {
             let bearing = HeadingService.bearing(from: here.coordinate, to: stepEnds[stepIndex].coordinate)
             relative = (bearing - headingDegrees + 360).truncatingRemainder(dividingBy: 360)
         }
+        drawMiniMap(at: here)
         state = .active(NavProgress(
             destinationName: destinationName,
             remainingMeters: remaining,

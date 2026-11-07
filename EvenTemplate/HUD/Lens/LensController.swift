@@ -35,6 +35,7 @@ final class LensController: ObservableObject {
     @Published private(set) var previewText = ""
     /// Picture shown under the text (chat pictures), for the phone preview.
     @Published private(set) var previewPicture: Data?
+    @Published private(set) var previewPictureSpot: LensPictureSpot = .bottom
     @Published private(set) var isActive = false
     @Published private(set) var image: LensImage?
 
@@ -176,11 +177,12 @@ final class LensController: ObservableObject {
     func render() {
         guard let tab = activeTab else { return }
         let page = tab.page()
-        let wrapped = page.lines.flatMap(LensTextLayout.wrap)
         let offset = scrollOffsets[tab.id] ?? 0
-        // A chat picture sits under the newest lines, only while scrolled to them.
+        // A page picture (chat picture, nav mini-map) shows only while scrolled to the start.
         let picture = offset == 0 ? page.picture : nil
-        let screenLines = picture == nil ? HudConstants.lensLinesPerScreen : HudConstants.chatLinesAbovePicture
+        let spot = page.pictureSpot
+        let wrapped = page.lines.flatMap { LensTextLayout.wrap($0, units: picture == nil ? HudConstants.lensLineUnits : spot.lineUnits) }
+        let screenLines = picture == nil ? HudConstants.lensLinesPerScreen : spot.textLines
         let height = screenLines - (banner == nil ? 0 : 1)
 
         let window = LensTextLayout.window(wrapped, anchor: page.anchor, scroll: offset, height: height)
@@ -192,9 +194,10 @@ final class LensController: ObservableObject {
 
         previewText = text
         previewPicture = picture
+        previewPictureSpot = spot
         // While a full-lens picture is up, keep it; the text is pushed when it's dismissed.
         guard isActive, image == nil else { return }
-        if let picture { pusher.showChat(text: text, picture: picture) } else { pusher.show(text) }
+        if let picture { pusher.showScene(text: text, picture: picture, spot: spot) } else { pusher.show(text) }
     }
 
     // MARK: - Private

@@ -88,23 +88,19 @@ struct HudScreen: View {
                         Text(picture.caption)
                     }
                 } else {
-                    // One lens line per row, shrunk to fit, so the phone doesn't
-                    // wrap lines a second time and the preview matches the lens.
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(lens.previewText.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
-                            Text(line.isEmpty ? " " : line)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.5)
+                    // Picture placed like on the lens: under the chat, or left of the directions.
+                    if lens.previewPictureSpot == .left, let picture = previewPictureView {
+                        HStack(alignment: .center, spacing: 8) {
+                            picture.frame(width: 130, height: 130)
+                            previewLines
                         }
-                        // Chat picture under the newest lines, as on the lens.
-                        if let data = lens.previewPicture, let uiImage = UIImage(data: data) {
-                            Spacer(minLength: 0)
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .grayscale(1)
-                                .colorMultiply(Self.lensGreen)
-                                .frame(maxWidth: 260, alignment: .leading)
+                    } else {
+                        VStack(alignment: .leading, spacing: 2) {
+                            previewLines
+                            if let picture = previewPictureView {
+                                Spacer(minLength: 0)
+                                picture.frame(maxWidth: 260, alignment: .leading)
+                            }
                         }
                     }
                 }
@@ -153,6 +149,30 @@ struct HudScreen: View {
     }
 
     // MARK: - Helpers
+
+    /// One lens line per row, shrunk to fit, so the phone doesn't wrap lines a
+    /// second time and the preview matches the lens.
+    private var previewLines: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(lens.previewText.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
+                Text(line.isEmpty ? " " : line)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+        }
+    }
+
+    /// The page picture (chat picture or nav mini-map), tinted like the lens.
+    private var previewPictureView: AnyView? {
+        guard let data = lens.previewPicture, let uiImage = UIImage(data: data) else { return nil }
+        return AnyView(
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFit()
+                .grayscale(1)
+                .colorMultiply(Self.lensGreen)
+        )
+    }
 
     private static let lensGreen = Color(red: 0.3, green: 1, blue: 0.45)
 

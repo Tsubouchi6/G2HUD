@@ -40,16 +40,15 @@ enum LensTextLayout {
     /// Splits on newlines, then wraps each line at `HudConstants.lensLineUnits`.
     /// Latin text breaks at the last space so words stay whole; text without
     /// spaces (Japanese) breaks between any two characters, as it should.
-    static func wrap(_ text: String) -> [String] {
+    static func wrap(_ text: String, units: Int = HudConstants.lensLineUnits) -> [String] {
         var result: [String] = []
         for rawLine in text.components(separatedBy: "\n") {
-            result.append(contentsOf: wrapLine(rawLine))
+            result.append(contentsOf: wrapLine(rawLine, limit: units))
         }
         return result
     }
 
-    private static func wrapLine(_ line: String) -> [String] {
-        let limit = HudConstants.lensLineUnits
+    private static func wrapLine(_ line: String, limit: Int) -> [String] {
         var result: [String] = []
         var current = ""
         for character in line {

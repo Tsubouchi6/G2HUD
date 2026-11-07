@@ -141,7 +141,6 @@ final class HudController: ObservableObject {
             savedTab,
             NavTab(navigator: navigator),
         ])
-        navigator.onMapPicture = { [weak lens] png, name in lens?.showImage(png, caption: name) }
         navigator.onArrived = { [weak lens] name in lens?.showBanner(HudText.t(.navArrived, name), seconds: HudConstants.reminderAlertSeconds) }
 
         self.settings = settings
