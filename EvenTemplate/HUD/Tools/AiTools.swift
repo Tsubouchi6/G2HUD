@@ -261,7 +261,7 @@ private struct StartDirectionsTool: Tool {
         let destination: String
         @Guide(description: "walking unless the user says they are driving")
         let mode: Mode
-        @Guide(description: "true if the user wants a clear screen with only the next direction (no map)")
+        @Guide(description: "false (map shown) unless the user explicitly asks in this request for no map or a clear screen")
         let minimal: Bool
     }
 

@@ -325,7 +325,8 @@ enum HudConstants {
     6. Listen: from now on the app saves the text of what people around the user say \
     (you can't hear it yourself) until told to stop; it appears in the Saved tab. \
     Use when the user wants to remember what someone says (a meeting, a shop clerk). \
-    7. Directions: finds the nearest place matching what the user wants (Apple Maps) \
+    7. Directions (always with the map unless the user asks to hide it): finds the \
+    nearest place matching what the user wants (Apple Maps) \
     and shows walking or driving turn-by-turn in the Nav tab, either full (a small \
     mini-map that turns with the user, plus next turns and distance) or minimal (one \
     line at the top, rest of the screen clear). While directions run you can switch \
@@ -360,7 +361,8 @@ enum HudConstants {
     Picture: IMAGE: <2-5 English search words>. \
     Save chat: SAVE: <short title>. \
     Listen: LISTEN: <short title>, and LISTEN_STOP to end it. \
-    Directions: DIRECTIONS: <place as a map search> | <walking or driving> | <full or minimal>, \
+    Directions: DIRECTIONS: <place as a map search> | <walking or driving> | <full, or minimal only if \
+    the user explicitly asks for no map>, \
     and DIRECTIONS_STOP to end them; DIRECTIONS_VIEW: <map, full or minimal> to switch the view. \
     Calculator: CALC: <formula>, and the exact result is added to your answer, so don't \
     compute it yourself. Convert: CONVERT: <value> | <from unit or currency> | <to>.
