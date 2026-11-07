@@ -95,7 +95,8 @@ final class OnDeviceAI {
         Rewrite the given search answer so it directly answers the question in \
         \(language.englishName), in at most \(HudConstants.searchSummaryMaxChars) characters. \
         Keep only what the question asks for, for the user's own place and time unless \
-        the question names another. Keep numbers exactly. Plain text only. \(HudConstants.aiPersonality)
+        the question names another. Keep numbers exactly. Plain text only. \(HudConstants.aiPersonality) \
+        \(HudConstants.aiNumbersRule)
         """
         let session = LanguageModelSession(model: Self.model, instructions: instructions)
         let prompt = "\(AiContext.line(language: language))\nQuestion: \(query)\n\nAnswer: \(answer)"

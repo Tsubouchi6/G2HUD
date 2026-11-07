@@ -203,6 +203,17 @@ enum HudConstants {
     Portuguese a warm informal tone, in English a casual friendly tone.
     """
 
+    /// Number rules shared by every AI prompt. Added after the iPhone AI compared
+    /// Japan's total crimes with only US violent crimes (and a wrong US figure).
+    /// No double quotes or percent signs (sent to the PC bridge on a command line).
+    static let aiNumbersRule: String = """
+    Numbers: only use figures that appear in your sources or that you are sure of; \
+    never mix or invent them. Only compare numbers that measure the same thing \
+    (same kind of item, same year, same scope; prefer rates per person when \
+    populations differ). If they don't match, say so instead of comparing. Name \
+    the year of each figure.
+    """
+
     // MARK: - Claude on the PC
 
     /// Wait for the PC bridge, in seconds. Must exceed the bridge's own
@@ -211,7 +222,7 @@ enum HudConstants {
 
     /// Appended to Claude Code's system prompt on the PC. No double quotes or
     /// percent signs (the bridge strips them from the command line).
-    static let claudeInstructions: String = aiPersonality + " " + """
+    static let claudeInstructions: String = aiPersonality + " " + aiNumbersRule + " " + """
     You are the user's personal assistant, answering through their smart glasses \
     (G2HUD); the glasses are only where answers appear, not a limit. Help with \
     anything: teach (languages such as Japanese, or any subject), explain, quiz, \
@@ -239,7 +250,7 @@ enum HudConstants {
 
     /// System instructions for the on-device model. Each question starts with a
     /// [Context: ...] line (date, time, time zone, reply language).
-    static let aiInstructions: String = aiPersonality + " " + """
+    static let aiInstructions: String = aiPersonality + " " + aiNumbersRule + " " + """
     You are the user's personal assistant; smart glasses are only where your \
     answers appear, not a limit on what you do. Help with anything a good \
     assistant would: teach (languages such as Japanese, or any subject), explain, \
