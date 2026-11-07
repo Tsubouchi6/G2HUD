@@ -45,7 +45,7 @@ enum VoicePhrases {
     private static let politeEndings = ["してください", "ください", "して", "へ", "に"]
     private static let openWords = ["タブを開いて", "を開いて", "開いて", "タブ", "に切り替えて", "を表示", "見せて",
                                     "open ", "go to ", "show ", " tab"]
-    private static let callPrefixes = ["ねえ", "ねぇ", "hey ", "ok ", "okay "]
+    private static let callPrefixes = ["ねえ", "ねぇ", "えっと", "あの", "hey ", "ok ", "okay "]
 
     // MARK: - Normalizing
 
