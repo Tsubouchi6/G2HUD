@@ -86,38 +86,14 @@ struct HudScreen: View {
 
     private var previewSection: some View {
         Section(HudText.t(.lensPreview)) {
-            Group {
-                if let picture = lens.image, let uiImage = UIImage(data: picture.data) {
-                    VStack(spacing: 6) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFit()
-                            .grayscale(1)
-                            .colorMultiply(Self.lensGreen)
-                            .frame(maxHeight: 140)
-                        Text(picture.caption)
-                    }
-                } else {
-                    // Picture placed like on the lens: under the chat, or the nav map above its two lines.
-                    if lens.previewPictureSpot == .corner, let picture = previewPictureView {
-                        HStack(alignment: .top, spacing: 8) {
-                            picture.frame(width: 60, height: 60)
-                            previewLines
-                        }
-                    } else if lens.previewPictureSpot == .top, let picture = previewPictureView {
-                        VStack(alignment: .center, spacing: 4) {
-                            picture.frame(maxWidth: 260)
-                            previewLines.frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 2) {
-                            previewLines
-                            if let picture = previewPictureView {
-                                Spacer(minLength: 0)
-                                picture.frame(maxWidth: 260, alignment: .leading)
-                            }
-                        }
-                    }
+            // Tab content on top, status bar in the bottom-right corner, like on the lens.
+            VStack(alignment: .leading, spacing: 4) {
+                lensContent
+                Spacer(minLength: 0)
+                if !lens.statusText.isEmpty {
+                    Text(lens.statusText)
+                        .font(.system(size: 12, design: .monospaced))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
             .font(.system(size: 13, design: .monospaced))
@@ -127,41 +103,76 @@ struct HudScreen: View {
             .background(Color.black)
             .cornerRadius(8)
 
-            // Status bar, as in the lens's bottom-right corner.
-            if !lens.statusText.isEmpty {
-                Text(lens.statusText)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundColor(Self.lensGreen)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .listRowBackground(Color.black)
-            }
-
             // Phone-only check for the map's street background.
             if lens.activeTab?.id == "nav", !navigator.mapStatus.isEmpty {
                 Text("Map: \(navigator.mapStatus)").font(.footnote).foregroundColor(.secondary)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(Array(lens.tabs.enumerated()), id: \.offset) { index, tab in
-                        Button(tab.title) { lens.select(id: tab.id) }
-                            .buttonStyle(.bordered)
-                            .tint(index == lens.activeIndex ? .green : .gray)
+            tabButtons
+        }
+    }
+
+    /// The active tab's lines and picture, placed like on the lens.
+    private var lensContent: some View {
+        Group {
+            if let picture = lens.image, let uiImage = UIImage(data: picture.data) {
+                VStack(spacing: 6) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .grayscale(1)
+                        .colorMultiply(Self.lensGreen)
+                        .frame(maxHeight: 140)
+                    Text(picture.caption)
+                }
+            } else {
+                // Picture placed like on the lens: under the chat, or the nav map above its two lines.
+                if lens.previewPictureSpot == .corner, let picture = previewPictureView {
+                    HStack(alignment: .top, spacing: 8) {
+                        picture.frame(width: 60, height: 60)
+                        previewLines
+                    }
+                } else if lens.previewPictureSpot == .top, let picture = previewPictureView {
+                    VStack(alignment: .center, spacing: 4) {
+                        picture.frame(maxWidth: 260)
+                        previewLines.frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
+                        previewLines
+                        if let picture = previewPictureView {
+                            Spacer(minLength: 0)
+                            picture.frame(maxWidth: 260, alignment: .leading)
+                        }
                     }
                 }
             }
-
-            HStack {
-                Button("◀") { lens.previous() }
-                Spacer()
-                Button("▲") { lens.scroll(linesUp: HudConstants.lensScrollStepLines) }
-                Spacer()
-                Button("▼") { lens.scroll(linesDown: HudConstants.lensScrollStepLines) }
-                Spacer()
-                Button("▶") { lens.next() }
-            }
-            .buttonStyle(.borderless)
         }
+    }
+
+    /// Tab picker and the ◀ ▲ ▼ ▶ buttons under the preview (two list rows).
+    @ViewBuilder
+    private var tabButtons: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+                ForEach(Array(lens.tabs.enumerated()), id: \.offset) { index, tab in
+                    Button(tab.title) { lens.select(id: tab.id) }
+                        .buttonStyle(.bordered)
+                        .tint(index == lens.activeIndex ? .green : .gray)
+                }
+            }
+        }
+
+        HStack {
+            Button("◀") { lens.previous() }
+            Spacer()
+            Button("▲") { lens.scroll(linesUp: HudConstants.lensScrollStepLines) }
+            Spacer()
+            Button("▼") { lens.scroll(linesDown: HudConstants.lensScrollStepLines) }
+            Spacer()
+            Button("▶") { lens.next() }
+        }
+        .buttonStyle(.borderless)
     }
 
     private var commandSection: some View {
