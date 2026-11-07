@@ -14,6 +14,7 @@
 //     saveChat     — saves this AI chat to the Saved tab
 //     startListening / stopListening — saves what people around say, from now until stopped
 //     startDirections / stopDirections — turn-by-turn to the nearest match (Apple Maps, free)
+//     directionsView — route map / full / minimal view of the running directions
 //     calculate    — exact arithmetic (the model writes the formula, the app computes)
 //     convert      — units (Apple) or currency (live Yahoo rate)
 //   Failures are returned to the model as "Failed: ..." text, not thrown.
@@ -39,6 +40,7 @@ enum AiTools {
             StopListeningTool(stop: actions.stopListening),
             StartDirectionsTool(start: actions.startDirections),
             StopDirectionsTool(stop: actions.stopDirections),
+            DirectionsViewTool(change: actions.directionsView),
             CalculateTool(calculate: actions.calculate),
             ConvertTool(convert: actions.convert),
         ]
@@ -323,5 +325,28 @@ private struct ConvertTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await convert(arguments.value, arguments.from, arguments.to)
+    }
+}
+
+private struct DirectionsViewTool: Tool {
+    let name = "directionsView"
+    let description = """
+    Changes how the running directions look: map shows the route map picture, full \
+    shows distance and the next turns, minimal shows one line at the top only.
+    """
+    let change: @MainActor @Sendable (_ view: String) -> Bool
+
+    @Generable
+    enum View: String {
+        case map, full, minimal
+    }
+
+    @Generable
+    struct Arguments {
+        let view: ViewKind
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await change(arguments.view.rawValue) ? "Done, shown on the glasses." : "No directions are running."
     }
 }

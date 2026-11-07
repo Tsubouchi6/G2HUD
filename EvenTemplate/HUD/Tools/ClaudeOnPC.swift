@@ -11,6 +11,7 @@
 //   LISTEN_STOP                                      -> stops and keeps that text
 //   DIRECTIONS: <place> | <walking|driving> | <full|minimal> -> turn-by-turn to the nearest match
 //   DIRECTIONS_STOP                                  -> stops navigation
+//   DIRECTIONS_VIEW: <map|full|minimal>              -> route map / full / one-line view
 //   CALC: <formula>                                  -> exact result, added to the answer
 //   CONVERT: <value> | <from> | <to>                 -> units / live currency, added to the answer
 //
@@ -107,6 +108,8 @@ final class ClaudeOnPC {
                 }
             } else if trimmedLine.uppercased() == "LISTEN_STOP" {
                 _ = actions.stopListening()
+            } else if let view = value(trimmedLine, "DIRECTIONS_VIEW:") {
+                _ = actions.directionsView(view.lowercased())
             } else if trimmedLine.uppercased() == "DIRECTIONS_STOP" {
                 _ = actions.stopDirections()
             } else if let spec = value(trimmedLine, "DIRECTIONS:") {

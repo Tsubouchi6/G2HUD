@@ -107,6 +107,16 @@ final class HudController: ObservableObject {
                 }
                 return false
             },
+            directionsView: { [weak lens] view in
+                if case .idle = navigator.state { return false }
+                switch view {
+                case "map": navigator.showMap()
+                case "minimal": navigator.minimal = true
+                default: navigator.minimal = false
+                }
+                lens?.select(id: "nav")
+                return true
+            },
             calculate: { [weak calcTab] expression in calcTab?.calculate(expression) ?? "" },
             convert: { [weak calcTab] value, from, to in await calcTab?.convert(value, from: from, to: to) ?? "" }
         )

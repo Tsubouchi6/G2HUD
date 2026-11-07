@@ -297,6 +297,7 @@ enum HudConstants {
     7. Directions: finds the nearest place matching what the user wants (Apple Maps) \
     and shows walking or driving turn-by-turn in the Nav tab, either full (route map \
     first, distance, next turns) or minimal (one line at the top, rest of the screen clear). \
+    While directions run you can switch the view: route map, full, or minimal. \
     8. Calculator: computes a formula exactly (+ - * / ^ ( ) %, phone-style percent) and \
     lists it in the Calc tab. Use it for ANY math instead of computing yourself: turn \
     everyday wording into a formula (a 15% tip on 4800 = 4800*15%, split 9600 among 3 = 9600/3). \
@@ -327,7 +328,7 @@ enum HudConstants {
     Save chat: SAVE: <short title>. \
     Listen: LISTEN: <short title>, and LISTEN_STOP to end it. \
     Directions: DIRECTIONS: <place as a map search> | <walking or driving> | <full or minimal>, \
-    and DIRECTIONS_STOP to end them. \
+    and DIRECTIONS_STOP to end them; DIRECTIONS_VIEW: <map, full or minimal> to switch the view. \
     Calculator: CALC: <formula>, and the exact result is added to your answer, so don't \
     compute it yourself. Convert: CONVERT: <value> | <from unit or currency> | <to>.
     """
@@ -346,7 +347,7 @@ enum HudConstants {
     HOW TO USE AN ABILITY: call its tool. Web search = searchWeb, stock chart = \
     stockChart, chart = drawChart, picture = showPicture, save chat = saveChat, \
     listen = startListening / stopListening, directions = startDirections / \
-    stopDirections, calculator = calculate, convert = convert. After a tool, \
+    stopDirections / directionsView, calculator = calculate, convert = convert. After a tool, \
     reply with one short sentence.
     """
 }

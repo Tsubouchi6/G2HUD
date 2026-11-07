@@ -216,9 +216,11 @@ final class VoiceCommandRouter {
     /// While the Nav tab is open: "シンプル" (one line), "詳しく" (full), "地図" (map picture).
     private func runNavTabPhrase(_ command: String) -> Bool {
         guard context.lens.activeTab?.id == "nav" else { return false }
-        if VoicePhrases.matches(command, VoicePhrases.navMinimalWords) { context.navigator.minimal = true; return true }
-        if VoicePhrases.matches(command, VoicePhrases.navFullWords) { context.navigator.minimal = false; return true }
-        if VoicePhrases.matches(command, VoicePhrases.navMapWords) { context.navigator.showMap(); return true }
+        // Contains, not exact: "let me see the map" counts. Other wording goes to the AI,
+        // which has a directionsView ability for the same three views.
+        if VoicePhrases.containsAny(command, VoicePhrases.navMapWords) { context.navigator.showMap(); return true }
+        if VoicePhrases.containsAny(command, VoicePhrases.navMinimalWords) { context.navigator.minimal = true; return true }
+        if VoicePhrases.containsAny(command, VoicePhrases.navFullWords) { context.navigator.minimal = false; return true }
         return false
     }
 
