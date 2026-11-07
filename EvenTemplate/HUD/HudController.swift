@@ -111,10 +111,10 @@ final class HudController: ObservableObject {
                     captions?.isRecording = true  // switch to the recording languages
                     lens?.showBanner(HudText.t(.listeningStarted, title) + until, seconds: HudConstants.listeningBannerSeconds)
                     return true
-                }, end: { [weak lens] in
+                }, end: { [weak lens, weak captions] in
                     guard listening.isRecording else { return }
                     listening.endSession()
-                    captions.isRecording = false
+                    captions?.isRecording = false
                     lens?.showBanner(HudText.t(.listeningSaved))
                 })
             },
