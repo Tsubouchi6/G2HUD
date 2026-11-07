@@ -1,9 +1,10 @@
 // CaptionController.swift
 //
 // Listening: turns the mic on/off, feeds every mic frame to the active speech
-// engine (in settings.hearingLanguage, plus the HUD language when auto is on —
-// DualSpeechEngine keeps whichever fits each sentence; restarts when these
-// change), and keeps the transcript in the language heard. It does not draw on
+// engine, and keeps the transcript in the language heard. Normally it listens
+// for the HUD language only; while a recording runs (isRecording) it listens for
+// settings.hearingLanguage, plus the HUD language when auto is on
+// (DualSpeechEngine keeps whichever fits each sentence). Restarts on changes. It does not draw on
 // the lens; CaptionsTab shows the transcript and VoiceCommandRouter reads
 // finished phrases through `onFinalPhrase`.
 //
@@ -19,6 +20,7 @@
 //   recorder: RawAudioRecorder
 //   start() async / stop() async / clearTranscript()
 //   language(of phrase:) -> HudLanguage?   // language a phrase was heard as (auto: either one)
+//   isRecording: Bool                      // set while a listen clip runs (switches languages)
 
 import AVFoundation
 import Combine
@@ -45,6 +47,12 @@ final class CaptionController: ObservableObject {
     private let session: BluetoothSession
     private let settings: HudSettings
     private var engine: SpeechEngine?
+    /// A "listen and write it down" recording is running: listen for the
+    /// Listen-for language (and the HUD language when auto). Restarts listening.
+    var isRecording = false {
+        didSet { if isRecording != oldValue { restartIfRunning() } }
+    }
+
     /// Which language each finished phrase was heard as (two-language listening).
     private var phraseLanguages: [String: HudLanguage] = [:]
     private var subscriptions = Set<AnyCancellable>()
@@ -61,7 +69,7 @@ final class CaptionController: ObservableObject {
         // takes effect right away: restart the engine.
         Publishers.CombineLatest3(settings.$hearingLanguage, settings.$language, settings.$autoLanguage)
             .dropFirst()
-            .map { hearing, hud, auto in "\(hearing.rawValue)|\(auto ? hud.rawValue : "-")" }
+            .map { hearing, hud, auto in "\(hearing.rawValue)|\(hud.rawValue)|\(auto)" }
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.restartIfRunning() }
@@ -100,13 +108,16 @@ final class CaptionController: ObservableObject {
         isStarting = true
         defer { isStarting = false }
 
-        // Auto: also listen for the HUD language and keep whichever fits each sentence.
-        let engine: SpeechEngine = settings.autoLanguage && settings.hearingLanguage != settings.language
+        // Normally only the HUD language (cheapest). While a "listen and write it
+        // down" recording runs: the Listen-for language, plus the HUD language
+        // when auto is on (DualSpeechEngine keeps whichever fits each sentence).
+        let listenFor = isRecording ? settings.hearingLanguage : settings.language
+        let engine: SpeechEngine = isRecording && settings.autoLanguage && settings.hearingLanguage != settings.language
             ? DualSpeechEngine(secondLanguageId: settings.language.speechLocaleId)
             : AppleSpeechEngine()
         do {
             try await engine.start(
-                languageId: settings.hearingLanguage.speechLocaleId,
+                languageId: listenFor.speechLocaleId,
                 onUpdate: { [weak self] update in self?.handleSpeech(update) },
                 onError: { [weak self] error in self?.handleEngineFailure(error) }
             )

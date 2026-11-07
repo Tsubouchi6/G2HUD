@@ -415,9 +415,9 @@ private struct OpenTabTool: Tool {
 private struct SetLanguageTool: Tool {
     let name = "setLanguage"
     let description = """
-    Changes a language. hud = what the user reads (screens, your replies, subtitles). \
-    hearing = the language the glasses listen for (what people around speak); subtitles \
-    are translated into the hud language. Use when the user asks to switch either.
+    Changes a language. hud = what the user reads and normally speaks (the mic listens \
+    for it). hearing = the language listened for while a Listen recording runs (what \
+    people around speak). Use when the user asks to switch either.
     """
     let set: @MainActor @Sendable (_ which: String, _ language: String) -> Bool
 

@@ -5,9 +5,9 @@
 //
 // Public API (all @Published, auto-saved):
 //   language: HudLanguage        // HUD language: lens, screens, AI replies, subtitles shown
-//   hearingLanguage: HudLanguage // language the mic listens for (speech-to-text); subtitles
-//                                // are translated into `language` when they differ
-//   autoLanguage: Bool           // also listen for the HUD language and keep whichever fits each sentence
+//   hearingLanguage: HudLanguage // language listened for while recording ("listen and write it
+//                                // down"); otherwise the mic listens for `language` only
+//   autoLanguage: Bool           // while recording, also listen for the HUD language (per sentence)
 //   tavilyApiKey: String         // web search (with AI answer)
 //   useClaudeOnPC: Bool          // AI tab asks Claude through the PC bridge (falls back to the iPhone AI)
 //   pcBridgeUrl, pcBridgeToken: String  // Tailscale address of the PC bridge + its token.txt

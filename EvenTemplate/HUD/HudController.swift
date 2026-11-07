@@ -97,12 +97,14 @@ final class HudController: ObservableObject {
                 guard captions?.isRunning == true else { return false }
                 listening.endSession()
                 listening.startSession(language: settings.hearingLanguage, title: title)
+                captions?.isRecording = true  // switch to the recording languages
                 lens?.showBanner(HudText.t(.listeningStarted, title), seconds: HudConstants.listeningBannerSeconds)
                 return true
             },
             stopListening: { [weak lens] in
                 guard listening.isRecording else { return false }
                 listening.endSession()
+                captions.isRecording = false
                 lens?.showBanner(HudText.t(.listeningSaved))
                 return true
             },
@@ -230,6 +232,7 @@ final class HudController: ObservableObject {
         await captions.stop()
         conversations.endSession()
         listening.endSession()
+        captions.isRecording = false
         router.window.close()
         lens.deactivate()
     }
