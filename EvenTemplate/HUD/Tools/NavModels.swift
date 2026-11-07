@@ -101,6 +101,8 @@ struct TripChoices {
     let destinationName: String
     let choices: [RouteChoice]
     let recommended: Int
+    /// Why no train / bus is listed ("Add a RapidAPI key...", "NAVITIME: ..."); nil when they're there.
+    let transitNote: String?
 }
 
 // MARK: - What the Nav tab shows

@@ -67,7 +67,7 @@ final class NavTab: LensTab {
 
     /// "[2]* Train  11min  ¥180  JR Yamanote"
     private func choiceLines(_ trip: TripChoices) -> [String] {
-        trip.choices.enumerated().map { index, choice in
+        let list = trip.choices.enumerated().map { index, choice in
             let mark = index == trip.recommended ? "*" : " "
             let kind: String
             switch choice.kind {
@@ -82,6 +82,8 @@ final class NavTab: LensTab {
                 "[\(index + 1)]\(mark) \(kind)  \(choice.minutes)min  \(fare)  \(lines)", units: HudConstants.lensLineUnits
             )
         }
+        // Why there's no train / bus, so walking doesn't look like the only way.
+        return list + (trip.transitNote.map { [":: \($0)"] } ?? [])
     }
 
     /// On a train / bus: what you're on, then where to get off.

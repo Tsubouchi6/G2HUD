@@ -6,7 +6,9 @@
 //   walk when it's short (navWalkAlwaysMinutes), or not much slower than the
 //   fastest ride (navWalkExtraMinutes) and still reasonable (navWalkMaxMinutes);
 //   otherwise the fastest ride, the cheaper / fewer-transfer one on a near tie.
-// Without a NAVITIME (RapidAPI) key it lists walking only.
+// When trains / buses can't be fetched (no key, not subscribed, quota used up,
+// no network) it lists walking with the reason (TripChoices.transitNote), so
+// it never looks like walking is simply the best way.
 //
 // Public API:
 //   RoutePlanner(directions:transit:)
@@ -32,24 +34,37 @@ final class RoutePlanner {
     /// transitOnly: the user asked for the train / bus, so walking isn't listed.
     func choices(to place: MKMapItem, from here: CLLocation, name: String, transitOnly: Bool) async throws -> TripChoices {
         async let walkRoute = try? await directions.route(to: place, mode: .walking)
-        async let rides = try? await transit.routes(from: here.coordinate, to: place.placemark.coordinate)
+        async let transitResult = fetchRides(from: here.coordinate, to: place.placemark.coordinate)
+        let (rides, transitNote) = await transitResult
 
         var list: [RouteChoice] = []
         if !transitOnly, let walk = await walkRoute {
             let route = NavRoute(apple: walk)
             list.append(RouteChoice(kind: .walk, route: route, minutes: Self.minutes(route.seconds), fare: nil))
         }
-        for ride in await rides ?? [] where !ride.route.rides.isEmpty {
+        for ride in rides where !ride.route.rides.isEmpty {
             list.append(RouteChoice(kind: Self.kind(of: ride.route), route: ride.route,
                                     minutes: Self.minutes(ride.route.seconds), fare: ride.fare))
         }
         if list.isEmpty {
-            // Nothing by train / bus: say why (no key, or no route) instead of an empty list.
-            if transitOnly || transit.isConfigured { throw transit.isConfigured ? TransitError.noRoute : TransitError.noKey }
+            // Nothing at all: say why trains / buses failed, if they did.
+            if let transitNote { throw TransitError(errorDescription: transitNote) }
+            if transitOnly { throw TransitError.noRoute }
             throw DirectionsError.noRoute
         }
         list = Array(list.prefix(HudConstants.navMaxChoices))
-        return TripChoices(destinationName: name, choices: list, recommended: Self.recommend(list))
+        return TripChoices(destinationName: name, choices: list, recommended: Self.recommend(list), transitNote: transitNote)
+    }
+
+    /// Train / bus routes, or none plus the reason (never silently empty).
+    private func fetchRides(from origin: CLLocationCoordinate2D, to destination: CLLocationCoordinate2D) async
+        -> ([(route: NavRoute, fare: String?)], String?) {
+        do {
+            let routes = try await transit.routes(from: origin, to: destination)
+            return routes.contains { !$0.route.rides.isEmpty } ? (routes, nil) : (routes, HudText.t(.navNoTransit))
+        } catch {
+            return ([], error.localizedDescription)
+        }
     }
 
     // MARK: - Picking

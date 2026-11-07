@@ -230,8 +230,9 @@ final class Navigator: ObservableObject {
         case .transit, .choose:
             return { [planner] place, here, name in
                 let trip = try await planner.choices(to: place, from: here, name: name, transitOnly: mode == .transit)
-                // Asked for the train / bus, or only one way exists: just go.
-                if mode == .transit || trip.choices.count == 1 {
+                // Asked for the train / bus, or truly only one way: just go. If trains / buses
+                // failed, show the list anyway, so the reason is seen.
+                if mode == .transit || (trip.choices.count == 1 && trip.transitNote == nil) {
                     return .follow(trip.choices[trip.recommended].route, .walking)
                 }
                 return .choose(trip)

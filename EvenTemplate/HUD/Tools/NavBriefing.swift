@@ -30,8 +30,11 @@ enum NavBriefing {
                 "\(index + 1)) \(describe(choice))"
             }.joined(separator: "; ")
             let best = trip.choices[trip.recommended]
+            let missing = trip.transitNote.map {
+                " Train and bus routes could NOT be checked (\($0)), so do not call walking the fastest; tell the user why."
+            } ?? ""
             text = "Ways to \(trip.destinationName)\(place): \(list). The app recommends \(trip.recommended + 1): "
-                + "\(plan(best.route.steps, current: nil)) Waiting for the user to pick one (chooseRoute).\(whereNow)"
+                + "\(plan(best.route.steps, current: nil))\(missing) Waiting for the user to pick one (chooseRoute).\(whereNow)"
         case .active(let progress):
             text = "Navigating to \(progress.destinationName)\(place): \(Int(progress.remainingMeters)) m, "
                 + "about \(progress.remainingMinutes) min left.\(whereNow) "
