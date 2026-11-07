@@ -58,7 +58,7 @@ enum VoicePhrases {
     private static let openWords = ["タブを開いて", "を開いて", "開いて", "タブ", "に切り替えて", "を表示", "見せて",
                                     "open ", "go to ", "show ", " tab",
                                     "abrir ", "abre ", "mostrar ", "vai para ", "aba "]
-    private static let callPrefixes = ["ねえ", "ねぇ", "えっと", "あの", "hey ", "ok ", "okay ", "ei ", "ô ", "oi "]
+    private static let callPrefixes = ["ねえ", "ねぇ", "えっと", "あの", "hey ", "ok ", "okay ", "ei ", "ô ", "oi ", "ヘイ"]
 
     // MARK: - Normalizing
 

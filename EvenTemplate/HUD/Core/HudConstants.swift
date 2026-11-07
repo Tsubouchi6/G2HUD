@@ -62,14 +62,13 @@ enum HudConstants {
 
     // MARK: - Voice commands
 
-    /// Words that start a command when said at the beginning of a sentence.
-    /// Source: design choice; matched on the transcript (no extra model needed).
-    /// All languages are always accepted (matching is cheap); the speech engine
-    /// only produces the selected language anyway.
+    /// Wake word ("Claude"): a phrase starting with one of these is a command.
+    /// Includes the spellings speech-to-text may produce in each language
+    /// (Japanese writes it in katakana). Matched on the transcript, so no extra
+    /// model is needed. Add variants here if the Captions tab shows another spelling.
     static let wakeWords: [String] = [
-        "メガネ", "めがね", "眼鏡",
-        "glasses",
-        "óculos", "oculos",
+        "claude", "claud", "clode",
+        "クロード", "くろーど", "クロウド",
     ]
 
     /// After saying only the wake word, the next sentence counts as a command

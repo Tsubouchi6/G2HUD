@@ -1,7 +1,7 @@
 // VoiceCommandRouter.swift
 //
 // Turns finished speech phrases into actions. Cheapest path first:
-//   1. Wake word ("メガネ / glasses / óculos ...") marks a command; other speech is just captions.
+//   1. Wake word ("Claude ...") marks a command; other speech is just captions.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI.
 //   3. Anything else after the wake word goes to the on-device AI tab.
 // Destructive actions wait for "はい / yes / sim" before running.
