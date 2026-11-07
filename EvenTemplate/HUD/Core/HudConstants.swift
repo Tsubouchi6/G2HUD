@@ -141,6 +141,36 @@ enum HudConstants {
     /// while keeping ~0.2 s response at the IMU's report rate.
     static let imuSmoothingAlpha: Double = 0.2
 
+    // MARK: - Directions
+
+    /// Search area around the user for "nearest ..." places, in meters (radius).
+    /// Source: design choice (walking distance; Apple returns the closest matches it finds).
+    static let navSearchRadiusMeters: Double = 3000
+
+    /// First location fix good enough to search from, in meters of accuracy, and how
+    /// long to wait for one before using the best so far, in seconds.
+    /// Source: GPS.gov — smartphones are typically accurate to ~5 m in open sky; cities are worse.
+    static let navFirstFixAccuracyMeters: Double = 50
+    static let navFirstFixTimeoutSeconds: Double = 8
+
+    /// Within this distance of a step's end the next step begins, in meters.
+    /// Source: design choice (about city GPS error, so turns aren't skipped early).
+    static let navStepAdvanceMeters: Double = 20
+
+    /// Farther than this from the route (plus the fix's own error) = off route, in meters.
+    static let navOffRouteMeters: Double = 40
+
+    /// Minimum time between re-routes, in seconds (MapKit throttles frequent requests;
+    /// source: developer.apple.com/documentation/mapkit/mkdirections).
+    static let navRerouteMinSeconds: Double = 20
+
+    /// Within this distance of the destination = arrived, in meters.
+    static let navArrivalMeters: Double = 25
+
+    /// Route map picture: line width and marker radius, in pixels (400x200 picture).
+    static let navMapRouteWidthPx: CGFloat = 5
+    static let navMapMarkerRadiusPx: CGFloat = 6
+
     // MARK: - Reminders
 
     /// How often due reminders are checked while the app runs, in seconds.
@@ -239,7 +269,10 @@ enum HudConstants {
     SAVE: <short title> when the user asks, in any words, to save or keep this chat. \
     LISTEN: <short title> when the user asks you to listen to or pay attention to what people \
     around them say (the app saves that text from now on; you cannot hear it yourself). \
-    LISTEN_STOP when the user says you can stop listening.
+    LISTEN_STOP when the user says you can stop listening. \
+    DIRECTIONS: <place as a map search> | <walking or driving> | <full or minimal> to give \
+    turn-by-turn directions to the nearest match (minimal = clear screen, only the next \
+    direction). DIRECTIONS_STOP to stop them.
     """
 
     // MARK: - On-device AI
@@ -268,6 +301,7 @@ enum HudConstants {
     to see something. Call saveChat when the user asks, in any words, to save \
     or keep this chat. Call startListening when the user asks you to listen to or \
     pay attention to what people around them say, and stopListening when they say \
-    you can stop. After a tool, reply with one short sentence.
+    you can stop. Call startDirections when the user wants to go somewhere or find \
+    the way, and stopDirections to stop. After a tool, reply with one short sentence.
     """
 }

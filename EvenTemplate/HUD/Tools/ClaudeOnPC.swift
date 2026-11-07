@@ -9,6 +9,8 @@
 //   SAVE: <short title>                              -> saves this chat (Saved tab)
 //   LISTEN: <short title>                            -> saves what people say from now on
 //   LISTEN_STOP                                      -> stops and keeps that text
+//   DIRECTIONS: <place> | <walking|driving> | <full|minimal> -> turn-by-turn to the nearest match
+//   DIRECTIONS_STOP                                  -> stops navigation
 //
 // Public API:
 //   ClaudeOnPC(settings:charts:actions:)
@@ -89,13 +91,20 @@ final class ClaudeOnPC {
 
     // MARK: - Action lines
 
-    /// Carries out IMAGE/STOCK/CHART/SAVE/LISTEN lines and returns the text without them.
+    /// Carries out IMAGE/STOCK/CHART/SAVE/LISTEN/DIRECTIONS lines and returns the text without them.
     private func runActions(in answer: String) -> String {
         var kept: [String] = []
         for line in answer.components(separatedBy: "\n") {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
             if trimmedLine.uppercased() == "LISTEN_STOP" {
                 _ = actions.stopListening()
+            } else if trimmedLine.uppercased() == "DIRECTIONS_STOP" {
+                _ = actions.stopDirections()
+            } else if let spec = value(trimmedLine, "DIRECTIONS:") {
+                let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+                let mode = parts.count > 1 ? DirectionsMode(rawValue: parts[1].lowercased()) ?? .walking : .walking
+                let minimal = parts.count > 2 && parts[2].lowercased() == "minimal"
+                actions.startDirections(parts[0], mode, minimal)
             } else if let title = value(trimmedLine, "LISTEN:") {
                 _ = actions.startListening(title)
             } else if let terms = value(trimmedLine, "IMAGE:") {

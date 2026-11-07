@@ -4,7 +4,7 @@
 // wires speech -> voice commands -> tabs, glasses input -> lens, and reminders
 // -> lens alerts, and the AI's tools (search, charts, pictures) -> lens. Screens talk to this object (and the parts it exposes).
 //
-// Tab order on the lens: 字幕, AI, 検索, 計算, メモ, リマインダー, 履歴 (saved).
+// Tab order on the lens: 字幕, AI, 検索, 計算, メモ, リマインダー, 履歴 (saved), ナビ (nav).
 //
 // Public API:
 //   HudController(session:)
@@ -52,8 +52,9 @@ final class HudController: ObservableObject {
         let search = WebSearchService(settings: settings, ai: ai)
         let charts = ChartService()
         let aiChats = AiChatArchive()
+        let navigator = Navigator(location: LocationService(), directions: DirectionsService())
 
-        // What either AI can make the HUD do (charts, pictures, saving, listening).
+        // What either AI can make the HUD do (charts, pictures, saving, listening, directions).
         let actions = AiActions(
             showChart: { [weak lens] chart in lens?.showImage(chart.png, caption: chart.caption) },
             showPicture: { [weak lens] terms, caption in
@@ -83,6 +84,17 @@ final class HudController: ObservableObject {
                 listening.endSession()
                 lens?.showBanner(HudText.t(.listeningSaved))
                 return true
+            },
+            startDirections: { [weak lens] destination, mode, minimal in
+                navigator.start(destination: destination, mode: mode, minimal: minimal)
+                lens?.select(id: "nav")
+            },
+            stopDirections: {
+                guard case .idle = navigator.state else {
+                    navigator.stop()
+                    return true
+                }
+                return false
             }
         )
         ai.tools = AiTools.make(search: search, charts: charts, actions: actions)
@@ -101,7 +113,10 @@ final class HudController: ObservableObject {
             NotesTab(store: notes),
             RemindTab(service: reminders),
             savedTab,
+            NavTab(navigator: navigator),
         ])
+        navigator.onMapPicture = { [weak lens] png, name in lens?.showImage(png, caption: name) }
+        navigator.onArrived = { [weak lens] name in lens?.showBanner(HudText.t(.navArrived, name), seconds: HudConstants.reminderAlertSeconds) }
 
         self.settings = settings
         self.captions = captions
@@ -116,7 +131,8 @@ final class HudController: ObservableObject {
         self.listening = listening
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
-            reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab, savedTab: savedTab
+            reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab, savedTab: savedTab,
+            navigator: navigator
         ))
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 

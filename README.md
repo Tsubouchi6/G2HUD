@@ -12,7 +12,7 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 | `EvenTemplate/HUD/Speech/` | `SpeechEngine` protocol + engines (`AppleSpeechEngine` = iOS 26 on-device) |
 | `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> transcript), `ConversationLog` (saved transcripts), `RawAudioRecorder` (test .wav files) |
 | `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners, pictures), `LensPusher` (rate-limited sends), `LensTab` protocol |
-| `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind, Saved |
+| `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind, Saved, Nav |
 | `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily, offline on-device AI fallback), on-device AI + its tools (`AiTools`: searchWeb, stockChart, drawChart, showPicture), charts (Yahoo Finance stocks, Swift Charts renderer) |
 | `PCBridge/` | PC side of the Claude link: `bridge.ps1` (runs `claude -p` for the app), `start-bridge.cmd` |
 | `EvenTemplate/HUD/Voice/` | `VoiceCommandRouter` (wake word -> key phrases -> AI) and `VoicePhrases` tables |
@@ -38,6 +38,8 @@ in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
 | 計算 12かける35 | calculate 12 times 35 | calcular 12 vezes 35 | calculator |
 | 5時にロット確認 | remind me at 5 to check | me lembra às 5 de conferir | reminder |
 | 店員さんの話を聞いておいて / …もういいよ | listen to what they're saying / you can stop | presta atenção no que eles falam / pode parar | AI saves what people say from that moment (any wording) to the Saved tab as [聞き取り]; stops when told or when the HUD stops |
+| 一番近いコンビニへの道を教えて / 画面すっきりで | directions to the nearest convenience store / clear screen | rota até a loja mais perto | AI starts turn-by-turn (Apple Maps, free) in the ナビ tab; "minimal" = one line at the top only |
+| (ナビ tab) シンプル / 詳しく / 地図 | simple / full / map | simples / completo / mapa | one-line view / full view / route map picture |
 | この会話を保存して | save this chat | salva essa conversa | AI saves the AI chat (any wording) to the 履歴/Saved tab |
 | 履歴 → 2番 → 翻訳して / 英語に翻訳 → 一覧 | saved → number 2 → translate / translate to Portuguese → list | salvos → número 2 → traduz → lista | Saved tab: open, translate line by line (Apple Translation, on-device), back |
 | 最後のメモを消して | delete last note | apagar última nota | asks yes/no first |

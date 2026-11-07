@@ -10,6 +10,8 @@
 //   saveChat(title) -> Bool        — saves the AI chat (false = empty)
 //   startListening(title) -> Bool  — saves what people say from now on (false = HUD not listening)
 //   stopListening() -> Bool        — ends and keeps the clip (false = nothing was being saved)
+//   startDirections(destination, mode, minimal) — nearest match, turn-by-turn in the Nav tab
+//   stopDirections() -> Bool       — ends navigation (false = none running)
 
 import Foundation
 
@@ -19,4 +21,6 @@ struct AiActions: Sendable {
     let saveChat: @MainActor @Sendable (_ title: String) -> Bool
     let startListening: @MainActor @Sendable (_ title: String) -> Bool
     let stopListening: @MainActor @Sendable () -> Bool
+    let startDirections: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode, _ minimal: Bool) -> Void
+    let stopDirections: @MainActor @Sendable () -> Bool
 }

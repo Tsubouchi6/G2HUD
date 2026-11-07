@@ -62,6 +62,7 @@ enum HudText {
         case findingImage, imageNotFound
         case tabSaved, savedHint, savedAiTag, savedTalkTag, translating, translationFailed
         case chatSaved, nothingToSave, aiChats
+        case tabNav, navHint, navFinding, navArrived, navRemaining, navThen, navRerouting, navToArrival
         case listeningStarted, listeningSaved, savedListenTag, listenedClips
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
         case checkConnection, connectionOk, iphoneAiTag
@@ -171,6 +172,14 @@ enum HudText {
         .translationFailed: ("翻訳できませんでした (設定 > アプリ > 翻訳 で言語をダウンロード)", "Couldn't translate (download the languages in Settings > Apps > Translate)", "Não foi possível traduzir (baixe os idiomas em Ajustes > Apps > Traduzir)"),
         .chatSaved: ("保存した: %@", "Saved: %@", "Salvo: %@"),
         .nothingToSave: ("保存する会話がない", "Nothing to save", "Nada para salvar"),
+        .tabNav: ("ナビ", "Nav", "Rota"),
+        .navHint: ("(ネオ 一番近いコンビニへの道)", "(Neo directions to the nearest convenience store)", "(Neo rota até a loja de conveniência mais perto)"),
+        .navFinding: ("探しています: %@", "Finding: %@", "Procurando: %@"),
+        .navArrived: ("到着: %@", "Arrived: %@", "Chegou: %@"),
+        .navRemaining: ("残り %@ · %d分", "%@ left · %d min", "Faltam %@ · %d min"),
+        .navThen: ("その次: %@", "Then: %@", "Depois: %@"),
+        .navRerouting: ("ルート再検索中...", "Rerouting...", "Recalculando..."),
+        .navToArrival: ("到着まで", "to arrival", "até a chegada"),
         .listeningStarted: ("聞き取り中: %@", "Listening: %@", "Ouvindo: %@"),
         .listeningSaved: ("聞き取りを保存した", "Listening saved", "Escuta salva"),
         .savedListenTag: ("聞き取り", "Listened", "Ouvido"),

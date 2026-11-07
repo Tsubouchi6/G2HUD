@@ -8,6 +8,8 @@
 	<string>This app connects to your smart glasses and ring over Bluetooth.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>This app connects to your smart glasses and ring over Bluetooth.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>G2HUD uses your location to give directions on your glasses.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app uses the microphone when you enable audio features.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
@@ -27,6 +29,7 @@
 	<array>
 		<string>bluetooth-central</string>
 		<string>audio</string>
+		<string>location</string>
 	</array>
 </dict>
 </plist>

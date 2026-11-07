@@ -13,6 +13,7 @@
 //     showPicture  — a web photo on the lens (Tavily, 1 credit)
 //     saveChat     — saves this AI chat to the Saved tab
 //     startListening / stopListening — saves what people around say, from now until stopped
+//     startDirections / stopDirections — turn-by-turn to the nearest match (Apple Maps, free)
 //   Failures are returned to the model as "Failed: ..." text, not thrown.
 
 import Foundation
@@ -34,6 +35,8 @@ enum AiTools {
             SaveChatTool(save: actions.saveChat),
             StartListeningTool(start: actions.startListening),
             StopListeningTool(stop: actions.stopListening),
+            StartDirectionsTool(start: actions.startDirections),
+            StopDirectionsTool(stop: actions.stopDirections),
         ]
     }
 
@@ -227,5 +230,50 @@ private struct StopListeningTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await stop() ? "Stopped and saved." : "Nothing was being listened to."
+    }
+}
+
+// MARK: - Directions
+
+private struct StartDirectionsTool: Tool {
+    let name = "startDirections"
+    let description = """
+    Starts turn-by-turn directions on the user's glasses to the nearest place matching \
+    the destination, from where they are now. Use for any request to go somewhere or \
+    find the way (e.g. nearest convenience store, a station, an address).
+    """
+    let start: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode, _ minimal: Bool) -> Void
+
+    @Generable
+    enum Mode: String {
+        case walking, driving
+    }
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "What or where, as a map search, in the user's words, e.g. コンビニ, convenience store, Tokyo Station")
+        let destination: String
+        @Guide(description: "walking unless the user says they are driving")
+        let mode: Mode
+        @Guide(description: "true if the user wants a clear screen with only the next direction (no map)")
+        let minimal: Bool
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await start(arguments.destination, DirectionsMode(rawValue: arguments.mode.rawValue) ?? .walking, arguments.minimal)
+        return "Directions starting on the glasses."
+    }
+}
+
+private struct StopDirectionsTool: Tool {
+    let name = "stopDirections"
+    let description = "Stops the directions. Use when the user says, in any words, to stop or cancel navigation."
+    let stop: @MainActor @Sendable () -> Bool
+
+    @Generable
+    struct Arguments {}
+
+    func call(arguments: Arguments) async throws -> String {
+        await stop() ? "Directions stopped." : "No directions were running."
     }
 }

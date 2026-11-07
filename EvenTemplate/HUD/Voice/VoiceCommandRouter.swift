@@ -4,7 +4,8 @@
 //   1. Wake word ("Neo ...") marks a command; other speech is just captions.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI: tab
 //      navigation, notes, reminders, explicit "search ...", and in the Saved
-//      tab "2番" (open), "翻訳して" (translate), "一覧" (back to the list).
+//      tab "2番" (open), "翻訳して" (translate), "一覧" (back to the list); in the
+//      Nav tab "シンプル" (one line), "詳しく" (full), "地図" (map).
 //   3. Anything else: maths to the calculator (exact), everything else to the
 //      on-device AI, which knows the date/time/place and decides by itself
 //      whether to search, draw a chart, or show a picture (AiTools).
@@ -30,6 +31,7 @@ struct VoiceCommandContext {
     let searchTab: SearchTab
     let calcTab: CalcTab
     let savedTab: SavedTab
+    let navigator: Navigator
 }
 
 @MainActor
@@ -82,6 +84,7 @@ final class VoiceCommandRouter {
         guard !command.isEmpty else { return }
         context.lens.dismissImage()
         if runSavedTabPhrase(command) { return }
+        if runNavTabPhrase(command) { return }
         if runKeyPhrase(command) { return }
 
         // Not a known phrase: maths to the exact calculator, the rest to the AI.
@@ -187,6 +190,15 @@ final class VoiceCommandRouter {
             if !saved.open(number: number) { context.lens.showBanner(HudText.t(.noResults)) }
             return true
         }
+        return false
+    }
+
+    /// While the Nav tab is open: "シンプル" (one line), "詳しく" (full), "地図" (map picture).
+    private func runNavTabPhrase(_ command: String) -> Bool {
+        guard context.lens.activeTab?.id == "nav" else { return false }
+        if VoicePhrases.matches(command, VoicePhrases.navMinimalWords) { context.navigator.minimal = true; return true }
+        if VoicePhrases.matches(command, VoicePhrases.navFullWords) { context.navigator.minimal = false; return true }
+        if VoicePhrases.matches(command, VoicePhrases.navMapWords) { context.navigator.showMap(); return true }
         return false
     }
 

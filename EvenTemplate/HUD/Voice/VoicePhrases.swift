@@ -59,6 +59,11 @@ enum VoicePhrases {
     /// Saved tab (only while it is open): back to the list, translate.
     static let savedListWords = ["一覧", "リスト", "一覧に戻って", "閉じて", "list", "back to list", "close", "lista", "fechar"]
     static let translateWords = ["翻訳", "訳して", "translate", "translation", "traduz", "traduzir", "tradução", "traducao"]
+    /// Nav tab (only while it is open): minimal view, full view, route map.
+    static let navMinimalWords = ["シンプル", "シンプルにして", "ミニマル", "画面をすっきり", "simple", "minimal", "clear screen", "simples", "mínimo", "minimo"]
+    static let navFullWords = ["詳しく", "詳細", "全部表示", "full", "details", "detailed", "completo", "detalhes"]
+    static let navMapWords = ["地図", "マップ", "地図を見せて", "map", "show map", "mapa", "mostra o mapa"]
+
     /// Language names for "英語に翻訳" / "translate to Portuguese".
     static let languageWords: [HudLanguage: [String]] = [
         .japanese: ["日本語", "japanese", "japonês", "japones"],
