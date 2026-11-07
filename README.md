@@ -13,7 +13,7 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 | `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> transcript), `ConversationLog` (saved transcripts), `RawAudioRecorder` (test .wav files) |
 | `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners, pictures), `LensPusher` (rate-limited sends), `LensTab` protocol |
 | `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind |
-| `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily, offline on-device AI fallback), on-device AI, charts (Yahoo Finance stocks, statistics from search, Swift Charts renderer) |
+| `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily, offline on-device AI fallback), on-device AI + its tools (`AiTools`: searchWeb, stockChart, drawChart, showPicture), charts (Yahoo Finance stocks, Swift Charts renderer) |
 | `EvenTemplate/HUD/Voice/` | `VoiceCommandRouter` (wake word -> key phrases -> AI) and `VoicePhrases` tables |
 | `EvenTemplate/HUD/Input/` | Touchpad/ring mapping, head-tilt detection |
 | `EvenTemplate/HUD/Screens/` | Phone UI: HUD (preview + typed commands), Captions (+ saved conversations), Settings |
@@ -36,11 +36,8 @@ in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
 | 天気を検索 | search weather | pesquisar tempo | web search + AI summary (Tavily key in Settings) |
 | 計算 12かける35 | calculate 12 times 35 | calcular 12 vezes 35 | calculator |
 | 5時にロット確認 | remind me at 5 to check | me lembra às 5 de conferir | reminder |
-| 猫の写真を見せて | show me a picture of a cat | mostra uma foto de gato | web photo on the lens (Tavily) |
-| トヨタの今年の株価 | apple stock this year | ações da apple este ano | price line chart (Yahoo, free; ranges: 今日/今週/default month/今年/5年) |
-| 日本の人口のグラフ | chart of japan population | gráfico da população do japão | chart from search numbers (Tavily, 1 credit) |
 | 最後のメモを消して | delete last note | apagar última nota | asks yes/no first |
-| anything else | anything else | qualquer outra coisa | on-device AI |
+| anything else | anything else | qualquer outra coisa | on-device AI. It knows the date, time, and time zone, and decides by itself to search the web, show a stock chart (Yahoo, free), draw a chart from real numbers, or show a picture. e.g. 今何時 / 猫の写真見せて / トヨタの株価 / 日本の人口のグラフ |
 
 ## Building (no Mac needed)
 

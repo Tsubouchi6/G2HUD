@@ -31,10 +31,6 @@ enum HudConstants {
     /// Source: design choice (HUD mockup: "name flashes ~1 s").
     static let lensBannerSeconds: Double = 1.2
 
-    /// How long "what time is it" / "what's the date" answers stay up, in seconds.
-    /// Source: design choice (long enough to glance twice).
-    static let clockBannerSeconds: Double = 6
-
     /// How long a reminder alert stays on the lens, in seconds.
     static let reminderAlertSeconds: Double = 10
 
@@ -179,31 +175,29 @@ enum HudConstants {
     /// 400x200 picture area). Smaller is unreadable on the lens.
     static let chartLabelFontPt: CGFloat = 16
 
-    /// Statistics with more points than this draw as a line instead of bars
+    /// Charts with more points than this draw as a line instead of bars
     /// (bar labels stop fitting across 400 px).
     static let chartMaxBars: Int = 8
 
-    /// Most points the AI may pull out of search text for one statistics chart.
-    static let chartMaxPoints: Int = 12
-
-    /// Search text handed to the on-device AI for number extraction, in
-    /// characters (its context is ~4k tokens, shared with the instructions).
-    static let chartSourceMaxChars: Int = 3000
-
     // MARK: - On-device AI
 
-    /// Marker the on-device AI adds when it wants to show a picture.
-    static let aiImageMarker: String = "IMAGE:"
+    /// Search text handed back to the on-device AI from its searchWeb tool, in
+    /// characters (its context is ~4k tokens, shared with instructions, tool
+    /// schemas, and the chat). Source: Apple Foundation Models docs (context size).
+    static let aiToolResultMaxChars: Int = 1500
 
-    /// System instructions for the on-device model.
+    /// System instructions for the on-device model. Each question starts with a
+    /// [Context: ...] line (date, time, time zone, reply language).
     static let aiInstructions: String = """
-    You are a heads-up display assistant on smart glasses. Reply in the same \
-    language as the question. Keep answers under 120 characters, at most 3 \
-    short sentences, plain text only (no markdown, no lists). You have no \
-    internet and no live data: never guess weather, temperature, news, prices, \
-    or the current time. For those, say you can't know and suggest saying \
-    "Claude, search ...". If a picture would clearly help (an object, animal, \
-    place, tool, or how something looks), add one last line exactly like \
-    "IMAGE: <2-5 English search words>". Otherwise never add that line.
+    You are a heads-up display assistant on smart glasses. Answer exactly what \
+    was asked, the way a person would: as short as possible, under 120 \
+    characters, plain text, no markdown or lists. Use the [Context] line for the \
+    current date, time, place (time zone), and reply language; assume the user \
+    means their own place and time unless they name another. Answer directly \
+    whatever you can know yourself. Call searchWeb only for live or recent \
+    information. Call stockChart for stock, index, currency, or crypto prices. \
+    Call drawChart when the user asks for a chart or statistics and you have \
+    real numbers (search first if needed). Call showPicture when the user wants \
+    to see something. After a tool, reply with one short sentence.
     """
 }

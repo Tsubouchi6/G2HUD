@@ -2,12 +2,11 @@
 //
 // Turns finished speech phrases into actions. Cheapest path first:
 //   1. Wake word ("Claude ...") marks a command; other speech is just captions.
-//   2. Fixed key phrases (VoicePhrases) run instantly with no AI, including
-//      "what time is it" / "what's the date" (answered from the phone clock).
-//   3. Anything else: stock words ("トヨタの株価") draw a price chart; chart or
-//      statistics words draw a chart from search results; "show me a picture of..." shows a web photo; questions
-//      needing live data (weather, news, "now"...) go to Search; maths to the
-//      calculator; the rest to the on-device AI (which may ask for a picture).
+//   2. Fixed key phrases (VoicePhrases) run instantly with no AI: tab
+//      navigation, notes, reminders, explicit "search ...".
+//   3. Anything else: maths to the calculator (exact), everything else to the
+//      on-device AI, which knows the date/time/place and decides by itself
+//      whether to search, draw a chart, or show a picture (AiTools).
 // Destructive actions wait for "はい / yes / sim" before running.
 //
 // Public API:
@@ -29,12 +28,6 @@ struct VoiceCommandContext {
     let aiTab: AiTab
     let searchTab: SearchTab
     let calcTab: CalcTab
-    /// Finds a web photo for the words and shows it on the lens.
-    let showPicture: @MainActor (_ terms: String) -> Void
-    /// Draws a stock price chart on the lens.
-    let showStock: @MainActor (_ command: String) -> Void
-    /// Draws a statistics chart from web numbers on the lens.
-    let showStats: @MainActor (_ command: String) -> Void
 }
 
 @MainActor
@@ -88,19 +81,8 @@ final class VoiceCommandRouter {
         context.lens.dismissImage()
         if runKeyPhrase(command) { return }
 
-        // Not a known phrase: charts first (their requests often contain
-        // "show me"), then pictures, live questions to Search (the offline AI
-        // can't know them), maths to the calculator, the rest to the AI.
-        if VoicePhrases.wantsStock(command) {
-            context.showStock(command)
-        } else if VoicePhrases.wantsChart(command) {
-            context.showStats(command)
-        } else if VoicePhrases.wantsPicture(command) {
-            context.showPicture(command)
-        } else if VoicePhrases.mentionsLiveInfo(command) {
-            open("search")
-            context.searchTab.search(command)
-        } else if Calculator.looksLikeMath(command) {
+        // Not a known phrase: maths to the exact calculator, the rest to the AI.
+        if Calculator.looksLikeMath(command) {
             open("calc")
             context.calcTab.calculate(command)
         } else {
@@ -151,10 +133,6 @@ final class VoiceCommandRouter {
             context.captions.clearTranscript(); return true
         }
 
-        // Clock (phone's own time, in the HUD language)
-        if VoicePhrases.matches(command, VoicePhrases.timeQuestions) { showClock(time: true); return true }
-        if VoicePhrases.matches(command, VoicePhrases.dateQuestions) { showClock(time: false); return true }
-
         // Actions with a payload: "メモ 牛乳買う", "検索 天気", "計算 12×3", "AI ..."
         if let text = VoicePhrases.payload(command, VoicePhrases.notePrefixes) {
             context.notes.add(text)
@@ -201,15 +179,6 @@ final class VoiceCommandRouter {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         context.lens.showBanner(HudText.t(.reminderSet, formatter.string(from: parsed.date)))
-    }
-
-    /// "It's 15:09" / "Today is Saturday, November 7", from the phone clock.
-    private func showClock(time: Bool) {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: context.settings.language.speechLocaleId)
-        formatter.setLocalizedDateFormatFromTemplate(time ? "Hmm" : "MMMMdEEEE")
-        let text = HudText.t(time ? .timeNow : .dateToday, formatter.string(from: Date()))
-        context.lens.showBanner(text, seconds: HudConstants.clockBannerSeconds)
     }
 
     private func open(_ tabId: String) {

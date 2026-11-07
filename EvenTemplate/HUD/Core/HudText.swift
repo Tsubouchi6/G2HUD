@@ -60,8 +60,6 @@ enum HudText {
         case tavilyKeyPlaceholder, noSearchKey, offlineTag
         case savedConversations, noConversations, saveConversations, saveConversationsFooter
         case findingImage, imageNotFound
-        case loadingChart, stockNotFound, chartNoData
-        case timeNow, dateToday
     }
 
     // MARK: - Table (ja, en, pt)
@@ -159,11 +157,6 @@ enum HudText {
         .savedConversations: ("保存した会話", "Saved conversations", "Conversas salvas"),
         .findingImage: ("画像を探しています...", "Finding a picture...", "Procurando uma imagem..."),
         .imageNotFound: ("画像が見つからない", "No picture found", "Nenhuma imagem encontrada"),
-        .timeNow: ("今 %@", "It's %@", "São %@"),
-        .dateToday: ("今日は %@", "Today is %@", "Hoje é %@"),
-        .loadingChart: ("グラフを作成中...", "Making a chart...", "Criando o gráfico..."),
-        .stockNotFound: ("銘柄が見つからない", "Stock not found", "Ação não encontrada"),
-        .chartNoData: ("グラフにできる数字がない", "No numbers to chart", "Sem números para o gráfico"),
         .noConversations: ("まだありません", "None yet", "Nenhuma ainda"),
         .saveConversations: ("会話を保存", "Save conversations", "Salvar conversas"),
         .saveConversationsFooter: ("HUD実行中の文字起こしを時刻付きで保存。字幕タブ > 保存した会話 で見られます (ファイル: このiPhone内 > G2HUD > Conversations)。",

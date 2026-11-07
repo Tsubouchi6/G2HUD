@@ -12,12 +12,6 @@
 //   VoicePhrases.stripOpenWords(_:) -> String       // "字幕を開いて" -> "字幕"
 //   VoicePhrases.containsAny(_:_:) -> Bool
 //   VoicePhrases.isNavigation(_:) -> Bool
-//   VoicePhrases.mentionsLiveInfo(_:) -> Bool      // needs the web (weather, news, now...)
-//   VoicePhrases.wantsPicture(_:) -> Bool          // "show me a picture of ..."
-//   VoicePhrases.wantsStock(_:) -> Bool            // "トヨタの株価", "apple stock"
-//   VoicePhrases.wantsChart(_:) -> Bool            // "日本の人口のグラフ", "chart of ..."
-//   VoicePhrases.stockRange(_:) -> StockRange      // "今年" -> .year (default .month)
-//   VoicePhrases.stripChartWords(_:) -> String     // "トヨタの株価" -> "トヨタ"
 //   phrase tables: next, previous, scrollUp, scrollDown, yes, no, ...
 
 import Foundation
@@ -45,18 +39,6 @@ enum VoicePhrases {
                                  "apagar todas as notas", "apaga todas as notas"]
     static let deleteAllReminders = ["リマインダーを全部消して", "リマインダー全部消して", "delete all reminders", "clear reminders",
                                      "apagar todos os lembretes", "apaga todos os lembretes"]
-    /// Clock questions, answered from the phone's clock (no web, no AI).
-    /// "What time is it in London" doesn't match, so it still goes to Search.
-    static let timeQuestions = ["今何時", "いま何時", "何時", "今何時ですか", "何時ですか", "今なんじ", "なんじ",
-                                "what time is it", "what time is it now", "what's the time", "whats the time",
-                                "what is the time", "time", "current time", "the time",
-                                "que horas são", "que horas sao", "que horas são agora", "que horas sao agora",
-                                "que horas é", "que hora é", "que horas", "horas"]
-    static let dateQuestions = ["今日何日", "今日は何日", "何日", "何曜日", "今日何曜日", "今日は何曜日", "今日の日付", "日付",
-                                "what's the date", "whats the date", "what is the date", "what day is it",
-                                "what's today's date", "today's date", "date", "what day is today",
-                                "que dia é hoje", "que dia e hoje", "qual a data", "qual é a data", "que data é hoje",
-                                "que dia é", "data de hoje"]
     static let clearCaptions = ["字幕をクリア", "字幕クリア", "字幕を消して", "clear captions", "limpar legendas"]
 
     static let notePrefixes = ["メモして", "メモ", "めも", "note", "take a note", "write down",
@@ -71,46 +53,6 @@ enum VoicePhrases {
                                 "me lembra", "me lembre", "lembrete", "lembrar"]
     /// Softer words that only count as a reminder when a time is also found.
     static let softReminderWords = ["知らせて", "教えて", "通知して", "avisa", "avise"]
-
-    /// Words that mean the answer needs live web data, so the command goes to
-    /// Search instead of the offline AI. Japanese is matched as substrings;
-    /// English/Portuguese as whole words (so "know" doesn't match "now").
-    static let liveInfoSubstrings = [
-        "天気", "気温", "温度", "何度", "予報", "雨", "雪", "ニュース", "株価", "値段", "価格",
-        "営業時間", "何時まで", "開いてる", "今日", "今", "現在", "最新", "為替", "地震", "渋滞",
-    ]
-    static let liveInfoWords = [
-        "weather", "temperature", "forecast", "rain", "snow", "news", "price", "prices", "stock",
-        "hours", "open", "now", "today", "tonight", "latest", "current", "score", "exchange",
-        "tempo", "temperatura", "previsão", "chuva", "notícias", "noticias", "preço", "preços",
-        "cotação", "horário", "aberto", "agora", "hoje", "atual", "últimas",
-    ]
-
-    /// Words asking to see a picture. Japanese as substrings, others as phrases.
-    static let pictureSubstrings = ["画像", "写真", "見せて", "見た目", "どんな形"]
-    static let picturePhrases = [
-        "picture", "image", "photo", "show me", "look like", "looks like",
-        "foto", "imagem", "mostra", "mostrar", "aparência", "parece",
-    ]
-
-    /// Stock / market words (checked before pictures, so "show me Apple's
-    /// stock" draws a chart). Japanese as substrings, others as whole words.
-    static let stockSubstrings = ["株価", "株", "日経平均", "ダウ", "ナスダック", "ビットコイン", "仮想通貨", "為替", "ドル円"]
-    static let stockWords = [
-        "stock", "stocks", "shares", "share price", "ticker", "nasdaq", "nikkei", "dow", "bitcoin", "crypto",
-        "ação", "ações", "acao", "acoes", "bolsa", "cotação", "cotacao", "ibovespa",
-    ]
-    /// Chart / statistics words. Same matching rules.
-    static let chartSubstrings = ["統計", "グラフ", "チャート", "推移"]
-    static let chartWords = [
-        "chart", "graph", "statistics", "stats", "statistic", "trend",
-        "gráfico", "grafico", "estatística", "estatisticas", "estatísticas", "estatistica",
-    ]
-    /// Time-range words for stock charts, longest range first so "5年" beats "年".
-    static let fiveYearWords = ["5年", "五年", "five years", "5 years", "cinco anos", "5 anos"]
-    static let yearWords = ["今年", "1年", "一年", "年間", "year", "ano"]
-    static let weekWords = ["今週", "1週間", "一週間", "週", "week", "semana"]
-    static let dayWords = ["今日", "本日", "1日", "today", "day", "hoje", "dia"]
 
     private static let politeEndings = ["してください", "ください", "して", "へ", "に"]
     private static let openWords = ["タブを開いて", "を開いて", "開いて", "タブ", "に切り替えて", "を表示", "見せて",
@@ -168,63 +110,6 @@ enum VoicePhrases {
 
     static func containsAny(_ text: String, _ words: [String]) -> Bool {
         words.contains { text.contains($0) }
-    }
-
-    static func mentionsLiveInfo(_ text: String) -> Bool {
-        if liveInfoSubstrings.contains(where: { text.contains($0) }) { return true }
-        let words = Set(text.lowercased().components(separatedBy: CharacterSet.letters.inverted))
-        return liveInfoWords.contains(where: { words.contains($0) })
-    }
-
-    static func wantsPicture(_ text: String) -> Bool {
-        let lowered = text.lowercased()
-        if pictureSubstrings.contains(where: { lowered.contains($0) }) { return true }
-        let padded = " " + lowered.components(separatedBy: CharacterSet.letters.inverted).joined(separator: " ") + " "
-        return picturePhrases.contains(where: { padded.contains(" \($0) ") })
-    }
-
-    static func wantsStock(_ text: String) -> Bool {
-        containsSubstringOrWord(text, substrings: stockSubstrings, words: stockWords)
-    }
-
-    static func wantsChart(_ text: String) -> Bool {
-        containsSubstringOrWord(text, substrings: chartSubstrings, words: chartWords)
-    }
-
-    static func stockRange(_ text: String) -> StockRange {
-        if containsAny(text.lowercased(), fiveYearWords) { return .fiveYears }
-        if containsSubstringOrWord(text, substrings: ["年"], words: yearWords) { return .year }
-        if containsSubstringOrWord(text, substrings: ["週"], words: weekWords) { return .week }
-        if containsSubstringOrWord(text, substrings: ["今日", "本日"], words: dayWords) { return .day }
-        return .month
-    }
-
-    /// Removes stock, chart, range, and filler words, leaving the subject
-    /// ("トヨタの今年の株価のグラフ" -> "トヨタ").
-    static func stripChartWords(_ text: String) -> String {
-        var result = " " + text.lowercased().replacingOccurrences(of: "'", with: " ") + " "
-        let japanese = stockSubstrings + chartSubstrings + ["今年", "今週", "今日", "本日", "5年", "1年", "1週間",
-                                                            "見せて", "表示して", "出して", "教えて", "の", "を"]
-        for word in japanese.sorted(by: { $0.count > $1.count }) {
-            result = result.replacingOccurrences(of: word, with: " ")
-        }
-        let latin = stockWords + chartWords + fiveYearWords + yearWords + weekWords + dayWords + [
-            "show me", "show", "the", "of", "for", "price", "this", "last", "past", "a", "an", "s",
-            "mostra", "mostrar", "me", "do", "da", "de", "o", "a", "preço", "preco", "este", "esse", "último", "ultimo",
-        ]
-        for word in latin.sorted(by: { $0.count > $1.count }) {
-            result = result.replacingOccurrences(of: " \(word) ", with: " ")
-        }
-        return result.components(separatedBy: separators).filter { !$0.isEmpty }.joined(separator: " ")
-    }
-
-    /// Japanese substrings anywhere, or Latin words/phrases on word boundaries.
-    private static func containsSubstringOrWord(_ text: String, substrings: [String], words: [String]) -> Bool {
-        let lowered = text.lowercased()
-        if substrings.contains(where: { lowered.contains($0) }) { return true }
-        let padded = " " + lowered.components(separatedBy: CharacterSet.letters.inverted.subtracting(.decimalDigits))
-            .joined(separator: " ") + " "
-        return words.contains(where: { padded.contains(" \($0) ") })
     }
 
     static func isNavigation(_ text: String) -> Bool {

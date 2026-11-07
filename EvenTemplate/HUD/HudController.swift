@@ -2,7 +2,7 @@
 //
 // Assembles the HUD and is its single on/off switch. Builds the lens tabs,
 // wires speech -> voice commands -> tabs, glasses input -> lens, and reminders
-// -> lens alerts, and voice chart requests (stocks / statistics) -> lens pictures. Screens talk to this object (and the parts it exposes).
+// -> lens alerts, and the AI's tools (search, charts, pictures) -> lens. Screens talk to this object (and the parts it exposes).
 //
 // Tab order on the lens: 字幕, AI, 検索, 計算, メモ, リマインダー.
 //
@@ -46,10 +46,9 @@ final class HudController: ObservableObject {
 
         let ai = OnDeviceAI()
         let search = WebSearchService(settings: settings, ai: ai)
-        let aiTab = AiTab(ai: ai)
+        let aiTab = AiTab(ai: ai, settings: settings)
         let searchTab = SearchTab(service: search)
         let calcTab = CalcTab()
-        let charts = ChartService(search: search, ai: ai)
         lens.setTabs([
             CaptionsTab(captions: captions),
             aiTab,
@@ -67,39 +66,26 @@ final class HudController: ObservableObject {
         self.tilt = tilt
         self.conversations = conversations
         self.search = search
-        let showPicture: @MainActor (String, String?) -> Void = { [weak lens] terms, caption in
-            lens?.showBanner(HudText.t(.findingImage), seconds: HudConstants.searchTimeoutSeconds)
-            Task {
-                if let data = await search.findImage(terms) {
-                    lens?.showImage(data, caption: caption ?? terms)
-                } else {
-                    lens?.showBanner(HudText.t(.imageNotFound))
+
+        // The AI's tools put charts and pictures on the lens.
+        ai.tools = AiTools.make(
+            search: search,
+            charts: ChartService(),
+            showChart: { [weak lens] chart in lens?.showImage(chart.png, caption: chart.caption) },
+            showPicture: { [weak lens] terms, caption in
+                lens?.showBanner(HudText.t(.findingImage), seconds: HudConstants.searchTimeoutSeconds)
+                Task {
+                    if let data = await search.findImage(terms) {
+                        lens?.showImage(data, caption: caption)
+                    } else {
+                        lens?.showBanner(HudText.t(.imageNotFound))
+                    }
                 }
             }
-        }
-        aiTab.onWantsImage = { terms, caption in showPicture(terms, caption) }
-        searchTab.onImage = { [weak lens] data, caption in lens?.showImage(data, caption: caption) }
-        let showChart: @MainActor (@escaping @MainActor () async throws -> RenderedChart) -> Void = { [weak lens] make in
-            lens?.showBanner(HudText.t(.loadingChart), seconds: HudConstants.searchTimeoutSeconds)
-            Task {
-                do {
-                    let chart = try await make()
-                    lens?.showImage(chart.png, caption: chart.caption)
-                } catch ChartError.stockNotFound {
-                    lens?.showBanner(HudText.t(.stockNotFound))
-                } catch SearchError.missingApiKey {
-                    lens?.showBanner(HudText.t(.noSearchKey))
-                } catch {
-                    lens?.showBanner(HudText.t(.chartNoData))
-                }
-            }
-        }
+        )
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
-            reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab,
-            showPicture: { terms in showPicture(terms, nil) },
-            showStock: { command in showChart { try await charts.stockChart(for: command) } },
-            showStats: { command in showChart { try await charts.statsChart(for: command) } }
+            reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab
         ))
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 

@@ -1,54 +1,31 @@
 // OnDeviceAI.swift
 //
 // Apple's on-device language model (Foundation Models, iOS 26+). Free and
-// offline. Good for short everyday questions; weak at facts and math (math
-// goes to Calculator instead). Keeps one conversation so follow-ups work, and
-// starts a fresh one when the ~4k-token context fills up.
+// offline. Every question carries the current context (date, time, time
+// zone, reply language), so obvious things like "what time is it" are
+// answered directly. For what it can't know it calls its tools (AiTools:
+// web search, stock chart, chart, picture) by its own judgement.
+// Keeps one conversation so follow-ups work, and starts a fresh one when the
+// ~4k-token context fills up. Math goes to Calculator instead (exact).
 //
 // Public API:
 //   OnDeviceAI()
+//   tools: [any Tool]                // set once by HudController, before the first question
 //   availabilityMessage: String?     // nil when the model is ready
-//   ask(_ question: String) async throws -> String
+//   ask(_ question:, language:) async throws -> String
 //   answerOffline(query:language:) async throws -> String   // search fallback, no web, no chat history
 //   condense(answer:query:language:) async throws -> String  // web answer -> short, in the HUD language
-//   englishAssetName(_ subject: String) async throws -> String // "トヨタ" -> "Toyota" (for ticker lookup)
-//   extractSeries(question:text:) async throws -> ExtractedSeries // numbers from search text, for charts
 //   reset()
 
 import Foundation
 import FoundationModels
-
-/// Numbers pulled from text for a statistics chart.
-struct ExtractedSeries {
-    let title: String
-    let unit: String
-    let points: [ChartPoint]
-}
-
-/// Guided-generation shapes (the model fills these directly, no text parsing).
-@Generable
-private struct GeneratedSeries {
-    @Guide(description: "Very short chart title in the question's language")
-    let title: String
-    @Guide(description: "Unit of the values, e.g. %, people, USD, km. Empty if none")
-    let unit: String
-    @Guide(description: "Data points found in the text, in chronological or ranked order. Empty if the text has no numbers for the question")
-    let points: [GeneratedPoint]
-}
-
-@Generable
-private struct GeneratedPoint {
-    @Guide(description: "Short label, e.g. a year or a country name (max 8 characters)")
-    let label: String
-    @Guide(description: "The number, as written in the text, without units")
-    let value: Double
-}
 
 @MainActor
 final class OnDeviceAI {
 
     // MARK: - State
 
+    var tools: [any Tool] = []
     private var session: LanguageModelSession?
 
     // MARK: - Availability
@@ -67,13 +44,14 @@ final class OnDeviceAI {
 
     // MARK: - Asking
 
-    func ask(_ question: String) async throws -> String {
+    func ask(_ question: String, language: HudLanguage) async throws -> String {
+        let prompt = "\(Self.contextLine(language: language))\n\(question)"
         do {
-            return try await respond(question)
+            return try await respond(prompt)
         } catch LanguageModelSession.GenerationError.exceededContextWindowSize(_) {
             // Conversation got too long: start fresh and retry once.
             reset()
-            return try await respond(question)
+            return try await respond(prompt)
         }
     }
 
@@ -92,7 +70,7 @@ final class OnDeviceAI {
         that you can't know without the web. Plain text only.
         """
         let session = LanguageModelSession(instructions: instructions)
-        let response = try await session.respond(to: query)
+        let response = try await session.respond(to: "\(Self.contextLine(language: language))\n\(query)")
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -102,49 +80,31 @@ final class OnDeviceAI {
         let instructions = """
         Rewrite the given search answer so it directly answers the question in \
         \(language.englishName), in at most \(HudConstants.searchSummaryMaxChars) characters. \
-        Keep only what the question asks for. Keep numbers exactly. Plain text only.
+        Keep only what the question asks for, for the user's own place and time unless \
+        the question names another. Keep numbers exactly. Plain text only.
         """
         let session = LanguageModelSession(instructions: instructions)
-        let response = try await session.respond(to: "Question: \(query)\n\nAnswer: \(answer)")
+        let prompt = "\(Self.contextLine(language: language))\nQuestion: \(query)\n\nAnswer: \(answer)"
+        let response = try await session.respond(to: prompt)
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    // MARK: - Charts
+    // MARK: - Helpers
 
-    /// English company, index, or coin name for a Yahoo ticker search.
-    /// Fresh session each time so the chat context stays clean.
-    func englishAssetName(_ subject: String) async throws -> String {
-        let instructions = """
-        Convert the user's text into the English name of the company, stock index, \
-        currency pair, or cryptocurrency it refers to, as Yahoo Finance would list it \
-        (e.g. トヨタ -> Toyota, 日経平均 -> Nikkei 225, ドル円 -> USD/JPY). \
-        Reply with the name only.
-        """
-        let session = LanguageModelSession(instructions: instructions)
-        let response = try await session.respond(to: subject)
-        return response.content.trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "\"'.")))
-    }
-
-    /// Pulls the numbers that answer `question` out of search `text`. Only
-    /// numbers present in the text are allowed (the model must not invent data).
-    func extractSeries(question: String, text: String) async throws -> ExtractedSeries {
-        let instructions = """
-        You extract numeric data for a chart. Use only numbers that appear in the \
-        given text. Never estimate or invent values. At most \(HudConstants.chartMaxPoints) points.
-        """
-        let session = LanguageModelSession(instructions: instructions)
-        let prompt = "Question: \(question)\n\nText:\n\(text.prefix(HudConstants.chartSourceMaxChars))"
-        let generated = try await session.respond(to: prompt, generating: GeneratedSeries.self).content
-        let points = generated.points.prefix(HudConstants.chartMaxPoints).map {
-            ChartPoint(label: String($0.label.prefix(8)), value: $0.value)
-        }
-        return ExtractedSeries(title: generated.title, unit: generated.unit, points: Array(points))
-    }
-
-    private func respond(_ question: String) async throws -> String {
-        let session = self.session ?? LanguageModelSession(instructions: HudConstants.aiInstructions)
+    private func respond(_ prompt: String) async throws -> String {
+        let session = self.session ?? LanguageModelSession(tools: tools, instructions: HudConstants.aiInstructions)
         self.session = session
-        let response = try await session.respond(to: question)
+        let response = try await session.respond(to: prompt)
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// "[Context: Saturday 2026-11-07 15:18, time zone Asia/Tokyo. Reply in Portuguese.]"
+    /// Sent with every question so the answer always uses the real now.
+    private static func contextLine(language: HudLanguage) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEEE yyyy-MM-dd HH:mm"
+        let now = formatter.string(from: Date())
+        return "[Context: \(now), time zone \(TimeZone.current.identifier). Reply in \(language.englishName).]"
     }
 }
