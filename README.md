@@ -10,13 +10,13 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 | `EvenTemplate/HUD/HudController.swift` | Assembles the HUD; the single start/stop switch |
 | `EvenTemplate/HUD/Core/` | `HudConstants` (every tunable number, with units + source), settings, text layout, JSON storage, PCM helpers |
 | `EvenTemplate/HUD/Speech/` | `SpeechEngine` protocol + engines (`AppleSpeechEngine` = iOS 26 on-device) |
-| `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> transcript), `RawAudioRecorder` (test .wav files) |
+| `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> transcript), `ConversationLog` (saved transcripts), `RawAudioRecorder` (test .wav files) |
 | `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners), `LensPusher` (rate-limited sends), `LensTab` protocol |
 | `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind |
 | `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily, offline on-device AI fallback), on-device AI |
 | `EvenTemplate/HUD/Voice/` | `VoiceCommandRouter` (wake word -> key phrases -> AI) and `VoicePhrases` tables |
 | `EvenTemplate/HUD/Input/` | Touchpad/ring mapping, head-tilt detection |
-| `EvenTemplate/HUD/Screens/` | Phone UI: HUD (preview + typed commands), Captions, Settings |
+| `EvenTemplate/HUD/Screens/` | Phone UI: HUD (preview + typed commands), Captions (+ saved conversations), Settings |
 | `EvenTemplate/Bluetooth/` | Template's G2 / R1 Bluetooth stack (unchanged) |
 
 ## Language

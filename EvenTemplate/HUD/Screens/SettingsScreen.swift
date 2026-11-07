@@ -46,11 +46,12 @@ struct SettingsScreen: View {
             }
             .disabled(captions.isRunning || captions.isStarting)
             Toggle(HudText.t(.requireWakeWord), isOn: $settings.requireWakeWord)
+            Toggle(HudText.t(.saveConversations), isOn: $settings.saveConversations)
             Toggle(HudText.t(.usePhoneMic), isOn: $settings.usePhoneMic)
         } header: {
             Text(HudText.t(.voice))
         } footer: {
-            Text(HudText.t(.voiceFooter))
+            Text(HudText.t(.voiceFooter) + "\n\n" + HudText.t(.saveConversationsFooter))
         }
     }
 

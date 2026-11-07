@@ -1,6 +1,6 @@
 // CaptionsScreen.swift
 //
-// Phone view of the full transcript, plus raw-audio recording for testing
+// Phone view of the full transcript, saved conversations, and raw-audio recording for testing
 // speech engines in real environments (e.g. factory noise).
 // Start/stop and language live on the HUD screen.
 //
@@ -22,6 +22,9 @@ struct CaptionsScreen: View {
     var body: some View {
         NavigationView {
             Form {
+                Section {
+                    NavigationLink(HudText.t(.savedConversations)) { ConversationsList() }
+                }
                 transcriptSection
                 recordingSection
             }

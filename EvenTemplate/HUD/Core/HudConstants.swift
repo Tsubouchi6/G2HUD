@@ -60,6 +60,9 @@ enum HudConstants {
     /// Visible in the iPhone Files app ("On My iPhone > G2HUD").
     static let recordingsFolderName: String = "Recordings"
 
+    /// Folder (inside Documents) for saved conversation transcripts.
+    static let conversationsFolderName: String = "Conversations"
+
     // MARK: - Voice commands
 
     /// Wake word ("Claude"): a phrase starting with one of these is a command.

@@ -58,6 +58,7 @@ enum HudText {
         case searchFooter, glassesControls, touchControls, touchHelp, headTilt, headTiltToggle
         case swapLeftRight, tiltReadout, calibrate, headTiltFooter, notesHeader, remindersHeader
         case tavilyKeyPlaceholder, noSearchKey, offlineTag
+        case savedConversations, noConversations, saveConversations, saveConversationsFooter
     }
 
     // MARK: - Table (ja, en, pt)
@@ -152,6 +153,12 @@ enum HudText {
         .noSearchKey: ("設定で Tavily のキーを入れてください", "Add a Tavily key in Settings",
                        "Adicione uma chave Tavily nos Ajustes"),
         .offlineTag: ("(オフライン)", "(offline)", "(offline)"),
+        .savedConversations: ("保存した会話", "Saved conversations", "Conversas salvas"),
+        .noConversations: ("まだありません", "None yet", "Nenhuma ainda"),
+        .saveConversations: ("会話を保存", "Save conversations", "Salvar conversas"),
+        .saveConversationsFooter: ("HUD実行中の文字起こしを時刻付きで保存。字幕タブ > 保存した会話 で見られます (ファイル: このiPhone内 > G2HUD > Conversations)。",
+                                   "Saves each HUD session's transcript with times. Open it in Captions > Saved conversations (Files: On My iPhone > G2HUD > Conversations).",
+                                   "Salva a transcrição de cada sessão com horários. Veja em Legendas > Conversas salvas (Arquivos: No Meu iPhone > G2HUD > Conversations)."),
         .glassesControls: ("メガネの操作", "Glasses controls", "Controles dos óculos"),
         .touchControls: ("タッチパッド / リング操作", "Touchpad / ring controls", "Touchpad / anel"),
         .touchHelp: ("タップ=次のタブ · ダブルタップ=前 · スワイプ=スクロール",

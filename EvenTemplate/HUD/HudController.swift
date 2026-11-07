@@ -8,7 +8,7 @@
 //
 // Public API:
 //   HudController(session:)
-//   settings, captions, lens, notes, reminders, tilt   (exposed parts)
+//   settings, captions, lens, notes, reminders, tilt, conversations   (exposed parts)
 //   start() async / stop() async
 //   runTyped(_ command: String)      // phone test box: runs like a spoken command
 
@@ -26,6 +26,7 @@ final class HudController: ObservableObject {
     let notes: NotesStore
     let reminders: ReminderService
     let tilt: HeadTiltDetector
+    let conversations: ConversationLog
 
     private let router: VoiceCommandRouter
     private let input: GlassesInputHandler
@@ -40,6 +41,7 @@ final class HudController: ObservableObject {
         let notes = NotesStore()
         let reminders = ReminderService()
         let tilt = HeadTiltDetector()
+        let conversations = ConversationLog()
 
         let ai = OnDeviceAI()
         let aiTab = AiTab(ai: ai)
@@ -60,13 +62,17 @@ final class HudController: ObservableObject {
         self.notes = notes
         self.reminders = reminders
         self.tilt = tilt
+        self.conversations = conversations
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
             reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab
         ))
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 
-        captions.onFinalPhrase = { [weak self] phrase in self?.router.handle(phrase: phrase) }
+        captions.onFinalPhrase = { [weak self] phrase in
+            self?.conversations.append(phrase)
+            self?.router.handle(phrase: phrase)
+        }
         // Redraw the lens in the new language (next tick, after the value is stored).
         languageSubscription = settings.$language
             .dropFirst()
@@ -82,6 +88,7 @@ final class HudController: ObservableObject {
     func start() async {
         await captions.start()
         guard captions.isRunning else { return }
+        if settings.saveConversations { conversations.startSession(language: settings.language) }
         lens.activate()
         input.start()
     }
@@ -89,6 +96,7 @@ final class HudController: ObservableObject {
     func stop() async {
         input.stop()
         await captions.stop()
+        conversations.endSession()
         lens.deactivate()
     }
 

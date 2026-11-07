@@ -7,6 +7,7 @@
 //   language: HudLanguage        // speech + commands + lens + HUD screens
 //   tavilyApiKey: String         // web search (with AI answer)
 //   requireWakeWord: Bool        // commands need the wake word first
+//   saveConversations: Bool      // keep transcripts of each HUD session
 //   usePhoneMic: Bool            // testing without glasses
 //   touchControlsEnabled: Bool   // glasses touchpad / R1 ring
 //   headGesturesEnabled: Bool    // ear-to-shoulder tilt switches tabs
@@ -29,6 +30,7 @@ final class HudSettings: ObservableObject {
     }
     @Published var tavilyApiKey: String { didSet { save(tavilyApiKey, Key.tavilyApiKey) } }
     @Published var requireWakeWord: Bool { didSet { save(requireWakeWord, Key.requireWakeWord) } }
+    @Published var saveConversations: Bool { didSet { save(saveConversations, Key.saveConversations) } }
     @Published var usePhoneMic: Bool { didSet { save(usePhoneMic, Key.usePhoneMic) } }
     @Published var touchControlsEnabled: Bool { didSet { save(touchControlsEnabled, Key.touchControls) } }
     @Published var headGesturesEnabled: Bool { didSet { save(headGesturesEnabled, Key.headGestures) } }
@@ -43,6 +45,7 @@ final class HudSettings: ObservableObject {
         static let legacyCaptionLanguage = "g2hud_caption_language"
         static let tavilyApiKey = "g2hud_tavily_api_key"
         static let requireWakeWord = "g2hud_require_wake_word"
+        static let saveConversations = "g2hud_save_conversations"
         static let usePhoneMic = "g2hud_use_phone_mic"
         static let touchControls = "g2hud_touch_controls"
         static let headGestures = "g2hud_head_gestures"
@@ -58,6 +61,7 @@ final class HudSettings: ObservableObject {
             ?? .japanese
         tavilyApiKey = defaults.string(forKey: Key.tavilyApiKey) ?? ""
         requireWakeWord = defaults.object(forKey: Key.requireWakeWord) as? Bool ?? true
+        saveConversations = defaults.object(forKey: Key.saveConversations) as? Bool ?? true
         usePhoneMic = defaults.object(forKey: Key.usePhoneMic) as? Bool ?? false
         touchControlsEnabled = defaults.object(forKey: Key.touchControls) as? Bool ?? true
         headGesturesEnabled = defaults.object(forKey: Key.headGestures) as? Bool ?? false
