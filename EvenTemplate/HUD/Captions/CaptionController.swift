@@ -1,21 +1,23 @@
 // CaptionController.swift
 //
-// Live captions: G2 mic -> speech engine -> text on the lens.
-// Turns the glasses mic on/off, feeds every mic frame to the active speech
-// engine (and the raw recorder), keeps the transcript, and pushes the newest
-// text to the glasses at a throttled rate.
+// Listening: turns the mic on/off, feeds every mic frame to the active speech
+// engine (and the raw recorder), and keeps the transcript. It does not draw on
+// the lens; CaptionsTab shows the transcript and VoiceCommandRouter reads
+// finished phrases through `onFinalPhrase`.
 //
 // Public API:
-//   CaptionController(session:)
+//   CaptionController(session:settings:)
 //   @Published isRunning, isStarting: Bool
 //   @Published phrases: [String]        // finished phrases, oldest first
 //   @Published livePhrase: String       // in-progress phrase (may still change)
 //   @Published errorMessage: String?
 //   @Published languageId: String       // "ja-JP" / "en-US", saved between launches
+//   onFinalPhrase: ((String) -> Void)?
 //   engineName: String
 //   recorder: RawAudioRecorder
 //   start() async / stop() async / clearTranscript()
 
+import AVFoundation
 import Combine
 import Foundation
 
@@ -33,6 +35,7 @@ final class CaptionController: ObservableObject {
         didSet { UserDefaults.standard.set(languageId, forKey: Self.languageDefaultsKey) }
     }
 
+    var onFinalPhrase: ((String) -> Void)?
     let recorder = RawAudioRecorder()
     private(set) var engineName = "Apple (on-device)"
 
@@ -41,18 +44,15 @@ final class CaptionController: ObservableObject {
     private static let languageDefaultsKey = "g2hud_caption_language"
 
     private let session: BluetoothSession
+    private let settings: HudSettings
     private var engine: SpeechEngine?
     private var subscriptions = Set<AnyCancellable>()
 
-    // Lens push throttling.
-    private var pushTask: Task<Void, Never>?
-    private var lastPushedText = ""
-    private var lastPushDate = Date.distantPast
-
     // MARK: - Lifecycle
 
-    init(session: BluetoothSession) {
+    init(session: BluetoothSession, settings: HudSettings) {
         self.session = session
+        self.settings = settings
         languageId = UserDefaults.standard.string(forKey: Self.languageDefaultsKey)
             ?? HudConstants.defaultCaptionLanguageId
         session.micPcm
@@ -62,17 +62,24 @@ final class CaptionController: ObservableObject {
 
     // MARK: - Start / stop
 
-    /// Loads the speech model, turns on the glasses mic, and starts captions.
+    /// Loads the speech model, turns on the mic, and starts listening.
     func start() async {
         guard !isRunning, !isStarting else { return }
         errorMessage = nil
+        let useGlassesMic = !settings.usePhoneMic
 
-        // The glasses mic lives inside our display page, which the firmware
-        // won't create while its own dashboard is showing.
-        if session.sdk.glassesScreenOccupied {
-            errorMessage = "The glasses dashboard is open. Look down or wait for it to close, then try again."
+        if useGlassesMic {
+            // The glasses mic lives inside our display page, which the firmware
+            // won't create while its own dashboard is showing.
+            if session.sdk.glassesScreenOccupied {
+                errorMessage = "The glasses dashboard is open. Look down or wait for it to close, then try again."
+                return
+            }
+        } else if !(await AVAudioApplication.requestRecordPermission()) {
+            errorMessage = "Microphone permission is needed for phone-mic mode."
             return
         }
+
         isStarting = true
         defer { isStarting = false }
 
@@ -90,12 +97,11 @@ final class CaptionController: ObservableObject {
 
         self.engine = engine
         engineName = engine.displayName
-        session.sdk.setMicState(enabled: true, useGlassesMic: true)
+        session.sdk.setMicState(enabled: true, useGlassesMic: useGlassesMic)
         isRunning = true
-        pushNow()
     }
 
-    /// Turns the mic off, lets the engine finish the last phrase, clears the lens.
+    /// Turns the mic off and lets the engine finish the last phrase.
     func stop() async {
         guard isRunning else { return }
         isRunning = false
@@ -107,17 +113,11 @@ final class CaptionController: ObservableObject {
             appendPhrase(livePhrase)
             livePhrase = ""
         }
-        pushTask?.cancel()
-        pushTask = nil
-        lastPushedText = ""
-        let sdk = session.sdk
-        Task { try? await sdk.clearDisplay() }
     }
 
     func clearTranscript() {
         phrases = []
         livePhrase = ""
-        if isRunning { schedulePush() }
     }
 
     // MARK: - Input handling
@@ -130,12 +130,13 @@ final class CaptionController: ObservableObject {
 
     private func handleSpeech(_ update: SpeechUpdate) {
         if update.isFinal {
-            appendPhrase(update.text)
             livePhrase = ""
+            if let phrase = appendPhrase(update.text) {
+                onFinalPhrase?(phrase)
+            }
         } else {
             livePhrase = update.text
         }
-        schedulePush()
     }
 
     private func handleEngineFailure(_ error: Error) {
@@ -143,53 +144,15 @@ final class CaptionController: ObservableObject {
         Task { await stop() }
     }
 
-    private func appendPhrase(_ text: String) {
+    /// Adds a finished phrase; returns it trimmed, or nil if it was empty.
+    @discardableResult
+    private func appendPhrase(_ text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
         phrases.append(trimmed)
         if phrases.count > HudConstants.captionHistoryLimit {
             phrases.removeFirst(phrases.count - HudConstants.captionHistoryLimit)
         }
-    }
-
-    // MARK: - Lens output
-
-    /// Newest phrases (one per line) that fit the lens; oldest dropped first.
-    private func lensText() -> String {
-        var lines = Array(phrases.suffix(20))
-        if !livePhrase.isEmpty { lines.append(livePhrase) }
-        guard !lines.isEmpty else { return "Listening..." }
-
-        let limit = HudConstants.captionMaxCharsOnLens
-        var text = lines.joined(separator: "\n")
-        while text.count > limit, lines.count > 1 {
-            lines.removeFirst()
-            text = lines.joined(separator: "\n")
-        }
-        return text.count > limit ? String(text.suffix(limit)) : text
-    }
-
-    /// Pushes at most once per `captionPushIntervalMs`; extra calls in between
-    /// are merged into the next push.
-    private func schedulePush() {
-        guard isRunning, pushTask == nil else { return }
-        let elapsedMs = Int(Date().timeIntervalSince(lastPushDate) * 1000)
-        let waitMs = max(0, HudConstants.captionPushIntervalMs - elapsedMs)
-        pushTask = Task { [weak self] in
-            if waitMs > 0 { try? await Task.sleep(nanoseconds: UInt64(waitMs) * 1_000_000) }
-            guard let self, !Task.isCancelled else { return }
-            self.pushTask = nil
-            self.pushNow()
-        }
-    }
-
-    private func pushNow() {
-        guard isRunning else { return }
-        let text = lensText()
-        guard text != lastPushedText else { return }
-        lastPushedText = text
-        lastPushDate = Date()
-        let sdk = session.sdk
-        Task { try? await sdk.displayText(text) }
+        return trimmed
     }
 }

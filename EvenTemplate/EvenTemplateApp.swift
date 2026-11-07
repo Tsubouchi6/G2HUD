@@ -24,7 +24,7 @@ struct EvenTemplateApp: App {
     @StateObject private var session: BluetoothSession
     @StateObject private var store: NotificationStore
     @StateObject private var viewer: GlassesNotificationViewer
-    @StateObject private var captions: CaptionController
+    @StateObject private var hud: HudController
 
     init() {
         let session = BluetoothSession()
@@ -32,20 +32,20 @@ struct EvenTemplateApp: App {
         _session = StateObject(wrappedValue: session)
         _store = StateObject(wrappedValue: store)
         _viewer = StateObject(wrappedValue: GlassesNotificationViewer(session: session, store: store))
-        _captions = StateObject(wrappedValue: CaptionController(session: session))
+        _hud = StateObject(wrappedValue: HudController(session: session))
     }
 
     var body: some Scene {
         WindowGroup {
             TabView {
+                HudScreen()
+                    .tabItem { Label("HUD", systemImage: "eyeglasses") }
                 CaptionsScreen()
                     .tabItem { Label("Captions", systemImage: "captions.bubble") }
+                SettingsScreen()
+                    .tabItem { Label("Settings", systemImage: "gearshape") }
                 DevicesScreen()
-                    .tabItem { Label("Devices", systemImage: "eyeglasses") }
-                NotificationsScreen()
-                    .tabItem { Label("Notifs", systemImage: "bell") }
-                DisplayScreen()
-                    .tabItem { Label("Display", systemImage: "text.alignleft") }
+                    .tabItem { Label("Devices", systemImage: "antenna.radiowaves.left.and.right") }
                 InputScreen()
                     .tabItem { Label("Input", systemImage: "hand.tap") }
                 MicScreen()
@@ -54,8 +54,14 @@ struct EvenTemplateApp: App {
             .environmentObject(session)
             .environmentObject(store)
             .environmentObject(viewer)
-            .environmentObject(captions)
-            .environmentObject(captions.recorder)
+            .environmentObject(hud)
+            .environmentObject(hud.lens)
+            .environmentObject(hud.captions)
+            .environmentObject(hud.captions.recorder)
+            .environmentObject(hud.settings)
+            .environmentObject(hud.tilt)
+            .environmentObject(hud.notes)
+            .environmentObject(hud.reminders)
         }
     }
 }

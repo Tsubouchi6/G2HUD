@@ -7,11 +7,30 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 
 | Folder | Job |
 | --- | --- |
-| `EvenTemplate/HUD/Core/` | `HudConstants` (every tunable number, with units + source), shared PCM helpers |
+| `EvenTemplate/HUD/HudController.swift` | Assembles the HUD; the single start/stop switch |
+| `EvenTemplate/HUD/Core/` | `HudConstants` (every tunable number, with units + source), settings, text layout, JSON storage, PCM helpers |
 | `EvenTemplate/HUD/Speech/` | `SpeechEngine` protocol + engines (`AppleSpeechEngine` = iOS 26 on-device) |
-| `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> lens), `RawAudioRecorder` (test .wav files) |
-| `EvenTemplate/HUD/Screens/` | Phone UI for the HUD features |
+| `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> transcript), `RawAudioRecorder` (test .wav files) |
+| `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners), `LensPusher` (rate-limited sends), `LensTab` protocol |
+| `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind |
+| `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, Brave search, on-device AI |
+| `EvenTemplate/HUD/Voice/` | `VoiceCommandRouter` (wake word -> key phrases -> AI) and `VoicePhrases` tables |
+| `EvenTemplate/HUD/Input/` | Touchpad/ring mapping, head-tilt detection |
+| `EvenTemplate/HUD/Screens/` | Phone UI: HUD (preview + typed commands), Captions, Settings |
 | `EvenTemplate/Bluetooth/` | Template's G2 / R1 Bluetooth stack (unchanged) |
+
+## Voice commands (say "メガネ" first)
+
+| Say | Does |
+| --- | --- |
+| 次 / 前 / 上 / 下 | next tab / previous tab / scroll |
+| 字幕 / AI / 検索 / 計算 / メモ / リマインダー | open that tab |
+| メモ 牛乳買う | add a note |
+| 天気を検索 / 検索 天気 | web search (needs Brave key in Settings) |
+| 計算 12かける35 / 12×35 | calculator |
+| 5時にロット確認 / 30分後に休憩 | reminder |
+| 最後のメモを消して | delete newest note (asks はい/いいえ) |
+| anything else | asks the on-device AI |
 
 ## Building (no Mac needed)
 
