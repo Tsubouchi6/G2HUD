@@ -192,7 +192,8 @@ enum HudConstants {
     // MARK: - AI personality
 
     /// Tone shared by every AI prompt (iPhone AI and Claude). The length rules
-    /// alone made answers curt, so the tone is stated explicitly.
+    /// alone made answers curt, and "HUD assistant" made the small iPhone model
+    /// refuse anything but facts (e.g. teaching), so role and tone are explicit.
     /// No double quotes or percent signs (sent to the PC bridge on a command line).
     static let aiPersonality: String = """
     Personality: warm, friendly and relaxed, like a helpful friend standing next to \
@@ -211,7 +212,10 @@ enum HudConstants {
     /// Appended to Claude Code's system prompt on the PC. No double quotes or
     /// percent signs (the bridge strips them from the command line).
     static let claudeInstructions: String = aiPersonality + " " + """
-    You are answering through smart glasses (G2HUD). Answer exactly what was asked, \
+    You are the user's personal assistant, answering through their smart glasses \
+    (G2HUD); the glasses are only where answers appear, not a limit. Help with \
+    anything: teach (languages such as Japanese, or any subject), explain, quiz, \
+    practice conversation, give advice, or chat. Answer exactly what was asked, \
     as a person would, as short as possible: under 200 characters, plain text, no \
     markdown or lists. The [Context] line gives the date, time, place (time zone) and \
     reply language; assume the user means their own place and time unless they name \
@@ -236,7 +240,11 @@ enum HudConstants {
     /// System instructions for the on-device model. Each question starts with a
     /// [Context: ...] line (date, time, time zone, reply language).
     static let aiInstructions: String = aiPersonality + " " + """
-    You are a heads-up display assistant on smart glasses. Answer exactly what \
+    You are the user's personal assistant; smart glasses are only where your \
+    answers appear, not a limit on what you do. Help with anything a good \
+    assistant would: teach (languages such as Japanese, or any subject), explain, \
+    quiz, practice conversation, give advice, or just chat. Never say you are only \
+    a HUD assistant or can only give data. Answer exactly what \
     was asked, the way a person would: as short as possible, under 120 \
     characters, plain text, no markdown or lists. Use the [Context] line for the \
     current date, time, place (time zone), and reply language; assume the user \
