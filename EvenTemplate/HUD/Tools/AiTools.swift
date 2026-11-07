@@ -12,7 +12,7 @@
 //     drawChart    — bar/line chart from numbers the model already has
 //     showPicture  — a web photo on the lens (Tavily, 1 credit)
 //     saveChat     — saves this AI chat to the Saved tab
-//     startListening / stopListening — saves what people around say, from now until stopped
+//     startListening / stopListening — saves what people around say, now or at set times
 //     startDirections / stopDirections — turn-by-turn to the nearest match (Apple Maps, free)
 //     showPlace    — where the nearest X is, with the user, on one map (no turn-by-turn)
 //     directionsView — map / minimal / zoom in / zoom out
@@ -212,12 +212,12 @@ private struct SaveChatTool: Tool {
 private struct StartListeningTool: Tool {
     let name = "startListening"
     let description = """
-    Starts saving the text of what people around the user say, from now on, so the \
-    user can read it later in the Saved tab. Use when the user asks, in any words, \
-    to listen, pay attention, or remember what someone says (a meeting, a store...). \
-    If the user says what language that person will speak, pass it.
+    Starts saving the text of what people around the user say, so the user can read \
+    it later in the Saved tab. Use when the user asks, in any words, to listen, pay \
+    attention, or remember what someone says (a meeting, a store...). If the user says \
+    what language that person will speak, or when to start or stop, pass it.
     """
-    let start: @MainActor @Sendable (_ title: String, _ language: String?) -> Bool
+    let start: @MainActor @Sendable (_ title: String, _ language: String?, _ start: Date?, _ stop: Date?) -> Bool
 
     @Generable
     enum SpokenLanguage: String {
@@ -230,26 +230,42 @@ private struct StartListeningTool: Tool {
         let title: String
         @Guide(description: "Language the people will speak: ja, en or pt; unchanged if the user didn't say")
         let language: SpokenLanguage
+        @Guide(description: "When to start, 24-hour HH:mm local time, e.g. 17:08. Empty to start now")
+        let startAt: String
+        @Guide(description: "When to stop, 24-hour HH:mm. Empty if the user gave no end time")
+        let stopAt: String
+        @Guide(description: "How long to listen in minutes, if the user gave a length instead of an end time. 0 if not")
+        let minutes: Int
     }
 
     func call(arguments: Arguments) async throws -> String {
         let language = arguments.language == .unchanged ? nil : arguments.language.rawValue
-        return await start(arguments.title, language)
-            ? """
+        let times = ListeningScheduler.times(start: arguments.startAt, stop: arguments.stopAt, minutes: arguments.minutes)
+        guard await start(arguments.title, language, times.start, times.stop) else {
+            return "Failed: the HUD is not running, so nothing can be heard."
+        }
+        if let begin = times.start {
+            let end = times.stop.map { " and stops at \(ListeningScheduler.clock($0))" } ?? ""
+            return "Scheduled: the app starts writing down what is said at \(ListeningScheduler.clock(begin))\(end). Confirm in one short sentence."
+        }
+        if let stop = times.stop {
+            return "Started. The app writes down what is said around the user until \(ListeningScheduler.clock(stop)), then saves it in the Saved tab. Confirm in one short sentence."
+        }
+        return """
             Started. The app itself is now writing down everything said around the user \
             (other people and the user, but not commands to you) and saves it in the Saved tab. \
             You don't hear it and the user doesn't need to tell you anything. Confirm that in \
             one short sentence and say they can tell you to stop when done.
             """
-            : "Failed: the HUD is not running, so nothing can be heard."
     }
 }
 
 private struct StopListeningTool: Tool {
     let name = "stopListening"
     let description = """
-    Stops saving what people say (started by startListening) and keeps the text. \
-    Use when the user says, in any words, that they're done or you can stop listening.
+    Stops saving what people say (started by startListening) and keeps the text, or \
+    cancels a planned one. Use when the user says, in any words, that they're done or \
+    you can stop listening.
     """
     let stop: @MainActor @Sendable () -> Bool
 
@@ -270,7 +286,7 @@ private struct StartDirectionsTool: Tool {
     the destination, from where they are now. Use for any request to go somewhere or \
     find the way (e.g. nearest convenience store, a station, an address).
     """
-    let start: @MainActor @Sendable (_ destination: String, _ mode: DirectionsMode) -> Void
+    let start: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: DirectionsMode) -> Void
 
     @Generable
     enum Mode: String {
@@ -278,15 +294,25 @@ private struct StartDirectionsTool: Tool {
     }
 
     @Generable
+    enum Match: String {
+        case kind, brand, exact
+    }
+
+    @Generable
     struct Arguments {
         @Guide(description: "What or where, as a map search, in the user's words, e.g. コンビニ, convenience store, Tokyo Station")
         let destination: String
+        @Guide(description: "kind = a type of place (pet shop), brand = a chain (Wendy's), exact = one place or address (Tokyo Station)")
+        let match: Match
         @Guide(description: "walking unless the user says they are driving")
         let mode: Mode
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await start(arguments.destination, DirectionsMode(rawValue: arguments.mode.rawValue) ?? .walking)
+        await start(
+            arguments.destination, PlaceMatch(rawValue: arguments.match.rawValue) ?? .kind,
+            DirectionsMode(rawValue: arguments.mode.rawValue) ?? .walking
+        )
         return "Directions starting on the glasses."
     }
 }
@@ -378,16 +404,23 @@ private struct ShowPlaceTool: Tool {
     the user's position (both fit), with the walking distance. Use for "where is", \
     "show me where", "how far is" questions; use startDirections to actually go there.
     """
-    let show: @MainActor @Sendable (_ query: String) -> Void
+    let show: @MainActor @Sendable (_ query: String, _ match: PlaceMatch) -> Void
+
+    @Generable
+    enum Match: String {
+        case kind, brand, exact
+    }
 
     @Generable
     struct Arguments {
         @Guide(description: "The kind of place or the place, as a map search, e.g. convenience store, Tokyo Station")
         let query: String
+        @Guide(description: "kind = a type of place (pet shop), brand = a chain (Wendy's), exact = one place or address (Tokyo Station)")
+        let match: Match
     }
 
     func call(arguments: Arguments) async throws -> String {
-        await show(arguments.query)
+        await show(arguments.query, PlaceMatch(rawValue: arguments.match.rawValue) ?? .kind)
         return "Shown on the map."
     }
 }

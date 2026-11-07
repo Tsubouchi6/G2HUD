@@ -19,8 +19,8 @@
 //   @Published minimal: Bool                 // one line at the top, nothing else
 //   @Published miniMap: Data?                // map PNG, 400x200 (MiniMapRenderer)
 //   @Published mapStatus: String             // phone-only: whether the Apple Maps background loaded
-//   start(destination:mode:)                 // directions to the nearest match (map view)
-//   showPlace(_ query:)                      // where the nearest match is, with the user
+//   start(destination:match:mode:)           // directions to the nearest match (map view)
+//   showPlace(_ query:, match:)              // where the nearest match is, with the user
 //   zoom(in:)                                // halve / double the map's reach
 //   stop()
 //   showMap()                                // back to the view with the map
@@ -122,13 +122,13 @@ final class Navigator: ObservableObject {
     // MARK: - Control
 
     /// Directions; always starts with the map (the one-line view only when asked).
-    func start(destination query: String, mode: DirectionsMode) {
-        begin(query: query, mode: mode, placeMode: false)
+    func start(destination query: String, match: PlaceMatch, mode: DirectionsMode) {
+        begin(query: query, match: match, mode: mode, placeMode: false)
     }
 
     /// "Where is the nearest X": the place and the user both on the map.
-    func showPlace(_ query: String) {
-        begin(query: query, mode: .walking, placeMode: true)
+    func showPlace(_ query: String, match: PlaceMatch) {
+        begin(query: query, match: match, mode: .walking, placeMode: true)
     }
 
     func stop() {
@@ -164,13 +164,13 @@ final class Navigator: ObservableObject {
 
     /// Finds the place first; only then replaces what's on the map. If the
     /// search fails while a map is up, that map stays and a notice is shown.
-    private func begin(query: String, mode: DirectionsMode, placeMode: Bool) {
+    private func begin(query: String, match: PlaceMatch, mode: DirectionsMode, placeMode: Bool) {
         let mapIsUp = route != nil
         if mapIsUp { onNotice?(HudText.t(.navFinding, query)) } else { state = .finding(query) }
         Task {
             do {
                 let here = try await location.currentLocation()
-                let place = try await directions.nearestPlace(query, near: here)
+                let place = try await directions.nearestPlace(query, match: match, near: here)
                 let route = try await directions.route(to: place, mode: mode)
                 stop()
                 self.mode = mode

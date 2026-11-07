@@ -64,7 +64,7 @@ enum HudText {
         case chatSaved, nothingToSave, aiChats
         case navPlaceWalk, navAngleRight, navAngleLeft, navStraight
         case tabNav, navHint, navFinding, navArrived, navRemaining, navThen, navRerouting, navToArrival
-        case listeningStarted, listeningSaved, savedListenTag, listenedClips
+        case listeningStarted, listeningSaved, listeningScheduled, listeningUntil, savedListenTag, listenedClips
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
         case checkConnection, connectionOk, iphoneAiTag
     }
@@ -189,6 +189,8 @@ enum HudText {
         .navToArrival: ("到着まで", "to arrival", "até a chegada"),
         .listeningStarted: ("聞き取り中: %@", "Listening: %@", "Ouvindo: %@"),
         .listeningSaved: ("聞き取りを保存した", "Listening saved", "Escuta salva"),
+        .listeningScheduled: ("%@から聞き取り: %@", "Listening from %@: %@", "Ouvindo a partir de %@: %@"),
+        .listeningUntil: ("%@まで", "until %@", "até %@"),
         .savedListenTag: ("聞き取り", "Listened", "Ouvido"),
         .listenedClips: ("聞き取り", "Listened", "Escutas"),
         .aiChats: ("保存したAIチャット", "Saved AI chats", "Conversas com IA salvas"),

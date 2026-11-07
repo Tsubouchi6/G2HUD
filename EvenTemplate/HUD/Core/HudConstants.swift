@@ -261,6 +261,11 @@ enum HudConstants {
     /// (MKLocalSearch regionPriority .required, iOS 18; without it Apple may
     /// return far-away matches). Source: user's choice of 500 m steps.
     static let navSearchRadiiMeters: [Double] = Array(stride(from: 500.0, through: 5000.0, by: 500.0))
+    /// Chain match: two place names count as the same chain when their first
+    /// this-many letters agree (spaces/punctuation ignored), e.g. "マクドナ".
+    /// Chosen by hand: shorter matched unrelated shops ("マ..."), and branch
+    /// names follow the chain name.
+    static let navBrandPrefixChars: Int = 4
 
     /// Map drawing: line width and marker radius, in pixels.
     static let navMapRouteWidthPx: CGFloat = 5
@@ -370,9 +375,9 @@ enum HudConstants {
     one search. Use when seeing it helps (how something looks, an animal, a place). \
     5. Save chat: saves this conversation (questions and answers) with a title; the \
     user reads it later in the Saved tab and can translate it there. \
-    6. Listen: from now on the app itself writes down everything said around the user \
-    (other people and the user, not commands to you) until told to stop, and saves it in \
-    the Saved tab. You don't hear it and never ask the user to report what they hear. \
+    6. Listen: the app itself writes down everything said around the user (other people \
+    and the user, not commands to you), from now or from a start time the user gives, \
+    until told to stop or until an end time or length they give, and saves it in the Saved tab. You don't hear it and never ask the user to report what they hear. \
     Use when the user wants anything heard from now on written down or saved (a meeting, \
     a shop clerk, if you hear anything save it). Nothing is saved unless they ask. If they \
     say what language that person will speak, start it in that language. \
@@ -384,7 +389,9 @@ enum HudConstants {
     Show place: for where is / show me where / how far is, shows the nearest match and \
     the user together on the map with the walking distance, without turn-by-turn. \
     Zoom: zoom in / out the map (around the user in directions, around the place after show place). \
-    For nearest, give just the kind of place (convenience store), not the word nearest. \
+    For nearest, give just the kind of place (convenience store), not the word nearest, \
+    and say whether it is a kind of place (pet shop), a brand or chain (Wendy's: only that \
+    chain counts), or one exact place or address (Tokyo Station). \
     8. Calculator: computes a formula exactly (+ - * / ^ ( ) %, phone-style percent) and \
     lists it in the Calc tab. Use it for ANY math instead of computing yourself: turn \
     everyday wording into a formula (a 15% tip on 4800 = 4800*15%, split 9600 among 3 = 9600/3). \
@@ -422,11 +429,12 @@ enum HudConstants {
     Chart: CHART: <title> | <unit> | <label>=<number>; <label>=<number>. \
     Picture: IMAGE: <2-5 English search words>. \
     Save chat: SAVE: <short title>. \
-    Listen: LISTEN: <short title> | <ja, en or pt if the user said the language>, and \
+    Listen: LISTEN: <short title> | <ja, en or pt if the user said the language, else any> | \
+    <start as 24-hour HH:mm, or now> | <end as HH:mm (work it out from a length), or open>, and \
     LISTEN_STOP to end it. \
-    Directions: DIRECTIONS: <place as a map search> | <walking or driving>, DIRECTIONS_STOP \
-    to end them, DIRECTIONS_VIEW: <map, minimal, zoomin or zoomout> for the view. \
-    Show place: PLACE: <place as a map search>. \
+    Directions: DIRECTIONS: <place as a map search> | <walking or driving> | <kind, brand or exact>, \
+    DIRECTIONS_STOP to end them, DIRECTIONS_VIEW: <map, minimal, zoomin or zoomout> for the view. \
+    Show place: PLACE: <place as a map search> | <kind, brand or exact>. \
     Open tab: OPEN: <captions, ai, search, calc, notes, remind, saved or nav>. \
     Languages: LANGUAGE: <hud or hearing> | <ja, en or pt>. \
     Calculator: CALC: <formula>, and the exact result is added to your answer, so don't \

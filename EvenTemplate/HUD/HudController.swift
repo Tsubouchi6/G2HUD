@@ -36,6 +36,7 @@ final class HudController: ObservableObject {
     private let router: VoiceCommandRouter
     private let input: GlassesInputHandler
     private let status: LensStatus
+    private let listenSchedule: ListeningScheduler
     private var languageSubscription: AnyCancellable?
 
     // MARK: - Assembly
@@ -49,6 +50,7 @@ final class HudController: ObservableObject {
         let tilt = HeadTiltDetector()
         let conversations = ConversationLog()
         let listening = ListeningLog()
+        let listenSchedule = ListeningScheduler()
 
         let ai = OnDeviceAI()
         let search = WebSearchService(settings: settings, ai: ai)
@@ -93,25 +95,39 @@ final class HudController: ObservableObject {
                 lens?.showBanner(saved ? HudText.t(.chatSaved, title) : HudText.t(.nothingToSave))
                 return saved
             },
-            startListening: { [weak lens, weak captions] title, code in
+            startListening: { [weak lens, weak captions] title, code, start, stop in
                 guard captions?.isRunning == true else { return false }
                 // "My friend will speak Japanese": record in that language.
                 if let code, let language = HudLanguage(rawValue: code) { settings.hearingLanguage = language }
-                listening.endSession()
-                listening.startSession(language: settings.hearingLanguage, title: title)
-                captions?.isRecording = true  // switch to the recording languages
-                lens?.showBanner(HudText.t(.listeningStarted, title), seconds: HudConstants.listeningBannerSeconds)
-                return true
+                let until = stop.map { " (\(HudText.t(.listeningUntil, ListeningScheduler.clock($0))))" } ?? ""
+                if let start {
+                    lens?.showBanner(HudText.t(.listeningScheduled, ListeningScheduler.clock(start), title) + until)
+                }
+                // "From 5:08 to 5:09": the scheduler starts and stops it at those times.
+                return listenSchedule.plan(start: start, stop: stop, begin: { [weak lens, weak captions] in
+                    guard captions?.isRunning == true else { return false }
+                    listening.endSession()
+                    listening.startSession(language: settings.hearingLanguage, title: title)
+                    captions?.isRecording = true  // switch to the recording languages
+                    lens?.showBanner(HudText.t(.listeningStarted, title) + until, seconds: HudConstants.listeningBannerSeconds)
+                    return true
+                }, end: { [weak lens] in
+                    guard listening.isRecording else { return }
+                    listening.endSession()
+                    captions.isRecording = false
+                    lens?.showBanner(HudText.t(.listeningSaved))
+                })
             },
             stopListening: { [weak lens] in
-                guard listening.isRecording else { return false }
+                let cancelledPlan = listenSchedule.cancel()
+                guard listening.isRecording else { return cancelledPlan }
                 listening.endSession()
                 captions.isRecording = false
                 lens?.showBanner(HudText.t(.listeningSaved))
                 return true
             },
-            startDirections: { [weak lens] destination, mode in
-                navigator.start(destination: destination, mode: mode)
+            startDirections: { [weak lens] destination, match, mode in
+                navigator.start(destination: destination, match: match, mode: mode)
                 lens?.select(id: "nav")
             },
             stopDirections: {
@@ -121,8 +137,8 @@ final class HudController: ObservableObject {
                 }
                 return false
             },
-            showPlace: { [weak lens] query in
-                navigator.showPlace(query)
+            showPlace: { [weak lens] query, match in
+                navigator.showPlace(query, match: match)
                 lens?.select(id: "nav")
             },
             directionsView: { [weak lens] view in
@@ -177,6 +193,7 @@ final class HudController: ObservableObject {
         self.aiChats = aiChats
         self.listening = listening
         self.navigator = navigator
+        self.listenSchedule = listenSchedule
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
             reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab, savedTab: savedTab,
@@ -233,6 +250,7 @@ final class HudController: ObservableObject {
         status.stop()
         await captions.stop()
         conversations.endSession()
+        _ = listenSchedule.cancel()
         listening.endSession()
         captions.isRecording = false
         router.window.close()

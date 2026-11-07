@@ -7,12 +7,12 @@
 //   STOCK: <Yahoo name> | <day|week|month|year|fiveYears> -> price chart
 //   CHART: <title> | <unit> | <label>=<n>; <label>=<n>    -> bar/line chart
 //   SAVE: <short title>                              -> saves this chat (Saved tab)
-//   LISTEN: <short title> [| ja|en|pt]               -> saves what people say from now on (in that language)
-//   LISTEN_STOP                                      -> stops and keeps that text
-//   DIRECTIONS: <place> | <walking|driving>          -> turn-by-turn (with the map) to the nearest match
+//   LISTEN: <title> | <ja|en|pt|any> | <HH:mm|now> | <HH:mm|open> -> saves what people say (language, start, stop)
+//   LISTEN_STOP                                      -> stops and keeps that text (or cancels a planned one)
+//   DIRECTIONS: <place> | <walking|driving> | <kind|brand|exact> -> turn-by-turn (with the map) to the nearest match
 //   DIRECTIONS_STOP                                  -> stops navigation
 //   DIRECTIONS_VIEW: <map|minimal|zoomin|zoomout>    -> map / one-line view / zoom
-//   PLACE: <place>                                   -> where the nearest match is, with the user
+//   PLACE: <place> | <kind|brand|exact>              -> where the nearest match is, with the user
 //   OPEN: <captions|ai|search|calc|notes|remind|saved|nav> -> shows that tab
 //   LANGUAGE: <hud|hearing> | <ja|en|pt>             -> HUD language / language the mic listens for
 //   CALC: <formula>                                  -> exact result, added to the answer
@@ -113,8 +113,9 @@ final class ClaudeOnPC {
                 _ = actions.stopListening()
             } else if let view = value(trimmedLine, "DIRECTIONS_VIEW:") {
                 _ = actions.directionsView(view.lowercased())
-            } else if let query = value(trimmedLine, "PLACE:") {
-                actions.showPlace(query)
+            } else if let spec = value(trimmedLine, "PLACE:") {
+                let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+                actions.showPlace(parts[0], Self.match(parts, at: 1))
             } else if let tab = value(trimmedLine, "OPEN:") {
                 _ = actions.openTab(tab.lowercased())
             } else if let spec = value(trimmedLine, "LANGUAGE:") {
@@ -125,11 +126,15 @@ final class ClaudeOnPC {
             } else if let spec = value(trimmedLine, "DIRECTIONS:") {
                 let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
                 let mode = parts.count > 1 ? DirectionsMode(rawValue: parts[1].lowercased()) ?? .walking : .walking
-                actions.startDirections(parts[0], mode)
+                actions.startDirections(parts[0], Self.match(parts, at: 2), mode)
             } else if let title = value(trimmedLine, "LISTEN:") {
-                // "LISTEN: Meeting | ja" — optional language the people will speak.
+                // "LISTEN: Meeting | ja | 17:08 | 17:09" — language, start, stop (all optional).
                 let parts = title.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
-                _ = actions.startListening(parts[0], parts.count > 1 ? parts[1].lowercased() : nil)
+                let language = parts.count > 1 && HudLanguage(rawValue: parts[1].lowercased()) != nil ? parts[1].lowercased() : nil
+                let times = ListeningScheduler.times(
+                    start: parts.count > 2 ? parts[2] : "", stop: parts.count > 3 ? parts[3] : "", minutes: 0
+                )
+                _ = actions.startListening(parts[0], language, times.start, times.stop)
             } else if let terms = value(trimmedLine, "IMAGE:") {
                 actions.showPicture(terms, kept.last ?? terms)
             } else if let spec = value(trimmedLine, "STOCK:") {
@@ -143,6 +148,11 @@ final class ClaudeOnPC {
             }
         }
         return kept.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// "kind" / "brand" / "exact" at parts[index]; kind when missing.
+    private static func match(_ parts: [String], at index: Int) -> PlaceMatch {
+        parts.count > index ? PlaceMatch(rawValue: parts[index].lowercased()) ?? .kind : .kind
     }
 
     private func value(_ line: String, _ marker: String) -> String? {
