@@ -4,11 +4,11 @@
 // wires speech -> voice commands -> tabs, glasses input -> lens, and reminders
 // -> lens alerts, and the AI's tools (search, charts, pictures) -> lens. Screens talk to this object (and the parts it exposes).
 //
-// Tab order on the lens: 字幕, AI, 検索, 計算, メモ, リマインダー.
+// Tab order on the lens: 字幕, AI, 検索, 計算, メモ, リマインダー, 履歴 (saved).
 //
 // Public API:
 //   HudController(session:)
-//   settings, captions, lens, notes, reminders, tilt, conversations, claude   (exposed parts)
+//   settings, captions, lens, notes, reminders, tilt, conversations, claude, aiChats   (exposed parts)
 //   start() async / stop() async
 //   runTyped(_ command: String)      // phone test box: runs like a spoken command
 
@@ -28,6 +28,7 @@ final class HudController: ObservableObject {
     let tilt: HeadTiltDetector
     let conversations: ConversationLog
     let claude: ClaudeOnPC
+    let aiChats: AiChatArchive
 
     private let search: WebSearchService
     private let router: VoiceCommandRouter
@@ -48,6 +49,7 @@ final class HudController: ObservableObject {
         let ai = OnDeviceAI()
         let search = WebSearchService(settings: settings, ai: ai)
         let charts = ChartService()
+        let aiChats = AiChatArchive()
 
         // Charts and pictures from either AI go on the lens.
         let showChart: @MainActor @Sendable (RenderedChart) -> Void = { [weak lens] chart in
@@ -63,9 +65,19 @@ final class HudController: ObservableObject {
                 }
             }
         }
-        ai.tools = AiTools.make(search: search, charts: charts, showChart: showChart, showPicture: showPicture)
-        let claude = ClaudeOnPC(settings: settings, charts: charts, showChart: showChart, showPicture: showPicture)
-        let aiTab = AiTab(ai: ai, claude: claude, settings: settings)
+        let saveChat: @MainActor @Sendable (String) -> Bool = { [weak lens] title in
+            let saved = aiChats.saveCurrent(title: title, language: settings.language)
+            lens?.showBanner(saved ? HudText.t(.chatSaved, title) : HudText.t(.nothingToSave))
+            return saved
+        }
+        ai.tools = AiTools.make(
+            search: search, charts: charts, showChart: showChart, showPicture: showPicture, saveChat: saveChat
+        )
+        let claude = ClaudeOnPC(
+            settings: settings, charts: charts, showChart: showChart, showPicture: showPicture, saveChat: saveChat
+        )
+        let aiTab = AiTab(ai: ai, claude: claude, settings: settings, archive: aiChats)
+        let savedTab = SavedTab(conversations: conversations, chats: aiChats, translator: Translator(ai: ai))
         let searchTab = SearchTab(service: search)
         let calcTab = CalcTab()
         lens.setTabs([
@@ -75,6 +87,7 @@ final class HudController: ObservableObject {
             calcTab,
             NotesTab(store: notes),
             RemindTab(service: reminders),
+            savedTab,
         ])
 
         self.settings = settings
@@ -86,9 +99,10 @@ final class HudController: ObservableObject {
         self.conversations = conversations
         self.search = search
         self.claude = claude
+        self.aiChats = aiChats
         router = VoiceCommandRouter(context: VoiceCommandContext(
             lens: lens, settings: settings, captions: captions, notes: notes,
-            reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab
+            reminders: reminders, aiTab: aiTab, searchTab: searchTab, calcTab: calcTab, savedTab: savedTab
         ))
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 

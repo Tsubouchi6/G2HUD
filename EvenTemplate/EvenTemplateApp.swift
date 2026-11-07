@@ -50,6 +50,7 @@ struct EvenTemplateApp: App {
                 .environmentObject(hud.notes)
                 .environmentObject(hud.reminders)
                 .environmentObject(hud.conversations)
+                .environmentObject(hud.aiChats)
         }
     }
 }

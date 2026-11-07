@@ -60,6 +60,8 @@ enum HudText {
         case tavilyKeyPlaceholder, noSearchKey, offlineTag
         case savedConversations, noConversations, saveConversations, saveConversationsFooter
         case findingImage, imageNotFound
+        case tabSaved, savedHint, savedAiTag, savedTalkTag, translating, translationFailed
+        case chatSaved, nothingToSave, aiChats
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
         case checkConnection, connectionOk, iphoneAiTag
     }
@@ -158,6 +160,15 @@ enum HudText {
         .offlineTag: ("(オフライン)", "(offline)", "(offline)"),
         .savedConversations: ("保存した会話", "Saved conversations", "Conversas salvas"),
         .findingImage: ("画像を探しています...", "Finding a picture...", "Procurando uma imagem..."),
+        .tabSaved: ("履歴", "Saved", "Salvos"),
+        .savedHint: ("保存した会話はまだありません。「Claude、この会話を保存して」で保存", "Nothing saved yet. Say \"Claude, save this chat\"", "Nada salvo ainda. Diga \"Claude, salva essa conversa\""),
+        .savedAiTag: ("AI", "AI", "IA"),
+        .savedTalkTag: ("会話", "Talk", "Conversa"),
+        .translating: ("翻訳中...", "Translating...", "Traduzindo..."),
+        .translationFailed: ("翻訳できませんでした (設定 > アプリ > 翻訳 で言語をダウンロード)", "Couldn't translate (download the languages in Settings > Apps > Translate)", "Não foi possível traduzir (baixe os idiomas em Ajustes > Apps > Traduzir)"),
+        .chatSaved: ("保存した: %@", "Saved: %@", "Salvo: %@"),
+        .nothingToSave: ("保存する会話がない", "Nothing to save", "Nada para salvar"),
+        .aiChats: ("保存したAIチャット", "Saved AI chats", "Conversas com IA salvas"),
         .claudeHeader: ("Claude (PC経由)", "Claude (through your PC)", "Claude (pelo PC)"),
         .useClaudeOnPC: ("AIタブでClaudeを使う", "Use Claude in the AI tab", "Usar Claude na aba IA"),
         .pcUrlPlaceholder: ("PCのアドレス (https://...ts.net)", "PC address (https://...ts.net)", "Endereço do PC (https://...ts.net)"),

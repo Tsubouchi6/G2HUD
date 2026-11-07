@@ -6,9 +6,10 @@
 //   IMAGE: <2-5 English words>                       -> web photo on the lens
 //   STOCK: <Yahoo name> | <day|week|month|year|fiveYears> -> price chart
 //   CHART: <title> | <unit> | <label>=<n>; <label>=<n>    -> bar/line chart
+//   SAVE: <short title>                              -> saves this chat (Saved tab)
 //
 // Public API:
-//   ClaudeOnPC(settings:charts:showChart:showPicture:)
+//   ClaudeOnPC(settings:charts:showChart:showPicture:saveChat:)
 //   isConfigured: Bool                       // enabled + URL + token filled in
 //   ask(_ question:) async throws -> String  // answer text, action lines removed
 //   checkConnection() async -> String?       // nil = OK, else the error
@@ -41,6 +42,7 @@ final class ClaudeOnPC {
     private let charts: ChartService
     private let showChart: @MainActor (RenderedChart) -> Void
     private let showPicture: @MainActor (_ terms: String, _ caption: String) -> Void
+    private let saveChat: @MainActor (_ title: String) -> Bool
 
     /// First question after launch starts a fresh Claude conversation.
     private var needsNewSession = true
@@ -49,12 +51,14 @@ final class ClaudeOnPC {
         settings: HudSettings,
         charts: ChartService,
         showChart: @escaping @MainActor (RenderedChart) -> Void,
-        showPicture: @escaping @MainActor (_ terms: String, _ caption: String) -> Void
+        showPicture: @escaping @MainActor (_ terms: String, _ caption: String) -> Void,
+        saveChat: @escaping @MainActor (_ title: String) -> Bool
     ) {
         self.settings = settings
         self.charts = charts
         self.showChart = showChart
         self.showPicture = showPicture
+        self.saveChat = saveChat
     }
 
     var isConfigured: Bool {
@@ -89,7 +93,7 @@ final class ClaudeOnPC {
 
     // MARK: - Action lines
 
-    /// Carries out IMAGE/STOCK/CHART lines and returns the text without them.
+    /// Carries out IMAGE/STOCK/CHART/SAVE lines and returns the text without them.
     private func runActions(in answer: String) -> String {
         var kept: [String] = []
         for line in answer.components(separatedBy: "\n") {
@@ -100,6 +104,8 @@ final class ClaudeOnPC {
                 runStock(spec)
             } else if let spec = value(trimmedLine, "CHART:") {
                 runChart(spec)
+            } else if let title = value(trimmedLine, "SAVE:") {
+                _ = saveChat(title)
             } else {
                 kept.append(line)
             }

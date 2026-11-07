@@ -12,6 +12,8 @@
 //   VoicePhrases.stripOpenWords(_:) -> String       // "字幕を開いて" -> "字幕"
 //   VoicePhrases.containsAny(_:_:) -> Bool
 //   VoicePhrases.isNavigation(_:) -> Bool
+//   VoicePhrases.languageMentioned(_:) -> HudLanguage?   // "英語に翻訳" -> .english
+//   VoicePhrases.number(in:) -> Int?                      // "2番" -> 2
 //   phrase tables: next, previous, scrollUp, scrollDown, yes, no, ...
 
 import Foundation
@@ -53,6 +55,17 @@ enum VoicePhrases {
                                 "me lembra", "me lembre", "lembrete", "lembrar"]
     /// Softer words that only count as a reminder when a time is also found.
     static let softReminderWords = ["知らせて", "教えて", "通知して", "avisa", "avise"]
+
+    /// Saved tab (only while it is open): back to the list, translate.
+    static let savedListWords = ["一覧", "リスト", "一覧に戻って", "閉じて", "list", "back to list", "close", "lista", "fechar"]
+    static let translateWords = ["翻訳", "訳して", "translate", "translation", "traduz", "traduzir", "tradução", "traducao"]
+    /// Language names for "英語に翻訳" / "translate to Portuguese".
+    static let languageWords: [HudLanguage: [String]] = [
+        .japanese: ["日本語", "japanese", "japonês", "japones"],
+        .english: ["英語", "english", "inglês", "ingles"],
+        .portuguese: ["ポルトガル語", "portuguese", "português", "portugues"],
+    ]
+    private static let kanjiDigits: [Character: Int] = ["一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10]
 
     private static let politeEndings = ["してください", "ください", "して", "へ", "に"]
     private static let openWords = ["タブを開いて", "を開いて", "開いて", "タブ", "に切り替えて", "を表示", "見せて",
@@ -110,6 +123,20 @@ enum VoicePhrases {
 
     static func containsAny(_ text: String, _ words: [String]) -> Bool {
         words.contains { text.contains($0) }
+    }
+
+    /// A language named in `text` (for translation targets), if any.
+    static func languageMentioned(_ text: String) -> HudLanguage? {
+        let lowered = text.lowercased()
+        return languageWords.first { _, words in words.contains { lowered.contains($0) } }?.key
+    }
+
+    /// First number in "2番", "number 12", "número 3", "三番" (1-99).
+    static func number(in text: String) -> Int? {
+        let digits = text.drop { !$0.isNumber }.prefix { $0.isNumber }
+        if let value = Int(String(digits).applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? String(digits)) { return value }
+        for character in text { if let value = kanjiDigits[character] { return value } }
+        return nil
     }
 
     static func isNavigation(_ text: String) -> Bool {

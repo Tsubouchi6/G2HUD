@@ -6,11 +6,12 @@
 // Source: developer.apple.com/documentation/foundationmodels/tool
 //
 // Public API:
-//   AiTools.make(search:charts:showChart:showPicture:) -> [any Tool]
+//   AiTools.make(search:charts:showChart:showPicture:saveChat:) -> [any Tool]
 //     searchWeb    — live or recent facts (Tavily, 1 credit)
 //     stockChart   — price chart from Yahoo Finance (free)
 //     drawChart    — bar/line chart from numbers the model already has
 //     showPicture  — a web photo on the lens (Tavily, 1 credit)
+//     saveChat     — saves this AI chat to the Saved tab
 //   Failures are returned to the model as "Failed: ..." text, not thrown.
 
 import Foundation
@@ -23,13 +24,15 @@ enum AiTools {
         search: WebSearchService,
         charts: ChartService,
         showChart: @escaping @MainActor @Sendable (RenderedChart) -> Void,
-        showPicture: @escaping @MainActor @Sendable (_ terms: String, _ caption: String) -> Void
+        showPicture: @escaping @MainActor @Sendable (_ terms: String, _ caption: String) -> Void,
+        saveChat: @escaping @MainActor @Sendable (_ title: String) -> Bool
     ) -> [any Tool] {
         [
             SearchWebTool(search: search),
             StockChartTool(charts: charts, show: showChart),
             DrawChartTool(charts: charts, show: showChart),
             ShowPictureTool(show: showPicture),
+            SaveChatTool(save: saveChat),
         ]
     }
 
@@ -164,5 +167,26 @@ private struct ShowPictureTool: Tool {
     func call(arguments: Arguments) async throws -> String {
         await show(arguments.terms, arguments.caption)
         return "Picture requested."
+    }
+}
+
+// MARK: - Save chat
+
+private struct SaveChatTool: Tool {
+    let name = "saveChat"
+    let description = """
+    Saves this chat (the user's questions and your answers) so the user can read it \
+    later in the Saved tab. Use when the user asks, in any words, to save or keep it.
+    """
+    let save: @MainActor @Sendable (_ title: String) -> Bool
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Very short title for the chat in the user's language, e.g. its topic")
+        let title: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await save(arguments.title) ? "Saved." : "Failed: the chat is empty."
     }
 }

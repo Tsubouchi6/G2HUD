@@ -95,6 +95,9 @@ enum HudConstants {
     /// Folder (inside Documents) for saved conversation transcripts.
     static let conversationsFolderName: String = "Conversations"
 
+    /// Documents subfolder for saved AI chats (visible in the Files app).
+    static let aiChatsFolderName: String = "AIChats"
+
     // MARK: - Voice commands
 
     /// Wake word ("Claude"): a phrase starting with one of these is a command.
@@ -196,7 +199,8 @@ enum HudConstants {
     action line when it clearly helps, and the app will carry it out: \
     IMAGE: <2-5 English search words> to show a photo. \
     STOCK: <name as Yahoo Finance lists it> | <day, week, month, year or fiveYears> to show a price chart. \
-    CHART: <title> | <unit> | <label>=<number>; <label>=<number> to draw a chart from real numbers only.
+    CHART: <title> | <unit> | <label>=<number>; <label>=<number> to draw a chart from real numbers only. \
+    SAVE: <short title> when the user asks, in any words, to save or keep this chat.
     """
 
     // MARK: - On-device AI
@@ -218,6 +222,7 @@ enum HudConstants {
     information. Call stockChart for stock, index, currency, or crypto prices. \
     Call drawChart when the user asks for a chart or statistics and you have \
     real numbers (search first if needed). Call showPicture when the user wants \
-    to see something. After a tool, reply with one short sentence.
+    to see something. Call saveChat when the user asks, in any words, to save \
+    or keep this chat. After a tool, reply with one short sentence.
     """
 }

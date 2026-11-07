@@ -23,7 +23,7 @@ struct CaptionsScreen: View {
         NavigationView {
             Form {
                 Section {
-                    NavigationLink(HudText.t(.savedConversations)) { ConversationsList() }
+                    NavigationLink(HudText.t(.tabSaved)) { ConversationsList() }
                 }
                 transcriptSection
                 recordingSection

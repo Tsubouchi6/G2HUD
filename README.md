@@ -12,7 +12,7 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 | `EvenTemplate/HUD/Speech/` | `SpeechEngine` protocol + engines (`AppleSpeechEngine` = iOS 26 on-device) |
 | `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> transcript), `ConversationLog` (saved transcripts), `RawAudioRecorder` (test .wav files) |
 | `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners, pictures), `LensPusher` (rate-limited sends), `LensTab` protocol |
-| `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind |
+| `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind, Saved |
 | `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily, offline on-device AI fallback), on-device AI + its tools (`AiTools`: searchWeb, stockChart, drawChart, showPicture), charts (Yahoo Finance stocks, Swift Charts renderer) |
 | `PCBridge/` | PC side of the Claude link: `bridge.ps1` (runs `claude -p` for the app), `start-bridge.cmd` |
 | `EvenTemplate/HUD/Voice/` | `VoiceCommandRouter` (wake word -> key phrases -> AI) and `VoicePhrases` tables |
@@ -37,6 +37,8 @@ in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
 | 天気を検索 | search weather | pesquisar tempo | web search + AI summary (Tavily key in Settings) |
 | 計算 12かける35 | calculate 12 times 35 | calcular 12 vezes 35 | calculator |
 | 5時にロット確認 | remind me at 5 to check | me lembra às 5 de conferir | reminder |
+| この会話を保存して | save this chat | salva essa conversa | AI saves the AI chat (any wording) to the 履歴/Saved tab |
+| 履歴 → 2番 → 翻訳して / 英語に翻訳 → 一覧 | saved → number 2 → translate / translate to Portuguese → list | salvos → número 2 → traduz → lista | Saved tab: open, translate line by line (Apple Translation, on-device), back |
 | 最後のメモを消して | delete last note | apagar última nota | asks yes/no first |
 | anything else | anything else | qualquer outra coisa | on-device AI. It knows the date, time, and time zone, and decides by itself to search the web, show a stock chart (Yahoo, free), draw a chart from real numbers, or show a picture. e.g. 今何時 / 猫の写真見せて / トヨタの株価 / 日本の人口のグラフ |
 

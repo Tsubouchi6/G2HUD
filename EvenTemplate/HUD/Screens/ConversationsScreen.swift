@@ -1,52 +1,72 @@
 // ConversationsScreen.swift
 //
-// Saved conversations: a list of past HUD sessions (newest first) and a
+// Saved conversations and saved AI chats: two lists (newest first) and a
 // detail view with the full text, selectable for copying and shareable as a
 // .txt file (AirDrop, Notes, Files, PC...).
 //
 // Public API:
-//   ConversationsList (SwiftUI view; needs ConversationLog in the environment)
+//   ConversationsList (SwiftUI view; needs ConversationLog, AiChatArchive, HudSettings in the environment)
 
 import SwiftUI
 
 struct ConversationsList: View {
 
     @EnvironmentObject private var log: ConversationLog
+    @EnvironmentObject private var chats: AiChatArchive
     @EnvironmentObject private var settings: HudSettings  // re-render on language change
 
     var body: some View {
         List {
-            if log.sessions.isEmpty {
-                Text(HudText.t(.noConversations)).foregroundColor(.secondary)
-            }
-            ForEach(log.sessions, id: \.self) { url in
-                NavigationLink(ConversationLog.title(for: url)) {
-                    ConversationDetail(url: url)
+            Section(HudText.t(.savedConversations)) {
+                if log.sessions.isEmpty {
+                    Text(HudText.t(.noConversations)).foregroundColor(.secondary)
+                }
+                ForEach(log.sessions, id: \.self) { url in
+                    NavigationLink(ConversationLog.title(for: url)) {
+                        ConversationDetail(url: url, text: log.read(url), title: ConversationLog.title(for: url))
+                    }
+                }
+                .onDelete { offsets in
+                    offsets.map { log.sessions[$0] }.forEach(log.delete)
                 }
             }
-            .onDelete { offsets in
-                offsets.map { log.sessions[$0] }.forEach(log.delete)
+            Section(HudText.t(.aiChats)) {
+                if chats.chats.isEmpty {
+                    Text(HudText.t(.noConversations)).foregroundColor(.secondary)
+                }
+                ForEach(chats.chats, id: \.self) { url in
+                    NavigationLink(AiChatArchive.title(for: url)) {
+                        ConversationDetail(url: url, text: chats.read(url), title: AiChatArchive.title(for: url))
+                    }
+                }
+                .onDelete { offsets in
+                    offsets.map { chats.chats[$0] }.forEach(chats.delete)
+                }
             }
         }
-        .navigationTitle(HudText.t(.savedConversations))
-        .onAppear { log.refreshList() }
+        .navigationTitle(HudText.t(.tabSaved))
+        .onAppear {
+            log.refreshList()
+            chats.refreshList()
+        }
     }
 }
 
 private struct ConversationDetail: View {
 
-    @EnvironmentObject private var log: ConversationLog
     let url: URL
+    let text: String
+    let title: String
 
     var body: some View {
         ScrollView {
-            Text(log.read(url))
+            Text(text)
                 .font(.system(.body, design: .monospaced))
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
         }
-        .navigationTitle(ConversationLog.title(for: url))
+        .navigationTitle(title)
         .toolbar {
             ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }
         }

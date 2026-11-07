@@ -3,7 +3,8 @@
 // Turns finished speech phrases into actions. Cheapest path first:
 //   1. Wake word ("Claude ...") marks a command; other speech is just captions.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI: tab
-//      navigation, notes, reminders, explicit "search ...".
+//      navigation, notes, reminders, explicit "search ...", and in the Saved
+//      tab "2番" (open), "翻訳して" (translate), "一覧" (back to the list).
 //   3. Anything else: maths to the calculator (exact), everything else to the
 //      on-device AI, which knows the date/time/place and decides by itself
 //      whether to search, draw a chart, or show a picture (AiTools).
@@ -28,6 +29,7 @@ struct VoiceCommandContext {
     let aiTab: AiTab
     let searchTab: SearchTab
     let calcTab: CalcTab
+    let savedTab: SavedTab
 }
 
 @MainActor
@@ -79,6 +81,7 @@ final class VoiceCommandRouter {
         let command = VoicePhrases.normalize(rawCommand)
         guard !command.isEmpty else { return }
         context.lens.dismissImage()
+        if runSavedTabPhrase(command) { return }
         if runKeyPhrase(command) { return }
 
         // Not a known phrase: maths to the exact calculator, the rest to the AI.
@@ -162,6 +165,26 @@ final class VoiceCommandRouter {
         if VoicePhrases.containsAny(command, VoicePhrases.softReminderWords),
            ReminderParser.parse(command) != nil {
             addReminder(command)
+            return true
+        }
+        return false
+    }
+
+    /// While the Saved tab is open: "2番" opens item 2, "翻訳して" translates,
+    /// "一覧" goes back to the list. Returns true if handled.
+    private func runSavedTabPhrase(_ command: String) -> Bool {
+        guard context.lens.activeTab?.id == "saved" else { return false }
+        let saved = context.savedTab
+        if VoicePhrases.containsAny(command, VoicePhrases.translateWords), saved.isShowingItem {
+            saved.translate(to: VoicePhrases.languageMentioned(command))
+            return true
+        }
+        if VoicePhrases.matches(command, VoicePhrases.savedListWords) {
+            saved.showList()
+            return true
+        }
+        if !saved.isShowingItem, let number = VoicePhrases.number(in: command) {
+            if !saved.open(number: number) { context.lens.showBanner(HudText.t(.noResults)) }
             return true
         }
         return false

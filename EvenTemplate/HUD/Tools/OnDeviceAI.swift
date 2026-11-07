@@ -15,6 +15,7 @@
 //   ask(_ question:, language:) async throws -> String
 //   answerOffline(query:language:) async throws -> String   // search fallback, no web, no chat history
 //   condense(answer:query:language:) async throws -> String  // web answer -> short, in the HUD language
+//   translate(_ text:, to:) async throws -> String           // fallback for Translator
 //   reset()
 
 import Foundation
@@ -86,6 +87,15 @@ final class OnDeviceAI {
         let session = LanguageModelSession(instructions: instructions)
         let prompt = "\(AiContext.line(language: language))\nQuestion: \(query)\n\nAnswer: \(answer)"
         let response = try await session.respond(to: prompt)
+        return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// One line, translated. Fresh session each time (no chat history).
+    func translate(_ text: String, to language: HudLanguage) async throws -> String {
+        let session = LanguageModelSession(instructions: """
+        Translate the user's text into \(language.englishName). Reply with the translation only.
+        """)
+        let response = try await session.respond(to: text)
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

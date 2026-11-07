@@ -7,7 +7,9 @@
 //      tagged "(iPhone AI)" if Claude was supposed to answer.
 // Both may search, draw charts, or show pictures by themselves.
 //
-// Public API: AiTab(ai:claude:settings:)  — LensTab with id "ai"; ask(_ question:)
+// The chat on screen is what "save this chat" saves (AiChatArchive).
+//
+// Public API: AiTab(ai:claude:settings:archive:)  — LensTab with id "ai"; ask(_ question:)
 
 import Foundation
 
@@ -25,10 +27,19 @@ final class AiTab: LensTab {
     private var lines: [String] = []
     private static let maxLines = 200
 
-    init(ai: OnDeviceAI, claude: ClaudeOnPC, settings: HudSettings) {
+    init(ai: OnDeviceAI, claude: ClaudeOnPC, settings: HudSettings, archive: AiChatArchive) {
         self.ai = ai
         self.claude = claude
         self.settings = settings
+        archive.currentTranscript = { [weak self] in self?.transcriptForSaving ?? [] }
+    }
+
+    /// The chat without the pending "..." and the save request itself.
+    private var transcriptForSaving: [String] {
+        var result = lines
+        if result.last == "..." { result.removeLast() }
+        if result.last?.hasPrefix("> ") == true { result.removeLast() }
+        return result
     }
 
     func page() -> LensPage {
