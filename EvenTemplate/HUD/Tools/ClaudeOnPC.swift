@@ -11,6 +11,8 @@
 //   LISTEN_STOP                                      -> stops and keeps that text
 //   DIRECTIONS: <place> | <walking|driving> | <full|minimal> -> turn-by-turn to the nearest match
 //   DIRECTIONS_STOP                                  -> stops navigation
+//   CALC: <formula>                                  -> exact result, added to the answer
+//   CONVERT: <value> | <from> | <to>                 -> units / live currency, added to the answer
 //
 // Public API:
 //   ClaudeOnPC(settings:charts:actions:)
@@ -76,7 +78,7 @@ final class ClaudeOnPC {
         let reply = try await send(path: "/ask", body: body, timeout: HudConstants.claudeBridgeTimeoutSeconds)
         needsNewSession = false
         guard let answer = reply["answer"] as? String else { throw ClaudeBridgeError.server("Empty answer") }
-        return runActions(in: answer)
+        return await runActions(in: answer)
     }
 
     /// Calls /health. nil when the PC answers with the right token.
@@ -91,12 +93,19 @@ final class ClaudeOnPC {
 
     // MARK: - Action lines
 
-    /// Carries out IMAGE/STOCK/CHART/SAVE/LISTEN/DIRECTIONS lines and returns the text without them.
-    private func runActions(in answer: String) -> String {
+    /// Carries out IMAGE/STOCK/CHART/SAVE/LISTEN/DIRECTIONS/CALC/CONVERT lines and returns the text without them.
+    private func runActions(in answer: String) async -> String {
         var kept: [String] = []
         for line in answer.components(separatedBy: "\n") {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
-            if trimmedLine.uppercased() == "LISTEN_STOP" {
+            if let formula = value(trimmedLine, "CALC:") {
+                kept.append(actions.calculate(formula))
+            } else if let spec = value(trimmedLine, "CONVERT:") {
+                let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+                if parts.count == 3, let amount = Double(parts[0].replacingOccurrences(of: ",", with: "")) {
+                    kept.append(await actions.convert(amount, parts[1], parts[2]))
+                }
+            } else if trimmedLine.uppercased() == "LISTEN_STOP" {
                 _ = actions.stopListening()
             } else if trimmedLine.uppercased() == "DIRECTIONS_STOP" {
                 _ = actions.stopDirections()

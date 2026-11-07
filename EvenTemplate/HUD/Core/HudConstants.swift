@@ -297,10 +297,16 @@ enum HudConstants {
     7. Directions: finds the nearest place matching what the user wants (Apple Maps) \
     and shows walking or driving turn-by-turn in the Nav tab, either full (route map \
     first, distance, next turns) or minimal (one line at the top, rest of the screen clear). \
+    8. Calculator: computes a formula exactly (+ - * / ^ ( ) %, phone-style percent) and \
+    lists it in the Calc tab. Use it for ANY math instead of computing yourself: turn \
+    everyday wording into a formula (a 15% tip on 4800 = 4800*15%, split 9600 among 3 = 9600/3). \
+    9. Convert: exact unit conversion (length, weight, temperature, volume, speed, area \
+    incl. tsubo) and currency at today's rate. Free. Lists it in the Calc tab. \
     THINGS THE USER DOES BY VOICE THEMSELVES (you can't do them; if asked, tell them \
     what to say, starting with Neo): switch tabs (next / back), scroll (up / down), \
-    notes (Neo, note buy milk), reminders (Neo, remind me at 5 to call), calculator \
-    (Neo, calculate 12 times 35), and in the Saved tab open an item by number and say translate.
+    notes (Neo, note buy milk), reminders (Neo, remind me at 5 to call), plain math \
+    straight to the Calc tab (Neo, 12 times 35, then Neo, plus 5), and in the Saved tab \
+    open an item by number and say translate.
     """
 
     // MARK: - Claude on the PC
@@ -321,7 +327,9 @@ enum HudConstants {
     Save chat: SAVE: <short title>. \
     Listen: LISTEN: <short title>, and LISTEN_STOP to end it. \
     Directions: DIRECTIONS: <place as a map search> | <walking or driving> | <full or minimal>, \
-    and DIRECTIONS_STOP to end them.
+    and DIRECTIONS_STOP to end them. \
+    Calculator: CALC: <formula>, and the exact result is added to your answer, so don't \
+    compute it yourself. Convert: CONVERT: <value> | <from unit or currency> | <to>.
     """
 
     // MARK: - On-device AI
@@ -338,6 +346,7 @@ enum HudConstants {
     HOW TO USE AN ABILITY: call its tool. Web search = searchWeb, stock chart = \
     stockChart, chart = drawChart, picture = showPicture, save chat = saveChat, \
     listen = startListening / stopListening, directions = startDirections / \
-    stopDirections. After a tool, reply with one short sentence.
+    stopDirections, calculator = calculate, convert = convert. After a tool, \
+    reply with one short sentence.
     """
 }

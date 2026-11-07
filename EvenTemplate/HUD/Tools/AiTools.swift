@@ -14,6 +14,8 @@
 //     saveChat     — saves this AI chat to the Saved tab
 //     startListening / stopListening — saves what people around say, from now until stopped
 //     startDirections / stopDirections — turn-by-turn to the nearest match (Apple Maps, free)
+//     calculate    — exact arithmetic (the model writes the formula, the app computes)
+//     convert      — units (Apple) or currency (live Yahoo rate)
 //   Failures are returned to the model as "Failed: ..." text, not thrown.
 
 import Foundation
@@ -37,6 +39,8 @@ enum AiTools {
             StopListeningTool(stop: actions.stopListening),
             StartDirectionsTool(start: actions.startDirections),
             StopDirectionsTool(stop: actions.stopDirections),
+            CalculateTool(calculate: actions.calculate),
+            ConvertTool(convert: actions.convert),
         ]
     }
 
@@ -275,5 +279,49 @@ private struct StopDirectionsTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await stop() ? "Directions stopped." : "No directions were running."
+    }
+}
+
+// MARK: - Calculator
+
+private struct CalculateTool: Tool {
+    let name = "calculate"
+    let description = """
+    Computes an arithmetic formula exactly and shows it in the Calc tab. Use for any \
+    math instead of computing yourself: write the formula with numbers and + - * / ^ ( ) %, \
+    e.g. a 15% tip on 4800 = 4800*15%, split 9600 among 3 = 9600/3.
+    """
+    let calculate: @MainActor @Sendable (_ expression: String) -> String
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The formula, digits and operators only, e.g. (1200+800)*1.1")
+        let expression: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await calculate(arguments.expression)
+    }
+}
+
+private struct ConvertTool: Tool {
+    let name = "convert"
+    let description = """
+    Converts units exactly (length, weight, temperature, volume, speed, area incl. tsubo) \
+    or money between currencies at today's rate. Shows the result in the Calc tab.
+    """
+    let convert: @MainActor @Sendable (_ value: Double, _ from: String, _ to: String) async -> String
+
+    @Generable
+    struct Arguments {
+        let value: Double
+        @Guide(description: "Unit or currency to convert from, e.g. km, lb, F, USD, 円")
+        let from: String
+        @Guide(description: "Unit or currency to convert to, e.g. mi, kg, C, JPY, BRL")
+        let to: String
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await convert(arguments.value, arguments.from, arguments.to)
     }
 }

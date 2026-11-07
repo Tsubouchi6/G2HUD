@@ -56,6 +56,7 @@ final class HudController: ObservableObject {
 
         // What either AI can make the HUD do (charts, pictures, saving, listening, directions).
         let aiTab = AiTab(ai: ai, settings: settings, archive: aiChats)
+        let calcTab = CalcTab()
         let actions = AiActions(
             // Charts and photos go into the AI chat like a message, not over the whole lens.
             showChart: { [weak lens, weak aiTab] chart in
@@ -105,7 +106,9 @@ final class HudController: ObservableObject {
                     return true
                 }
                 return false
-            }
+            },
+            calculate: { [weak calcTab] expression in calcTab?.calculate(expression) ?? "" },
+            convert: { [weak calcTab] value, from, to in await calcTab?.convert(value, from: from, to: to) ?? "" }
         )
         ai.tools = AiTools.make(search: search, charts: charts, actions: actions)
         let claude = ClaudeOnPC(settings: settings, charts: charts, actions: actions)
@@ -114,7 +117,6 @@ final class HudController: ObservableObject {
             conversations: conversations, listening: listening, chats: aiChats, translator: Translator(ai: ai)
         )
         let searchTab = SearchTab(service: search)
-        let calcTab = CalcTab()
         lens.setTabs([
             CaptionsTab(captions: captions),
             aiTab,
