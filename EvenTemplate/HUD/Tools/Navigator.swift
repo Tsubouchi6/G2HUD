@@ -98,6 +98,9 @@ final class Navigator: ObservableObject {
     private var routePoints: [CLLocation] = []
     private var stepIndex = 0
     private var lastLocation: CLLocation?
+    /// Where the user was when the place was found ("Shibuya, Tokyo"), so the AI
+    /// can search fares from there. Apple reverse geocoding (free).
+    private var startArea: String?
     private var lastRerouteAt = Date.distantPast
     private var isRerouting = false
     private var miniMapDrawnAt = Date.distantPast
@@ -147,16 +150,24 @@ final class Navigator: ObservableObject {
         return begin(label: destinationName, mode: mode, placeMode: false) { _ in place }
     }
 
+    /// "Shibuya, Tokyo" for a location; nil if Apple can't tell.
+    private static func area(of location: CLLocation) async -> String? {
+        guard let mark = try? await CLGeocoder().reverseGeocodeLocation(location).first else { return nil }
+        let parts = [mark.subLocality, mark.locality, mark.administrativeArea].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
+    }
+
     /// One sentence for the AIs about what the Nav tab shows, so follow-ups
     /// ("go there", "how far", "how much to get there") use the real place.
     var summaryForAI: String? {
         let address = destination?.placemark.title.map { " (\($0))" } ?? ""
+        let from = startArea.map { ", from the user's area \($0)" } ?? ""
         switch state {
         case .place(let place):
-            return "The Nav map shows \(place.name)\(address), \(Int(place.walkingMeters)) m away, "
+            return "The Nav map shows \(place.name)\(address), \(Int(place.walkingMeters)) m away\(from), "
                 + "about \(place.walkingMinutes) min on foot; not navigating there yet"
         case .active(let progress):
-            return "Navigating (\(mode.rawValue)) to \(progress.destinationName)\(address), "
+            return "Navigating (\(mode.rawValue)) to \(progress.destinationName)\(address)\(from), "
                 + "\(Int(progress.remainingMeters)) m and about \(progress.remainingMinutes) min left"
         case .finding(let query):
             return "Searching the map for \(query)"
@@ -216,6 +227,8 @@ final class Navigator: ObservableObject {
                 minimal = false
                 destination = place
                 destinationName = place.name ?? query
+                startArea = nil
+                Task { [weak self] in self?.startArea = await Self.area(of: here) }
                 if placeMode { placeFit = Self.fit(user: here.coordinate, place: place.placemark.coordinate) }
                 use(route, at: here)
                 location.startUpdates { [weak self] update in self?.follow(update) }

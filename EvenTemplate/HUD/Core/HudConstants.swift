@@ -347,8 +347,10 @@ enum HudConstants {
     never mix or invent them. Only compare numbers that measure the same thing \
     (same kind of item, same year, same scope; prefer rates per person when \
     populations differ). If they don't match, say so instead of comparing. Name \
-    the year of each figure. Never guess a price, fare or cost (taxi, train, tickets): \
-    look it up, or say you don't know. Walking costs nothing.
+    the year of each figure. For any price, fare or cost (taxi, train, bus, tickets), \
+    search the web for it and answer with what you find; never guess and never just \
+    say you can't know. For getting to a place, search the fare from the user's area \
+    to that place, and add that walking is free.
     """
 
     /// Who the assistant is (shared by the iPhone AI and Claude). No double
