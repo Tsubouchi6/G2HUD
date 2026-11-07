@@ -1,6 +1,6 @@
 // VoicePhrases.swift
 //
-// The fixed phrase tables for voice commands (Japanese + English) and the
+// The fixed phrase tables for voice commands (Japanese, English, Portuguese) and the
 // small text helpers that match them. Edit the tables to add new phrasings;
 // matching ignores spaces, punctuation, case, and polite endings like "して".
 //
@@ -20,32 +20,45 @@ enum VoicePhrases {
 
     // MARK: - Phrase tables
 
-    static let next = ["次", "つぎ", "次のタブ", "右", "next", "next tab", "right"]
-    static let previous = ["前", "まえ", "前のタブ", "戻って", "戻る", "左", "back", "previous", "left"]
-    static let scrollUp = ["上", "うえ", "スクロールアップ", "上にスクロール", "scroll up", "up"]
-    static let scrollDown = ["下", "した", "スクロールダウン", "下にスクロール", "scroll down", "down"]
-    static let yes = ["はい", "うん", "ええ", "オッケー", "おっけー", "ok", "okay", "yes", "yeah", "いいよ", "お願い"]
-    static let no = ["いいえ", "いや", "やめて", "キャンセル", "no", "cancel", "stop"]
+    static let next = ["次", "つぎ", "次のタブ", "右", "next", "next tab", "right",
+                       "próximo", "próxima", "proximo", "proxima", "seguinte", "direita"]
+    static let previous = ["前", "まえ", "前のタブ", "戻って", "戻る", "左", "back", "previous", "left",
+                           "anterior", "voltar", "volta", "esquerda"]
+    static let scrollUp = ["上", "うえ", "スクロールアップ", "上にスクロール", "scroll up", "up",
+                           "subir", "sobe", "para cima"]
+    static let scrollDown = ["下", "した", "スクロールダウン", "下にスクロール", "scroll down", "down",
+                             "descer", "desce", "para baixo"]
+    static let yes = ["はい", "うん", "ええ", "オッケー", "おっけー", "ok", "okay", "yes", "yeah", "いいよ", "お願い",
+                      "sim", "pode", "claro", "isso"]
+    static let no = ["いいえ", "いや", "やめて", "キャンセル", "no", "cancel", "stop",
+                     "não", "nao", "cancelar", "cancela"]
 
-    static let deleteLastNote = ["最後のメモを消して", "最後のメモ消して", "メモを消して", "delete last note", "delete note"]
-    static let deleteAllNotes = ["メモを全部消して", "メモ全部消して", "delete all notes", "clear notes"]
-    static let deleteAllReminders = ["リマインダーを全部消して", "リマインダー全部消して", "delete all reminders", "clear reminders"]
-    static let clearCaptions = ["字幕をクリア", "字幕クリア", "字幕を消して", "clear captions"]
+    static let deleteLastNote = ["最後のメモを消して", "最後のメモ消して", "メモを消して", "delete last note", "delete note",
+                                 "apagar última nota", "apaga a última nota", "apagar nota"]
+    static let deleteAllNotes = ["メモを全部消して", "メモ全部消して", "delete all notes", "clear notes",
+                                 "apagar todas as notas", "apaga todas as notas"]
+    static let deleteAllReminders = ["リマインダーを全部消して", "リマインダー全部消して", "delete all reminders", "clear reminders",
+                                     "apagar todos os lembretes", "apaga todos os lembretes"]
+    static let clearCaptions = ["字幕をクリア", "字幕クリア", "字幕を消して", "clear captions", "limpar legendas"]
 
-    static let notePrefixes = ["メモして", "メモ", "めも", "note", "take a note", "write down"]
-    static let searchPrefixes = ["検索して", "検索", "調べて", "search for", "search", "google", "look up"]
+    static let notePrefixes = ["メモして", "メモ", "めも", "note", "take a note", "write down",
+                               "anota", "anotar", "nota"]
+    static let searchPrefixes = ["検索して", "検索", "調べて", "search for", "search", "google", "look up",
+                                 "pesquisar", "pesquisa", "procurar", "procura", "buscar", "busca"]
     static let searchSuffixes = ["を検索して", "を検索", "について調べて", "を調べて", "調べて", "検索して", "検索"]
-    static let calcPrefixes = ["計算して", "計算", "けいさん", "calculate", "calc"]
-    static let aiPrefixes = ["質問", "ai", "エーアイ", "聞いて", "ask", "question"]
+    static let calcPrefixes = ["計算して", "計算", "けいさん", "calculate", "calc", "calcular", "calcula"]
+    static let aiPrefixes = ["質問", "ai", "エーアイ", "聞いて", "ask", "question", "pergunta", "perguntar"]
     /// Explicit reminder words: if the time can't be read, the user is told.
-    static let reminderWords = ["リマインド", "思い出させて", "remind me", "reminder"]
+    static let reminderWords = ["リマインド", "思い出させて", "remind me", "reminder",
+                                "me lembra", "me lembre", "lembrete", "lembrar"]
     /// Softer words that only count as a reminder when a time is also found.
-    static let softReminderWords = ["知らせて", "教えて", "通知して"]
+    static let softReminderWords = ["知らせて", "教えて", "通知して", "avisa", "avise"]
 
     private static let politeEndings = ["してください", "ください", "して", "へ", "に"]
     private static let openWords = ["タブを開いて", "を開いて", "開いて", "タブ", "に切り替えて", "を表示", "見せて",
-                                    "open ", "go to ", "show ", " tab"]
-    private static let callPrefixes = ["ねえ", "ねぇ", "えっと", "あの", "hey ", "ok ", "okay "]
+                                    "open ", "go to ", "show ", " tab",
+                                    "abrir ", "abre ", "mostrar ", "vai para ", "aba "]
+    private static let callPrefixes = ["ねえ", "ねぇ", "えっと", "あの", "hey ", "ok ", "okay ", "ei ", "ô ", "oi "]
 
     // MARK: - Normalizing
 

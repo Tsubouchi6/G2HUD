@@ -1,6 +1,7 @@
 // HudScreen.swift
 //
-// Main phone screen: start/stop the HUD, pick the language, see a live
+// Main phone screen: start/stop the HUD, pick the language (日本語 / English /
+// Português), see a live
 // preview of exactly what the lens shows, switch tabs by hand, and type
 // commands to test without speaking (or without glasses).
 //
@@ -39,14 +40,14 @@ struct HudScreen: View {
 
     private var controlSection: some View {
         Section {
-            Picker("Language", selection: $captions.languageId) {
-                ForEach(HudConstants.captionLanguageIds, id: \.self) { id in
-                    Text(Self.languageLabel(id)).tag(id)
+            Picker(HudText.t(.language), selection: $settings.language) {
+                ForEach(HudLanguage.allCases) { language in
+                    Text(language.displayName).tag(language)
                 }
             }
             .disabled(captions.isRunning || captions.isStarting)
 
-            Button(captions.isRunning ? "Stop HUD" : "Start HUD") {
+            Button(HudText.t(captions.isRunning ? .stopHud : .startHud)) {
                 Task {
                     if captions.isRunning { await hud.stop() } else { await hud.start() }
                 }
@@ -56,21 +57,25 @@ struct HudScreen: View {
             if captions.isStarting {
                 HStack {
                     ProgressView()
-                    Text("Loading speech model (first time downloads it)...").font(.footnote)
+                    Text(HudText.t(.loadingModel)).font(.footnote)
                 }
             }
             if let message = captions.errorMessage {
                 Text(message).font(.footnote).foregroundColor(.red)
             }
         } header: {
-            Text("Glasses: \(session.glasses.connected ? "connected" : "not connected") · Mic: \(settings.usePhoneMic ? "phone (test)" : "glasses")")
+            Text(HudText.t(
+                .statusHeader,
+                HudText.t(session.glasses.connected ? .connected : .notConnected),
+                HudText.t(settings.usePhoneMic ? .micPhone : .micGlasses)
+            ))
         } footer: {
-            Text("Say \"メガネ\" then a command, e.g. メガネ 次 / メガネ メモ 牛乳買う / メガネ 5時にロット確認 / メガネ 天気を検索.")
+            Text(HudText.t(.hudFooter))
         }
     }
 
     private var previewSection: some View {
-        Section("Lens preview") {
+        Section(HudText.t(.lensPreview)) {
             Text(lens.previewText.isEmpty ? " " : lens.previewText)
                 .font(.system(size: 13, design: .monospaced))
                 .foregroundColor(Color(red: 0.3, green: 1, blue: 0.45))
@@ -104,14 +109,14 @@ struct HudScreen: View {
 
     private var commandSection: some View {
         Section {
-            TextField("e.g. メモ 牛乳買う", text: $typedCommand)
+            TextField(HudText.t(.commandPlaceholder), text: $typedCommand)
                 .onSubmit(runTyped)
-            Button("Run command", action: runTyped)
+            Button(HudText.t(.runCommand), action: runTyped)
                 .disabled(typedCommand.trimmingCharacters(in: .whitespaces).isEmpty)
         } header: {
-            Text("Try a command")
+            Text(HudText.t(.tryCommand))
         } footer: {
-            Text("Runs exactly like a spoken command after \"メガネ\". Works without glasses.")
+            Text(HudText.t(.commandFooter))
         }
     }
 
@@ -120,13 +125,5 @@ struct HudScreen: View {
     private func runTyped() {
         hud.runTyped(typedCommand)
         typedCommand = ""
-    }
-
-    static func languageLabel(_ id: String) -> String {
-        switch id {
-        case "ja-JP": return "日本語"
-        case "en-US": return "English"
-        default: return Locale.current.localizedString(forIdentifier: id) ?? id
-        }
     }
 }

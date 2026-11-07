@@ -12,6 +12,7 @@
 //   start() async / stop() async
 //   runTyped(_ command: String)      // phone test box: runs like a spoken command
 
+import Combine
 import Foundation
 
 @MainActor
@@ -28,6 +29,7 @@ final class HudController: ObservableObject {
 
     private let router: VoiceCommandRouter
     private let input: GlassesInputHandler
+    private var languageSubscription: AnyCancellable?
 
     // MARK: - Assembly
 
@@ -64,6 +66,11 @@ final class HudController: ObservableObject {
         input = GlassesInputHandler(session: session, lens: lens, settings: settings, tilt: tilt)
 
         captions.onFinalPhrase = { [weak self] phrase in self?.router.handle(phrase: phrase) }
+        // Redraw the lens in the new language (next tick, after the value is stored).
+        languageSubscription = settings.$language
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak lens] _ in lens?.render() }
         reminders.onDue = { [weak self] reminder in self?.showReminder(reminder) }
         reminders.start()
     }

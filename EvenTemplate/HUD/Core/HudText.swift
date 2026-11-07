@@ -1,0 +1,168 @@
+// HudText.swift
+//
+// Every user-visible HUD string in Japanese, English and Portuguese.
+// The current language is set from HudSettings; screens and tabs call
+// `HudText.t(.key)` (or `t(.key, args...)` for formatted strings).
+//
+// Public API:
+//   HudText.language: HudLanguage          // set by HudSettings
+//   HudText.t(_ key: Key) -> String
+//   HudText.t(_ key: Key, _ args: CVarArg...) -> String
+//   enum HudText.Key
+
+import Foundation
+
+@MainActor
+enum HudText {
+
+    static var language: HudLanguage = .japanese
+
+    // MARK: - Lookup
+
+    static func t(_ key: Key) -> String {
+        guard let entry = table[key] else { return "\(key)" }
+        switch language {
+        case .japanese: return entry.ja
+        case .english: return entry.en
+        case .portuguese: return entry.pt
+        }
+    }
+
+    static func t(_ key: Key, _ args: CVarArg...) -> String {
+        String(format: t(key), arguments: args)
+    }
+
+    // MARK: - Keys
+
+    enum Key {
+        // Lens tabs
+        case tabCaptions, tabAI, tabSearch, tabCalc, tabNotes, tabRemind
+        // Lens content
+        case listening, captionsOff, aiHint, searchHint, calcHint, notesHint, remindHint
+        case searchLabel, noResults, aiError, aiUnavailable
+        // Lens feedback
+        case wakeAck, noted, timeUnknown, reminderSet, reminderAlert
+        case confirmDeleteLastNote, confirmDeleteAllNotes, confirmDeleteAllReminders, confirmSuffix
+        case ok, cancelled, countdownMinutes, countdownHours
+        // Phone: tab bar
+        case screenHud, screenCaptions, screenSettings
+        // Phone: HUD screen
+        case startHud, stopHud, language, loadingModel, statusHeader, connected, notConnected
+        case micPhone, micGlasses, hudFooter, lensPreview, tryCommand, commandPlaceholder
+        case runCommand, commandFooter, dashboardOpen, micPermission, engineStopped
+        // Phone: Captions screen
+        case startHudToBegin, clearTranscript, transcriptHeader, recordStart, recordStop
+        case testRecordings, recordingsFooter
+        // Phone: Settings screen
+        case voice, requireWakeWord, usePhoneMic, voiceFooter, search, braveKeyPlaceholder
+        case searchFooter, glassesControls, touchControls, touchHelp, headTilt, headTiltToggle
+        case swapLeftRight, tiltReadout, calibrate, headTiltFooter, notesHeader, remindersHeader
+    }
+
+    // MARK: - Table (ja, en, pt)
+
+    private static let table: [Key: (ja: String, en: String, pt: String)] = [
+        .tabCaptions: ("字幕", "Captions", "Legendas"),
+        .tabAI: ("AI", "AI", "IA"),
+        .tabSearch: ("検索", "Search", "Pesquisa"),
+        .tabCalc: ("計算", "Calc", "Calculadora"),
+        .tabNotes: ("メモ", "Notes", "Notas"),
+        .tabRemind: ("リマインダー", "Reminders", "Lembretes"),
+
+        .listening: ("聞いています...", "Listening...", "Ouvindo..."),
+        .captionsOff: ("字幕オフ", "Captions off", "Legendas desligadas"),
+        .aiHint: ("(メガネ + 質問)", "(glasses + question)", "(óculos + pergunta)"),
+        .searchHint: ("(メガネ 天気を検索)", "(glasses search weather)", "(óculos pesquisar tempo)"),
+        .calcHint: ("(メガネ 計算 12かける35)", "(glasses calculate 12 times 35)", "(óculos calcular 12 vezes 35)"),
+        .notesHint: ("(メガネ メモ 牛乳買う)", "(glasses note buy milk)", "(óculos anota comprar leite)"),
+        .remindHint: ("(メガネ 5時にロット確認)", "(glasses remind me at 5 to check)", "(óculos me lembra às 5 de conferir)"),
+        .searchLabel: ("検索: %@", "Search: %@", "Pesquisa: %@"),
+        .noResults: ("結果なし", "No results", "Sem resultados"),
+        .aiError: ("AIエラー: %@", "AI error: %@", "Erro da IA: %@"),
+        .aiUnavailable: ("AIが使えません (Apple Intelligenceをオンに)", "AI unavailable (turn on Apple Intelligence)",
+                         "IA indisponível (ative a Apple Intelligence)"),
+
+        .wakeAck: ("はい?", "Yes?", "Sim?"),
+        .noted: ("メモした", "Noted", "Anotado"),
+        .timeUnknown: ("時間が分からない", "Couldn't read the time", "Não entendi o horário"),
+        .reminderSet: ("%@ にリマインド", "Reminder at %@", "Lembrete às %@"),
+        .reminderAlert: ("【リマインド】%@", "[Reminder] %@", "[Lembrete] %@"),
+        .confirmDeleteLastNote: ("最後のメモを消す?", "Delete last note?", "Apagar a última nota?"),
+        .confirmDeleteAllNotes: ("メモを全部消す?", "Delete all notes?", "Apagar todas as notas?"),
+        .confirmDeleteAllReminders: ("リマインダーを全部消す?", "Delete all reminders?", "Apagar todos os lembretes?"),
+        .confirmSuffix: ("はい/いいえ", "yes/no", "sim/não"),
+        .ok: ("OK", "OK", "OK"),
+        .cancelled: ("キャンセル", "Cancelled", "Cancelado"),
+        .countdownMinutes: ("あと%d分", "in %d min", "em %d min"),
+        .countdownHours: ("あと%d時間%d分", "in %dh %dm", "em %dh %dmin"),
+
+        .screenHud: ("HUD", "HUD", "HUD"),
+        .screenCaptions: ("字幕", "Captions", "Legendas"),
+        .screenSettings: ("設定", "Settings", "Ajustes"),
+
+        .startHud: ("HUDを開始", "Start HUD", "Iniciar HUD"),
+        .stopHud: ("HUDを停止", "Stop HUD", "Parar HUD"),
+        .language: ("言語", "Language", "Idioma"),
+        .loadingModel: ("音声モデルを読み込み中 (初回はダウンロード)...", "Loading speech model (first time downloads it)...",
+                        "Carregando modelo de voz (baixa na primeira vez)..."),
+        .statusHeader: ("メガネ: %@ · マイク: %@", "Glasses: %@ · Mic: %@", "Óculos: %@ · Microfone: %@"),
+        .connected: ("接続中", "connected", "conectado"),
+        .notConnected: ("未接続", "not connected", "desconectado"),
+        .micPhone: ("スマホ (テスト)", "phone (test)", "celular (teste)"),
+        .micGlasses: ("メガネ", "glasses", "óculos"),
+        .hudFooter: ("「メガネ」の後にコマンド: 次 / メモ 牛乳買う / 5時にロット確認 / 天気を検索",
+                     "Say \"glasses\" then a command: next / note buy milk / remind me at 5 to call / search weather",
+                     "Diga \"óculos\" e um comando: próximo / anota comprar leite / me lembra às 5 de ligar / pesquisar tempo"),
+        .lensPreview: ("レンズのプレビュー", "Lens preview", "Prévia da lente"),
+        .tryCommand: ("コマンドを試す", "Try a command", "Testar um comando"),
+        .commandPlaceholder: ("例: メモ 牛乳買う", "e.g. note buy milk", "ex.: anota comprar leite"),
+        .runCommand: ("実行", "Run command", "Executar"),
+        .commandFooter: ("「メガネ」の後に話したのと同じ動き。メガネ無しでも使えます。",
+                         "Runs like a spoken command after \"glasses\". Works without the glasses.",
+                         "Funciona como um comando falado depois de \"óculos\". Funciona sem os óculos."),
+        .dashboardOpen: ("メガネのダッシュボードが開いています。下を見るか閉じるのを待ってから再試行。",
+                         "The glasses dashboard is open. Look down or wait for it to close, then try again.",
+                         "O painel dos óculos está aberto. Olhe para baixo ou espere fechar e tente de novo."),
+        .micPermission: ("スマホのマイクの許可が必要です。", "Microphone permission is needed for phone-mic mode.",
+                         "É preciso permitir o microfone para o modo celular."),
+        .engineStopped: ("音声認識が停止: %@", "Speech engine stopped: %@", "Reconhecimento de voz parou: %@"),
+
+        .startHudToBegin: ("HUDを開始してください", "Start the HUD to begin", "Inicie o HUD para começar"),
+        .clearTranscript: ("字幕を消去", "Clear transcript", "Limpar transcrição"),
+        .transcriptHeader: ("文字起こし · %@", "Transcript · %@", "Transcrição · %@"),
+        .recordStart: ("マイク音声を録音", "Record raw mic audio", "Gravar áudio do microfone"),
+        .recordStop: ("録音を停止", "Stop recording", "Parar gravação"),
+        .testRecordings: ("テスト録音", "Test recordings", "Gravações de teste"),
+        .recordingsFooter: ("HUD実行中のマイク音声をそのまま保存。ファイル: このiPhone内 > G2HUD > Recordings",
+                            "Records exactly what the mic hears while the HUD runs. Files: On My iPhone > G2HUD > Recordings.",
+                            "Grava exatamente o que o microfone ouve com o HUD ligado. Arquivos: No Meu iPhone > G2HUD > Recordings."),
+
+        .voice: ("音声", "Voice", "Voz"),
+        .requireWakeWord: ("ウェイクワードが必要 (メガネ)", "Require wake word (glasses)", "Exigir palavra de ativação (óculos)"),
+        .usePhoneMic: ("スマホのマイクを使う (テスト用)", "Use phone mic (test without glasses)", "Usar microfone do celular (teste)"),
+        .voiceFooter: ("オフの時は移動系 (次/前/上/下) だけが動きます。マイク変更はHUD停止中に。",
+                       "With the wake word off, only navigation (next / back / up / down) runs without it. Change the mic while the HUD is stopped.",
+                       "Sem a palavra de ativação, só navegação (próximo / anterior / subir / descer) funciona. Troque o microfone com o HUD parado."),
+        .search: ("検索", "Search", "Pesquisa"),
+        .braveKeyPlaceholder: ("Brave Search APIキー", "Brave Search API key", "Chave da API Brave Search"),
+        .searchFooter: ("無料キー: brave.com/search/api → 登録 → API Keys。このiPhoneにだけ保存。",
+                        "Free key: brave.com/search/api → sign up → API Keys. Stored only on this iPhone.",
+                        "Chave grátis: brave.com/search/api → cadastro → API Keys. Fica só neste iPhone."),
+        .glassesControls: ("メガネの操作", "Glasses controls", "Controles dos óculos"),
+        .touchControls: ("タッチパッド / リング操作", "Touchpad / ring controls", "Touchpad / anel"),
+        .touchHelp: ("タップ=次のタブ · ダブルタップ=前 · スワイプ=スクロール",
+                     "Tap = next tab · double tap = previous · swipe = scroll",
+                     "Toque = próxima aba · toque duplo = anterior · deslizar = rolar"),
+        .headTilt: ("頭の傾き", "Head tilt", "Inclinação da cabeça"),
+        .headTiltToggle: ("頭を傾けてタブ切替", "Head tilt switches tabs", "Inclinar a cabeça troca de aba"),
+        .swapLeftRight: ("左右を入れ替え", "Swap left / right", "Inverter esquerda / direita"),
+        .tiltReadout: ("傾き %+.0f°   上下 %+.0f°", "Tilt %+.0f°   Up/down %+.0f°", "Inclinação %+.0f°   Cima/baixo %+.0f°"),
+        .calibrate: ("キャリブレーション (正面を見てタップ)", "Calibrate (look straight ahead, then tap)",
+                     "Calibrar (olhe para a frente e toque)"),
+        .headTiltFooter: ("耳を肩に近づけて約0.5秒。仕事中に誤作動するならオフに。HUD実行中のみ角度が更新。",
+                          "Tilt an ear toward a shoulder and hold ~0.5 s. Turn off at work if bending down triggers it. Angles update only while the HUD runs.",
+                          "Incline a orelha para o ombro por ~0,5 s. Desligue no trabalho se ao se abaixar disparar. Ângulos só atualizam com o HUD ligado."),
+        .notesHeader: ("メモ (%d)", "Notes (%d)", "Notas (%d)"),
+        .remindersHeader: ("リマインダー (%d)", "Reminders (%d)", "Lembretes (%d)"),
+    ]
+}

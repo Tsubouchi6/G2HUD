@@ -1,10 +1,10 @@
 // VoiceCommandRouter.swift
 //
 // Turns finished speech phrases into actions. Cheapest path first:
-//   1. Wake word ("メガネ ...") marks a command; other speech is just captions.
+//   1. Wake word ("メガネ / glasses / óculos ...") marks a command; other speech is just captions.
 //   2. Fixed key phrases (VoicePhrases) run instantly with no AI.
 //   3. Anything else after the wake word goes to the on-device AI tab.
-// Destructive actions wait for "はい / yes" before running.
+// Destructive actions wait for "はい / yes / sim" before running.
 //
 // Public API:
 //   VoiceCommandRouter(context:)
@@ -52,7 +52,7 @@ final class VoiceCommandRouter {
         if let command = VoicePhrases.stripWakeWord(text) {
             if command.isEmpty {
                 commandWindowEnds = Date().addingTimeInterval(HudConstants.commandWindowSeconds)
-                context.lens.showBanner("はい?", seconds: HudConstants.commandWindowSeconds)
+                context.lens.showBanner(HudText.t(.wakeAck), seconds: HudConstants.commandWindowSeconds)
             } else {
                 run(command: command)
             }
@@ -114,15 +114,15 @@ final class VoiceCommandRouter {
 
         // Destructive (confirm first)
         if VoicePhrases.matches(command, VoicePhrases.deleteLastNote) {
-            confirm("最後のメモを消す?") { [context] in context.notes.deleteNewest() }
+            confirm(HudText.t(.confirmDeleteLastNote)) { [context] in context.notes.deleteNewest() }
             return true
         }
         if VoicePhrases.matches(command, VoicePhrases.deleteAllNotes) {
-            confirm("メモを全部消す?") { [context] in context.notes.deleteAll() }
+            confirm(HudText.t(.confirmDeleteAllNotes)) { [context] in context.notes.deleteAll() }
             return true
         }
         if VoicePhrases.matches(command, VoicePhrases.deleteAllReminders) {
-            confirm("リマインダーを全部消す?") { [context] in context.reminders.deleteAll() }
+            confirm(HudText.t(.confirmDeleteAllReminders)) { [context] in context.reminders.deleteAll() }
             return true
         }
         if VoicePhrases.matches(command, VoicePhrases.clearCaptions) {
@@ -133,7 +133,7 @@ final class VoiceCommandRouter {
         if let text = VoicePhrases.payload(command, VoicePhrases.notePrefixes) {
             context.notes.add(text)
             open("notes")
-            lens.showBanner("メモした")
+            lens.showBanner(HudText.t(.noted))
             return true
         }
         if let query = VoicePhrases.payload(command, VoicePhrases.searchPrefixes, suffixes: VoicePhrases.searchSuffixes) {
@@ -167,14 +167,14 @@ final class VoiceCommandRouter {
 
     private func addReminder(_ command: String) {
         guard let parsed = ReminderParser.parse(command) else {
-            context.lens.showBanner("時間が分からない")
+            context.lens.showBanner(HudText.t(.timeUnknown))
             return
         }
         context.reminders.add(text: parsed.text, at: parsed.date)
         open("remind")
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
-        context.lens.showBanner("\(formatter.string(from: parsed.date)) にリマインド")
+        context.lens.showBanner(HudText.t(.reminderSet, formatter.string(from: parsed.date)))
     }
 
     private func open(_ tabId: String) {
@@ -185,7 +185,7 @@ final class VoiceCommandRouter {
 
     private func confirm(_ prompt: String, action: @escaping @MainActor () -> Void) {
         pendingConfirmation = (prompt, action, Date().addingTimeInterval(HudConstants.confirmWindowSeconds))
-        context.lens.showBanner("\(prompt) はい/いいえ", seconds: HudConstants.confirmWindowSeconds)
+        context.lens.showBanner("\(prompt) \(HudText.t(.confirmSuffix))", seconds: HudConstants.confirmWindowSeconds)
     }
 
     /// Handles "はい/いいえ" while a confirmation is pending. Returns true if consumed.
@@ -199,12 +199,12 @@ final class VoiceCommandRouter {
         if VoicePhrases.matches(answer, VoicePhrases.yes) {
             pendingConfirmation = nil
             pending.action()
-            context.lens.showBanner("OK")
+            context.lens.showBanner(HudText.t(.ok))
             return true
         }
         if VoicePhrases.matches(answer, VoicePhrases.no) {
             pendingConfirmation = nil
-            context.lens.showBanner("キャンセル")
+            context.lens.showBanner(HudText.t(.cancelled))
             return true
         }
         return false

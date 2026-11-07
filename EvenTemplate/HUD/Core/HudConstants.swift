@@ -60,19 +60,17 @@ enum HudConstants {
     /// Visible in the iPhone Files app ("On My iPhone > G2HUD").
     static let recordingsFolderName: String = "Recordings"
 
-    // MARK: - Speech
-
-    /// Languages offered in the language picker (BCP-47 ids).
-    static let captionLanguageIds: [String] = ["ja-JP", "en-US"]
-
-    /// Language used the first time the app runs.
-    static let defaultCaptionLanguageId: String = "ja-JP"
-
     // MARK: - Voice commands
 
     /// Words that start a command when said at the beginning of a sentence.
     /// Source: design choice; matched on the transcript (no extra model needed).
-    static let wakeWords: [String] = ["メガネ", "めがね", "眼鏡", "ok glasses", "okay glasses", "glasses"]
+    /// All languages are always accepted (matching is cheap); the speech engine
+    /// only produces the selected language anyway.
+    static let wakeWords: [String] = [
+        "メガネ", "めがね", "眼鏡",
+        "glasses",
+        "óculos", "oculos",
+    ]
 
     /// After saying only the wake word, the next sentence counts as a command
     /// if it starts within this many seconds.

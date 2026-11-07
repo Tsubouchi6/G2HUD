@@ -37,31 +37,18 @@ struct EvenTemplateApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TabView {
-                HudScreen()
-                    .tabItem { Label("HUD", systemImage: "eyeglasses") }
-                CaptionsScreen()
-                    .tabItem { Label("Captions", systemImage: "captions.bubble") }
-                SettingsScreen()
-                    .tabItem { Label("Settings", systemImage: "gearshape") }
-                DevicesScreen()
-                    .tabItem { Label("Devices", systemImage: "antenna.radiowaves.left.and.right") }
-                InputScreen()
-                    .tabItem { Label("Input", systemImage: "hand.tap") }
-                MicScreen()
-                    .tabItem { Label("Mic", systemImage: "mic") }
-            }
-            .environmentObject(session)
-            .environmentObject(store)
-            .environmentObject(viewer)
-            .environmentObject(hud)
-            .environmentObject(hud.lens)
-            .environmentObject(hud.captions)
-            .environmentObject(hud.captions.recorder)
-            .environmentObject(hud.settings)
-            .environmentObject(hud.tilt)
-            .environmentObject(hud.notes)
-            .environmentObject(hud.reminders)
+            RootView()
+                .environmentObject(session)
+                .environmentObject(store)
+                .environmentObject(viewer)
+                .environmentObject(hud)
+                .environmentObject(hud.lens)
+                .environmentObject(hud.captions)
+                .environmentObject(hud.captions.recorder)
+                .environmentObject(hud.settings)
+                .environmentObject(hud.tilt)
+                .environmentObject(hud.notes)
+                .environmentObject(hud.reminders)
         }
     }
 }

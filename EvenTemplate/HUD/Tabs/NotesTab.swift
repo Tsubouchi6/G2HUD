@@ -11,8 +11,8 @@ import Foundation
 final class NotesTab: LensTab {
 
     let id = "notes"
-    let title = "メモ"
-    let voiceNames = ["メモ", "めも", "ノート", "notes", "note", "memo"]
+    var title: String { HudText.t(.tabNotes) }
+    let voiceNames = ["メモ", "めも", "ノート", "notes", "note", "memo", "notas", "anotações"]
     var onChange: (() -> Void)?
 
     private let store: NotesStore
@@ -27,7 +27,7 @@ final class NotesTab: LensTab {
 
     func page() -> LensPage {
         guard !store.notes.isEmpty else {
-            return LensPage(lines: ["(say: メガネ メモ 牛乳買う)"], anchor: .top)
+            return LensPage(lines: [HudText.t(.notesHint)], anchor: .top)
         }
         return LensPage(lines: store.notes.map { "・\($0.text)" }, anchor: .top)
     }

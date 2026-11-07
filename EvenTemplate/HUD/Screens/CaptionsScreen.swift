@@ -15,6 +15,7 @@ struct CaptionsScreen: View {
 
     @EnvironmentObject private var captions: CaptionController
     @EnvironmentObject private var recorder: RawAudioRecorder
+    @EnvironmentObject private var settings: HudSettings  // re-render on language change
 
     // MARK: - Body
 
@@ -24,7 +25,7 @@ struct CaptionsScreen: View {
                 transcriptSection
                 recordingSection
             }
-            .navigationTitle("Captions")
+            .navigationTitle(HudText.t(.screenCaptions))
         }
         .navigationViewStyle(.stack)
     }
@@ -34,7 +35,7 @@ struct CaptionsScreen: View {
     private var transcriptSection: some View {
         Section {
             if captions.phrases.isEmpty && captions.livePhrase.isEmpty {
-                Text(captions.isRunning ? "Listening..." : "Start the HUD to begin").foregroundColor(.secondary)
+                Text(HudText.t(captions.isRunning ? .listening : .startHudToBegin)).foregroundColor(.secondary)
             }
             ForEach(Array(captions.phrases.suffix(100).enumerated()), id: \.offset) { _, phrase in
                 Text(phrase)
@@ -43,16 +44,16 @@ struct CaptionsScreen: View {
                 Text(captions.livePhrase).foregroundColor(.secondary)
             }
             if !captions.phrases.isEmpty {
-                Button("Clear transcript", role: .destructive) { captions.clearTranscript() }
+                Button(HudText.t(.clearTranscript), role: .destructive) { captions.clearTranscript() }
             }
         } header: {
-            Text("Transcript · \(captions.engineName)")
+            Text(HudText.t(.transcriptHeader, captions.engineName))
         }
     }
 
     private var recordingSection: some View {
         Section {
-            Button(recorder.isRecording ? "Stop recording" : "Record raw mic audio") {
+            Button(HudText.t(recorder.isRecording ? .recordStop : .recordStart)) {
                 if recorder.isRecording {
                     recorder.stop()
                 } else {
@@ -72,9 +73,9 @@ struct CaptionsScreen: View {
                 offsets.map { recorder.recordings[$0] }.forEach(recorder.delete)
             }
         } header: {
-            Text("Test recordings")
+            Text(HudText.t(.testRecordings))
         } footer: {
-            Text("Records exactly what the mic hears while the HUD runs. Files: On My iPhone > G2HUD > Recordings.")
+            Text(HudText.t(.recordingsFooter))
         }
     }
 }

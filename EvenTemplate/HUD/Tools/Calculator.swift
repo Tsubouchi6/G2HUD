@@ -2,7 +2,7 @@
 //
 // Evaluates spoken or typed arithmetic safely (no NSExpression, which crashes
 // on bad input). Understands digits, + - * / ^ ( ), %, and spoken operators in
-// Japanese and English ("3かける4", "10 divided by 4", "2の3乗").
+// Japanese, English and Portuguese ("3かける4", "10 divided by 4", "2の3乗", "5 vezes 3").
 //
 // Public API:
 //   Calculator.evaluate(_ input: String) throws -> Double
@@ -62,6 +62,8 @@ enum Calculator {
     /// Longest phrases first so "divided by" wins over "by".
     private static let wordOperators: [(String, String)] = [
         ("divided by", "/"), ("multiplied by", "*"), ("to the power of", "^"),
+        ("dividido por", "/"), ("multiplicado por", "*"), ("elevado a", "^"), ("por cento", "%"),
+        ("quanto é", ""), ("quanto e", ""), ("mais", "+"), ("menos", "-"), ("vezes", "*"),
         ("plus", "+"), ("minus", "-"), ("times", "*"), ("over", "/"),
         ("percent", "%"), ("x", "*"),
         ("足す", "+"), ("たす", "+"), ("プラス", "+"),

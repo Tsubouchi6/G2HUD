@@ -19,18 +19,25 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 | `EvenTemplate/HUD/Screens/` | Phone UI: HUD (preview + typed commands), Captions, Settings |
 | `EvenTemplate/Bluetooth/` | Template's G2 / R1 Bluetooth stack (unchanged) |
 
-## Voice commands (say "メガネ" first)
+## Language
 
-| Say | Does |
-| --- | --- |
-| 次 / 前 / 上 / 下 | next tab / previous tab / scroll |
-| 字幕 / AI / 検索 / 計算 / メモ / リマインダー | open that tab |
-| メモ 牛乳買う | add a note |
-| 天気を検索 / 検索 天気 | web search (needs Brave key in Settings) |
-| 計算 12かける35 / 12×35 | calculator |
-| 5時にロット確認 / 30分後に休憩 | reminder |
-| 最後のメモを消して | delete newest note (asks はい/いいえ) |
-| anything else | asks the on-device AI |
+Settings → Language (日本語 / English / Português) switches speech recognition,
+voice commands, wake word, lens text and the HUD screens together. All strings live
+in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
+
+## Voice commands (say the wake word first: メガネ / glasses / óculos)
+
+| 日本語 | English | Português | Does |
+| --- | --- | --- | --- |
+| 次 / 前 | next / back | próximo / anterior | switch tab |
+| 上 / 下 | up / down | subir / descer | scroll |
+| 字幕, AI, 検索, 計算, メモ, リマインダー | captions, ai, search, calc, notes, reminders | legendas, ia, pesquisa, calculadora, notas, lembretes | open tab |
+| メモ 牛乳買う | note buy milk | anota comprar leite | add note |
+| 天気を検索 | search weather | pesquisar tempo | web search (Brave key in Settings) |
+| 計算 12かける35 | calculate 12 times 35 | calcular 12 vezes 35 | calculator |
+| 5時にロット確認 | remind me at 5 to check | me lembra às 5 de conferir | reminder |
+| 最後のメモを消して | delete last note | apagar última nota | asks yes/no first |
+| anything else | anything else | qualquer outra coisa | on-device AI |
 
 ## Building (no Mac needed)
 

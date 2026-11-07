@@ -1,10 +1,11 @@
 // ReminderParser.swift
 //
-// Turns a spoken reminder into (time, text). Handles common Japanese and
-// English forms; times use the phone's current time zone.
+// Turns a spoken reminder into (time, text). Handles common Japanese, English
+// and Portuguese forms; times use the phone's current time zone.
 //   "5時にロット確認"            "17時30分に電話"       "3時半に休憩"
 //   "30分後に検査"              "2時間後に報告"        "明日8時に安全靴"
 //   "remind me at 5 to call"     "in 10 minutes check the oven"
+//   "me lembra às 17h30 de ligar"  "daqui a 10 minutos conferir"
 // The speech engine writes numbers as digits ("20名"), so only digits are parsed.
 //
 // Public API:
@@ -30,6 +31,8 @@ enum ReminderParser {
             (#"(\d+)\s*分後"#, 60), (#"(\d+)\s*時間後"#, 3600), (#"(\d+)\s*秒後"#, 1),
             (#"in\s+(\d+)\s*(?:minutes|minute|mins|min)"#, 60),
             (#"in\s+(\d+)\s*(?:hours|hour|hrs|hr)"#, 3600),
+            (#"(?:daqui a|daqui|em)\s+(\d+)\s*(?:minutos|minuto|min)"#, 60),
+            (#"(?:daqui a|daqui|em)\s+(\d+)\s*(?:horas|hora)"#, 3600),
         ]
         for (pattern, secondsPerUnit) in patterns {
             guard let match = firstMatch(pattern, in: text), let amount = Double(match.groups[0]) else { continue }
@@ -46,6 +49,8 @@ enum ReminderParser {
             #"(\d{1,2})\s*時\s*(半|(\d{1,2})\s*分)?"#,
             #"(\d{1,2}):(\d{2})"#,
             #"at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?"#,
+            #"(?:às|as)\s+(\d{1,2})(?:\s*(?:h|:)\s*(\d{2}))?"#,
+            #"(\d{1,2})\s*h\s*(\d{2})?"#,
         ]
         for pattern in patterns {
             guard let match = firstMatch(pattern, in: text), let rawHour = Int(match.groups[0]) else { continue }
@@ -57,13 +62,16 @@ enum ReminderParser {
             }
             if match.groups.count > 2, let value = Int(match.groups[2]) { minute = value }
 
-            let isPm = text.contains("午後") || text.contains("夕方") || text.contains("夜") || match.groups.last == "pm"
-            let isAm = text.contains("午前") || text.contains("朝") || match.groups.last == "am"
+            let isPm = text.contains("午後") || text.contains("夕方") || text.contains("夜")
+                || text.contains("da tarde") || text.contains("da noite") || match.groups.last == "pm"
+            let isAm = text.contains("午前") || text.contains("朝") || text.contains("da manhã")
+                || match.groups.last == "am"
             if isPm, hour < 12 { hour += 12 }
             if isAm, hour == 12 { hour = 0 }
             guard hour < 24, minute < 60 else { continue }
 
             let tomorrow = text.contains("明日") || text.contains("あした") || text.contains("tomorrow")
+                || text.contains("amanhã") || text.contains("amanha")
             let date = nextOccurrence(hour: hour, minute: minute, tomorrow: tomorrow,
                                       ampmGiven: isPm || isAm, now: now)
             return (date, cleanText(text, removing: match.range))
@@ -98,7 +106,9 @@ enum ReminderParser {
     private static let fillerWords = [
         "リマインドして", "リマインド", "思い出させて", "教えて", "知らせて", "通知して",
         "明日", "あした", "午後", "午前", "夕方", "朝", "夜",
-        "remind me", "reminder", "tomorrow", "to ", "that ",
+        "remind me", "reminder", "tomorrow",
+        "me lembra de", "me lembre de", "me lembra", "me lembre", "lembrete", "lembrar de",
+        "amanhã", "amanha", "da tarde", "da noite", "da manhã", "horas",
     ]
 
     private static func cleanText(_ text: String, removing range: NSRange) -> String {
@@ -107,6 +117,9 @@ enum ReminderParser {
             result = result.replacingOccurrences(of: word, with: " ")
         }
         result = result.trimmingCharacters(in: CharacterSet(charactersIn: " 、。,.!！?？にをでのはがと"))
+        // Leading linking words ("to call mom", "de ligar"), only at the start so
+        // words like "pronto" are never cut.
+        result = result.replacingOccurrences(of: #"^(to|that|de)\s+"#, with: "", options: .regularExpression)
         return result.isEmpty ? "Reminder" : result
     }
 

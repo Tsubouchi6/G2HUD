@@ -12,8 +12,8 @@ import Foundation
 final class CaptionsTab: LensTab {
 
     let id = "captions"
-    let title = "字幕"
-    let voiceNames = ["字幕", "じまく", "キャプション", "captions", "caption", "subtitles"]
+    var title: String { HudText.t(.tabCaptions) }
+    let voiceNames = ["字幕", "じまく", "キャプション", "captions", "caption", "subtitles", "legendas", "legenda"]
     var onChange: (() -> Void)?
 
     private let captions: CaptionController
@@ -30,7 +30,7 @@ final class CaptionsTab: LensTab {
     func page() -> LensPage {
         var lines = Array(captions.phrases.suffix(HudConstants.captionPhrasesOnLens))
         if !captions.livePhrase.isEmpty { lines.append(captions.livePhrase) }
-        if lines.isEmpty { lines = [captions.isRunning ? "Listening..." : "Captions off"] }
+        if lines.isEmpty { lines = [HudText.t(captions.isRunning ? .listening : .captionsOff)] }
         return LensPage(lines: lines, anchor: .bottom)
     }
 }

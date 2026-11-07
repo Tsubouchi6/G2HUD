@@ -10,15 +10,15 @@ import Foundation
 final class CalcTab: LensTab {
 
     let id = "calc"
-    let title = "計算"
-    let voiceNames = ["計算", "けいさん", "電卓", "でんたく", "calc", "calculator"]
+    var title: String { HudText.t(.tabCalc) }
+    let voiceNames = ["計算", "けいさん", "電卓", "でんたく", "calc", "calculator", "calculadora"]
     var onChange: (() -> Void)?
 
     private var history: [String] = []
     private static let maxHistory = 50
 
     func page() -> LensPage {
-        LensPage(lines: history.isEmpty ? ["(say: メガネ 計算 12かける35)"] : history, anchor: .bottom)
+        LensPage(lines: history.isEmpty ? [HudText.t(.calcHint)] : history, anchor: .bottom)
     }
 
     func calculate(_ expression: String) {

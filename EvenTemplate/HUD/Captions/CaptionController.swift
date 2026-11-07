@@ -11,7 +11,6 @@
 //   @Published phrases: [String]        // finished phrases, oldest first
 //   @Published livePhrase: String       // in-progress phrase (may still change)
 //   @Published errorMessage: String?
-//   @Published languageId: String       // "ja-JP" / "en-US", saved between launches
 //   onFinalPhrase: ((String) -> Void)?
 //   engineName: String
 //   recorder: RawAudioRecorder
@@ -31,17 +30,12 @@ final class CaptionController: ObservableObject {
     @Published private(set) var phrases: [String] = []
     @Published private(set) var livePhrase = ""
     @Published private(set) var errorMessage: String?
-    @Published var languageId: String {
-        didSet { UserDefaults.standard.set(languageId, forKey: Self.languageDefaultsKey) }
-    }
 
     var onFinalPhrase: ((String) -> Void)?
     let recorder = RawAudioRecorder()
     private(set) var engineName = "Apple (on-device)"
 
     // MARK: - Dependencies
-
-    private static let languageDefaultsKey = "g2hud_caption_language"
 
     private let session: BluetoothSession
     private let settings: HudSettings
@@ -53,8 +47,6 @@ final class CaptionController: ObservableObject {
     init(session: BluetoothSession, settings: HudSettings) {
         self.session = session
         self.settings = settings
-        languageId = UserDefaults.standard.string(forKey: Self.languageDefaultsKey)
-            ?? HudConstants.defaultCaptionLanguageId
         session.micPcm
             .sink { [weak self] event in self?.handleMic(event.pcm) }
             .store(in: &subscriptions)
@@ -72,11 +64,11 @@ final class CaptionController: ObservableObject {
             // The glasses mic lives inside our display page, which the firmware
             // won't create while its own dashboard is showing.
             if session.sdk.glassesScreenOccupied {
-                errorMessage = "The glasses dashboard is open. Look down or wait for it to close, then try again."
+                errorMessage = HudText.t(.dashboardOpen)
                 return
             }
         } else if !(await AVAudioApplication.requestRecordPermission()) {
-            errorMessage = "Microphone permission is needed for phone-mic mode."
+            errorMessage = HudText.t(.micPermission)
             return
         }
 
@@ -86,7 +78,7 @@ final class CaptionController: ObservableObject {
         let engine = AppleSpeechEngine()
         do {
             try await engine.start(
-                languageId: languageId,
+                languageId: settings.language.speechLocaleId,
                 onUpdate: { [weak self] update in self?.handleSpeech(update) },
                 onError: { [weak self] error in self?.handleEngineFailure(error) }
             )
@@ -140,7 +132,7 @@ final class CaptionController: ObservableObject {
     }
 
     private func handleEngineFailure(_ error: Error) {
-        errorMessage = "Speech engine stopped: \(error.localizedDescription)"
+        errorMessage = HudText.t(.engineStopped, error.localizedDescription)
         Task { await stop() }
     }
 

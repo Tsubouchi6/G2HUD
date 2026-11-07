@@ -11,8 +11,8 @@ import Foundation
 final class RemindTab: LensTab {
 
     let id = "remind"
-    let title = "リマインダー"
-    let voiceNames = ["リマインダー", "リマインド", "予定", "remind", "reminders", "reminder"]
+    var title: String { HudText.t(.tabRemind) }
+    let voiceNames = ["リマインダー", "リマインド", "予定", "remind", "reminders", "reminder", "lembretes", "lembrete"]
     var onChange: (() -> Void)?
 
     private let service: ReminderService
@@ -27,7 +27,7 @@ final class RemindTab: LensTab {
 
     func page() -> LensPage {
         guard !service.reminders.isEmpty else {
-            return LensPage(lines: ["(say: メガネ 5時にロット確認)"], anchor: .top)
+            return LensPage(lines: [HudText.t(.remindHint)], anchor: .top)
         }
         let now = Date()
         let lines = service.reminders.enumerated().map { index, reminder in
@@ -42,13 +42,15 @@ final class RemindTab: LensTab {
 
     private static func timeText(_ date: Date, now: Date) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = Calendar.current.isDate(date, inSameDayAs: now) ? "HH:mm" : "M/d HH:mm"
         return formatter.string(from: date)
     }
 
     private static func countdownText(_ date: Date, now: Date) -> String {
         let minutes = max(0, Int(date.timeIntervalSince(now) / 60))
-        return minutes < 60 ? "あと\(minutes)分" : "あと\(minutes / 60)時間\(minutes % 60)分"
+        return minutes < 60
+            ? HudText.t(.countdownMinutes, minutes)
+            : HudText.t(.countdownHours, minutes / 60, minutes % 60)
     }
 }

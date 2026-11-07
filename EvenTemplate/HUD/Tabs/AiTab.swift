@@ -11,8 +11,8 @@ import Foundation
 final class AiTab: LensTab {
 
     let id = "ai"
-    let title = "AI"
-    let voiceNames = ["ai", "エーアイ", "えーあい", "チャット", "chat", "質問"]
+    var title: String { HudText.t(.tabAI) }
+    let voiceNames = ["ai", "エーアイ", "えーあい", "チャット", "chat", "質問", "ia", "inteligência artificial"]
     var onChange: (() -> Void)?
 
     private let ai: OnDeviceAI
@@ -24,14 +24,14 @@ final class AiTab: LensTab {
     }
 
     func page() -> LensPage {
-        LensPage(lines: lines.isEmpty ? ["> (ask something)"] : lines, anchor: .bottom)
+        LensPage(lines: lines.isEmpty ? [HudText.t(.aiHint)] : lines, anchor: .bottom)
     }
 
     // MARK: - Asking
 
     func ask(_ question: String) {
-        if let problem = ai.availabilityMessage {
-            append(["> \(question)", problem])
+        if ai.availabilityMessage != nil {
+            append(["> \(question)", HudText.t(.aiUnavailable)])
             return
         }
         append(["> \(question)", "..."])
@@ -40,7 +40,7 @@ final class AiTab: LensTab {
             do {
                 answer = try await ai.ask(question)
             } catch {
-                answer = "AI error: \(error.localizedDescription)"
+                answer = HudText.t(.aiError, error.localizedDescription)
             }
             if lines.last == "..." { lines.removeLast() }
             append([answer])
