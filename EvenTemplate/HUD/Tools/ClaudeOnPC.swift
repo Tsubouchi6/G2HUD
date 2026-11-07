@@ -9,8 +9,9 @@
 //   SAVE: <short title>                              -> saves this chat (Saved tab)
 //   LISTEN: <title> | <ja|en|pt|any> | <HH:mm|now> | <HH:mm|open> -> saves what people say (language, start, stop)
 //   LISTEN_STOP                                      -> stops and keeps that text (or cancels a planned one)
-//   DIRECTIONS: <place|shown> | <walking|driving> | <kind|brand|exact> -> turn-by-turn (with the map) to the nearest
-//                                                    match, or to the place on the map (shown)
+//   DIRECTIONS: <place|shown> | <choose|walking|driving|transit> | <kind|brand|exact> -> the nearest match,
+//                                                    or the place on the map (shown); choose lists the ways
+//   ROUTE: <number|best>                             -> starts a listed way
 //   DIRECTIONS_STOP                                  -> stops navigation
 //   DIRECTIONS_VIEW: <map|minimal|zoomin|zoomout>    -> map / one-line view / zoom
 //   PLACE: <place> | <kind|brand|exact>              -> where the nearest match is, with the user
@@ -127,9 +128,11 @@ final class ClaudeOnPC {
                 if parts.count == 2 { _ = actions.setLanguage(parts[0], parts[1]) }
             } else if trimmedLine.uppercased() == "DIRECTIONS_STOP" {
                 _ = actions.stopDirections()
+            } else if let pick = value(trimmedLine, "ROUTE:") {
+                _ = actions.chooseRoute(Int(pick) ?? 0)  // "best" -> 0
             } else if let spec = value(trimmedLine, "DIRECTIONS:") {
                 let parts = spec.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespaces) }
-                let mode = parts.count > 1 ? DirectionsMode(rawValue: parts[1].lowercased()) ?? .walking : .walking
+                let mode = parts.count > 1 ? TripMode(rawValue: parts[1].lowercased()) ?? .choose : .choose
                 if parts[0].lowercased() == "shown" {
                     _ = await actions.goToShownPlace(mode)
                 } else {

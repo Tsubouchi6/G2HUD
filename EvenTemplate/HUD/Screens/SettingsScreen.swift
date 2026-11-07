@@ -30,6 +30,7 @@ struct SettingsScreen: View {
                 voiceSection
                 claudeSection
                 searchSection
+                transitSection
                 controlsSection
                 headTiltSection
                 notesSection
@@ -105,6 +106,19 @@ struct SettingsScreen: View {
             Text(HudText.t(.search))
         } footer: {
             Text(HudText.t(.searchFooter))
+        }
+    }
+
+    /// Google Routes API key: train / bus directions in the Nav tab.
+    private var transitSection: some View {
+        Section {
+            SecureField(HudText.t(.googleKeyPlaceholder), text: $settings.googleMapsApiKey)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+        } header: {
+            Text(HudText.t(.transitHeader))
+        } footer: {
+            Text(HudText.t(.transitFooter))
         }
     }
 

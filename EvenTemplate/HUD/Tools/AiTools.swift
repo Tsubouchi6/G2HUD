@@ -13,7 +13,9 @@
 //     showPicture  — a web photo on the lens (Tavily, 1 credit)
 //     saveChat     — saves this AI chat to the Saved tab
 //     startListening / stopListening — saves what people around say, now or at set times
-//     startDirections / stopDirections — turn-by-turn to the nearest match (Apple Maps, free)
+//     startDirections / stopDirections — the nearest match: walking / driving / train-bus, or the
+//                    ways there with a pick (Apple Maps free; trains and buses Google)
+//     chooseRoute  — start one of the listed ways
 //     showPlace    — where the nearest X is, with the user, on one map (no turn-by-turn)
 //     directionsView — map / minimal / zoom in / zoom out
 //     calculate    — exact arithmetic (the model writes the formula, the app computes)
@@ -43,6 +45,7 @@ enum AiTools {
             StopListeningTool(stop: actions.stopListening),
             StartDirectionsTool(start: actions.startDirections, goToShown: actions.goToShownPlace),
             StopDirectionsTool(stop: actions.stopDirections),
+            ChooseRouteTool(choose: actions.chooseRoute),
             ShowPlaceTool(show: actions.showPlace),
             DirectionsViewTool(change: actions.directionsView),
             CalculateTool(calculate: actions.calculate),
@@ -287,12 +290,12 @@ private struct StartDirectionsTool: Tool {
     find the way (e.g. nearest convenience store, a station, an address). When the user \
     wants to go to the place already on the map, use match shown. Returns the place found.
     """
-    let start: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: DirectionsMode) async -> String
-    let goToShown: @MainActor @Sendable (_ mode: DirectionsMode) async -> String
+    let start: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: TripMode) async -> String
+    let goToShown: @MainActor @Sendable (_ mode: TripMode) async -> String
 
     @Generable
     enum Mode: String {
-        case walking, driving
+        case choose, walking, driving, transit
     }
 
     @Generable
@@ -306,12 +309,12 @@ private struct StartDirectionsTool: Tool {
         let destination: String
         @Guide(description: "kind = a type of place (pet shop), brand = a chain (Wendy's), exact = one place or address (Tokyo Station), shown = the place already on the Nav map (go there)")
         let match: Match
-        @Guide(description: "walking unless the user says they are driving")
+        @Guide(description: "choose unless the user said how: walking, driving, or transit for train or bus")
         let mode: Mode
     }
 
     func call(arguments: Arguments) async throws -> String {
-        let mode = DirectionsMode(rawValue: arguments.mode.rawValue) ?? .walking
+        let mode = TripMode(rawValue: arguments.mode.rawValue) ?? .choose
         if arguments.match == .shown { return await goToShown(mode) }
         return await start(arguments.destination, PlaceMatch(rawValue: arguments.match.rawValue) ?? .kind, mode)
     }
@@ -327,6 +330,25 @@ private struct StopDirectionsTool: Tool {
 
     func call(arguments: Arguments) async throws -> String {
         await stop() ? "Directions stopped." : "No directions were running."
+    }
+}
+
+private struct ChooseRouteTool: Tool {
+    let name = "chooseRoute"
+    let description = """
+    Starts one of the ways listed by startDirections (choose): the number the user \
+    picked, or 0 for the recommended one when they just say go or ok.
+    """
+    let choose: @MainActor @Sendable (_ number: Int) -> String
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "The listed number, or 0 for the recommended one")
+        let number: Int
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await choose(arguments.number)
     }
 }
 

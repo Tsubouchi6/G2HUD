@@ -64,6 +64,8 @@ enum HudText {
         case chatSaved, nothingToSave, aiChats
         case navPlaceWalk, navAngleRight, navAngleLeft, navStraight
         case tabNav, navHint, navFinding, navArrived, navRemaining, navThen, navRerouting, navToArrival
+        case navWalk, navTrain, navBus, navMixed, navFree, navBoard, navLineToward, navGetOff, navStops
+        case navNoGoogleKey, navNoTransit, googleKeyPlaceholder, transitHeader, transitFooter
         case listeningStarted, listeningSaved, listeningScheduled, listeningUntil, savedListenTag, listenedClips
         case claudeHeader, useClaudeOnPC, pcUrlPlaceholder, pcTokenPlaceholder, claudeFooter
         case checkConnection, connectionOk, iphoneAiTag
@@ -187,6 +189,23 @@ enum HudText {
         .navThen: ("その次: %@", "Then: %@", "Depois: %@"),
         .navRerouting: ("ルート再検索中...", "Rerouting...", "Recalculando..."),
         .navToArrival: ("到着まで", "to arrival", "até a chegada"),
+        .navWalk: ("徒歩", "Walk", "A pé"),
+        .navTrain: ("電車", "Train", "Trem"),
+        .navBus: ("バス", "Bus", "Ônibus"),
+        .navMixed: ("電車+バス", "Train+Bus", "Trem+Ônibus"),
+        .navFree: ("無料", "free", "grátis"),
+        .navBoard: ("%@ に乗る (%@)", "Take %@ (%@)", "Pegue %@ (%@)"),
+        .navLineToward: ("%@ %@方面", "%@ for %@", "%@ sentido %@"),
+        .navGetOff: ("%@で降りる", "Get off at %@", "Desça em %@"),
+        .navStops: ("%d駅", "%d stops", "%d paradas"),
+        .navNoGoogleKey: ("電車・バスは設定でGoogleのキーを入れてください", "Add a Google key in Settings for trains and buses",
+                          "Adicione uma chave Google nos Ajustes para trem e ônibus"),
+        .navNoTransit: ("電車・バスのルートが見つからない", "No train or bus route found", "Nenhuma rota de trem ou ônibus"),
+        .googleKeyPlaceholder: ("Google APIキー", "Google API key", "Chave da API Google"),
+        .transitHeader: ("電車・バス (Google)", "Trains and buses (Google)", "Trem e ônibus (Google)"),
+        .transitFooter: ("Google Routes API (月1万回まで無料)。ナビで電車・バスの行き方を出します。キーはこのiPhoneにだけ保存。",
+                         "Google Routes API (free up to 10,000 a month). Shows train and bus routes in Nav. The key stays on this iPhone.",
+                         "Google Routes API (grátis até 10.000 por mês). Mostra rotas de trem e ônibus na Nav. A chave fica só neste iPhone."),
         .listeningStarted: ("聞き取り中: %@", "Listening: %@", "Ouvindo: %@"),
         .listeningSaved: ("聞き取りを保存した", "Listening saved", "Escuta salva"),
         .listeningScheduled: ("%@から聞き取り: %@", "Listening from %@: %@", "Ouvindo a partir de %@: %@"),

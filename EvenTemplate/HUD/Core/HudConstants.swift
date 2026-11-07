@@ -234,6 +234,27 @@ enum HudConstants {
     /// Within this distance of the destination = arrived, in meters.
     static let navArrivalMeters: Double = 25
 
+    /// Train/bus steps: how close to a station counts as being there, in meters.
+    /// Stations are large and GPS is poor around them (and absent underground),
+    /// so this is much wider than a street turn. Design choice.
+    static let navStationRadiusMeters: Double = 150
+
+    /// Route choices ("I want to go to X"): at most this many listed (lens lines).
+    static let navMaxChoices: Int = 4
+    /// Neo's pick. Walk when it takes at most navWalkAlwaysMinutes; or when it's
+    /// at most navWalkExtraMinutes slower than the fastest ride and under
+    /// navWalkMaxMinutes. Rides within navTieMinutes of the fastest count as a
+    /// tie, and the one with fewer transfers wins. Design choices (user's taste).
+    static let navWalkAlwaysMinutes: Int = 12
+    static let navWalkExtraMinutes: Int = 5
+    static let navWalkMaxMinutes: Int = 25
+    static let navTieMinutes: Int = 3
+
+    /// Google Routes API computeRoutes (train / bus routes). Free up to 10,000
+    /// requests a month (Compute Routes Essentials). Source:
+    /// developers.google.com/maps/documentation/routes/transit-route
+    static let googleRoutesEndpoint: String = "https://routes.googleapis.com/directions/v2:computeRoutes"
+
     /// Phone compass updates only after turning this many degrees (saves redraws;
     /// the arrow has 45° steps). Source: design choice.
     static let navHeadingFilterDegrees: Double = 5
@@ -403,9 +424,13 @@ enum HudConstants {
     a shop clerk, if you hear anything save it). Nothing is saved unless they ask. If they \
     say what language that person will speak, start it in that language. \
     7. Directions (always with the map unless the user asks to hide it): finds the \
-    nearest place matching what the user wants (Apple Maps) \
-    and shows walking or driving turn-by-turn in the Nav tab, always starting with a \
-    street map plus the next turn and distance. Only if the user asks for no map or \
+    nearest place matching what the user wants (Apple Maps). If the user didn't say how \
+    to go, mode choose lists the ways (walk, train, bus, mixed, with time and fare) and \
+    the app recommends one: tell them the options briefly with the recommendation, then \
+    start the one they pick (chooseRoute; 0 = recommended when they say go or ok). \
+    Walking, driving or transit (train or bus) start right away when the user says so. \
+    Directions show turn-by-turn in the Nav tab with a street map, and for trains and \
+    buses the line, direction, stops and where to get off. Only if the user asks for no map or \
     a clear screen, switch the view to minimal (one line at the top); map brings it back. \
     Show place: for where is / show me where / how far is, shows the nearest match and \
     the user together on the map with the walking distance, without turn-by-turn. \
@@ -456,7 +481,8 @@ enum HudConstants {
     <start as 24-hour HH:mm, or now> | <end as HH:mm (work it out from a length), or open>, and \
     LISTEN_STOP to end it. \
     Directions: DIRECTIONS: <place as a map search, or shown for the place already on the map> | \
-    <walking or driving> | <kind, brand or exact>, \
+    <choose, walking, driving or transit> | <kind, brand or exact>, ROUTE: <listed number, or best> \
+    to start one of the listed ways, \
     DIRECTIONS_STOP to end them, DIRECTIONS_VIEW: <map, minimal, zoomin or zoomout> for the view. \
     Show place: PLACE: <place as a map search> | <kind, brand or exact>. \
     Open tab: OPEN: <captions, ai, search, calc, notes, remind, saved or nav>. \
@@ -478,7 +504,7 @@ enum HudConstants {
         + " Keep answers under 120 characters, plain text, no markdown or lists. " + aiAbilities + " " + """
     HOW TO USE AN ABILITY: call its tool. Web search = searchWeb, stock chart = \
     stockChart, chart = drawChart, picture = showPicture, save chat = saveChat, \
-    listen = startListening / stopListening, directions = startDirections / \
+    listen = startListening / stopListening, directions = startDirections / chooseRoute / \
     stopDirections / directionsView (also zoom), show place = showPlace, calculator = calculate, convert = convert, open tab = openTab, languages = setLanguage. After a tool, \
     reply with one short sentence.
     """

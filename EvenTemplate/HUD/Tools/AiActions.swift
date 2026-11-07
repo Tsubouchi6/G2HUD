@@ -12,9 +12,11 @@
 //                                  `language` ("ja"/"en"/"pt"; nil = the Listen-for setting),
 //                                  from `start` (nil = now) until `stop` (nil = until told)
 //   stopListening() -> Bool        — ends and keeps the clip, or cancels a planned one (false = neither)
-//   startDirections(destination, match, mode) async -> String — nearest match, turn-by-turn with the map
-//                                  in the Nav tab; returns what was found (or "Failed: ...") for the AI
-//   goToShownPlace(mode) async -> String — "take me there": directions to the place on the map
+//   startDirections(destination, match, mode) async -> String — nearest match; walking/driving/transit:
+//                                  turn-by-turn with the map in the Nav tab; choose: lists the ways
+//                                  there with a recommendation. Returns what was found (or "Failed: ...")
+//   goToShownPlace(mode) async -> String — "take me there": the place on the map, same modes
+//   chooseRoute(number) -> String  — starts a listed way (1-based; 0 = the recommended one)
 //   stopDirections() -> Bool       — ends navigation (false = none running)
 //   showPlace(query, match) async -> String — "where is the nearest X": X and the user on the map
 //   directionsView(view) -> Bool   — "map" / "minimal" / "zoomIn" / "zoomOut" (false = no map running)
@@ -31,8 +33,9 @@ struct AiActions: Sendable {
     let saveChat: @MainActor @Sendable (_ title: String) -> Bool
     let startListening: @MainActor @Sendable (_ title: String, _ language: String?, _ start: Date?, _ stop: Date?) -> Bool
     let stopListening: @MainActor @Sendable () -> Bool
-    let startDirections: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: DirectionsMode) async -> String
-    let goToShownPlace: @MainActor @Sendable (_ mode: DirectionsMode) async -> String
+    let startDirections: @MainActor @Sendable (_ destination: String, _ match: PlaceMatch, _ mode: TripMode) async -> String
+    let goToShownPlace: @MainActor @Sendable (_ mode: TripMode) async -> String
+    let chooseRoute: @MainActor @Sendable (_ number: Int) -> String
     let stopDirections: @MainActor @Sendable () -> Bool
     let showPlace: @MainActor @Sendable (_ query: String, _ match: PlaceMatch) async -> String
     let directionsView: @MainActor @Sendable (_ view: String) -> Bool

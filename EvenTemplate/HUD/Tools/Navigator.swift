@@ -1,71 +1,52 @@
 // Navigator.swift
 //
-// The Nav tab's brain, in two modes:
+// The Nav tab's brain, in three modes:
 //   directions — follows a route as the user moves: which step they're on,
 //                distance to the next turn, distance and time left, re-routing
-//                when off the route, arrival. The map is centered on the user.
+//                when off a walk/drive route, arrival. The map is centered on the user.
+//                Train/bus routes (Google) are followed the same way: a ride is
+//                one step from station to station.
+//   choosing   — "I want to go to X": the ways to get there (RoutePlanner) with
+//                Neo's pick, until the user chooses one (choose(_:)).
 //   place      — "where is the nearest X": the user and X both fit on the map,
 //                with the walking route between them; no turn-by-turn.
 // Zoom in/out halves/doubles the map's reach: around the user in directions,
 // around the place in place mode (zoom out from there widens again).
-// Step i's instruction describes the turn at the START of step i, so the
-// "next turn" is step i+1's instruction, reached at the end of step i.
+// Data types (NavRoute, NavState, ...) are in NavModels.swift.
 //
 // Public API:
-//   Navigator(location:directions:heading:useCompass:)
+//   Navigator(location:directions:planner:heading:useCompass:)
 //     useCompass: true while the glasses aren't connected — then the phone's
 //     compass turns the arrows (phone held like a map).
 //   @Published state: NavState
 //   @Published minimal: Bool                 // one line at the top, nothing else
 //   @Published miniMap: Data?                // map PNG, 400x200 (MiniMapRenderer)
 //   @Published mapStatus: String             // phone-only: whether the Apple Maps background loaded
-//   start(destination:match:mode:) -> Task   // directions to the nearest match (map view)
+//   start(destination:match:mode:) -> Task   // walking/driving: directions to the nearest match;
+//                                            // transit: the best train/bus way; choose: list the ways
 //   showPlace(_ query:, match:) -> Task      // where the nearest match is, with the user
-//   goToShownPlace(mode:) -> Task?           // "take me there": directions to the place on the map
-//                                            // (no new search, so it's the same place); nil if none
+//   goToShownPlace(mode:) -> Task?           // "take me there": the place on the map (no new
+//                                            // search, so it's the same place); nil if none
 //     (each Task ends with nil when found, or the error text)
+//   choose(_ number:) -> Bool                // pick a listed way (1-based; 0 = Neo's pick)
 //   summaryForAI: String?                    // what the Nav tab shows, for the AIs' context line
 //   zoom(in:)                                // halve / double the map's reach
 //   stop()
 //   showMap()                                // back to the view with the map
 //   onArrived: ((String) -> Void)?
 //   onNotice: ((String) -> Void)?            // "Finding..." / failed search while a map is already up
-//   enum NavState, struct NavProgress, struct PlaceInfo
 
 import CoreLocation
 import Foundation
 import MapKit
 
-struct NavProgress {
-    let destinationName: String
-    let remainingMeters: Double
-    let remainingMinutes: Int
-    /// Whole route length, for the progress bar.
-    let totalMeters: Double
-    /// The next turn, and how far away it is. nil when only the arrival is left.
-    let nextTurn: String?
-    let metersToNextTurn: Double
-    /// The turn after that, for a heads-up.
-    let turnAfter: String?
-    /// Direction to the next turn point relative to where the phone points,
-    /// degrees clockwise (0 = straight ahead). nil without the compass.
-    let relativeBearing: Double?
-    let rerouting: Bool
-}
-
-struct PlaceInfo {
-    let name: String
-    let walkingMeters: Double
-    let walkingMinutes: Int
-}
-
-enum NavState {
-    case idle
-    case finding(String)
-    case active(NavProgress)
-    case place(PlaceInfo)
-    case arrived(String)
-    case failed(String)
+/// How the user wants to get there.
+enum TripMode: String {
+    case walking, driving
+    /// By train or bus: Neo's best transit way, started right away.
+    case transit
+    /// The user didn't say: list walking / train / bus and recommend one.
+    case choose
 }
 
 @MainActor
@@ -86,6 +67,7 @@ final class Navigator: ObservableObject {
 
     private let location: LocationService
     private let directions: DirectionsService
+    private let planner: RoutePlanner
     private let heading: HeadingService
     private let useCompass: () -> Bool
     private var headingDegrees: Double?
@@ -93,11 +75,11 @@ final class Navigator: ObservableObject {
     private var isPlaceMode = false
     private var destination: MKMapItem?
     private var destinationName = ""
+    /// Apple mode used when re-routing a walk/drive route.
     private var mode: DirectionsMode = .walking
-    private var route: MKRoute?
-    private var steps: [MKRoute.Step] = []
-    private var stepEnds: [CLLocation] = []
-    private var routePoints: [CLLocation] = []
+    private var route: NavRoute?
+    private var steps: [NavStep] = []
+    private var routePoints: [CLLocationCoordinate2D] = []
     private var stepIndex = 0
     private var lastLocation: CLLocation?
     /// Where the user was when the place was found ("Shibuya, Tokyo"), so the AI
@@ -121,19 +103,21 @@ final class Navigator: ObservableObject {
     private var background: StreetBackground?
     private var isFetchingBackground = false
 
-    init(location: LocationService, directions: DirectionsService, heading: HeadingService, useCompass: @escaping () -> Bool) {
+    init(location: LocationService, directions: DirectionsService, planner: RoutePlanner,
+         heading: HeadingService, useCompass: @escaping () -> Bool) {
         self.location = location
         self.directions = directions
+        self.planner = planner
         self.heading = heading
         self.useCompass = useCompass
     }
 
     // MARK: - Control
 
-    /// Directions; always starts with the map (the one-line view only when asked).
+    /// Directions (always starting with the map), or the list of ways to get there.
     @discardableResult
-    func start(destination query: String, match: PlaceMatch, mode: DirectionsMode) -> Task<String?, Never> {
-        begin(label: query, mode: mode, placeMode: false) { [directions] here in
+    func start(destination query: String, match: PlaceMatch, mode: TripMode) -> Task<String?, Never> {
+        begin(label: query, placeMode: false, plan: plan(for: mode)) { [directions] here in
             try await directions.nearestPlace(query, match: match, near: here)
         }
     }
@@ -141,15 +125,26 @@ final class Navigator: ObservableObject {
     /// "Where is the nearest X": the place and the user both on the map.
     @discardableResult
     func showPlace(_ query: String, match: PlaceMatch) -> Task<String?, Never> {
-        begin(label: query, mode: .walking, placeMode: true) { [directions] here in
+        begin(label: query, placeMode: true, plan: plan(for: .walking)) { [directions] here in
             try await directions.nearestPlace(query, match: match, near: here)
         }
     }
 
     /// "Yes, take me there" after showPlace: the same place, not a new search.
-    func goToShownPlace(mode: DirectionsMode) -> Task<String?, Never>? {
+    func goToShownPlace(mode: TripMode) -> Task<String?, Never>? {
         guard isPlaceMode, route != nil, let place = destination else { return nil }
-        return begin(label: destinationName, mode: mode, placeMode: false) { _ in place }
+        return begin(label: destinationName, placeMode: false, plan: plan(for: mode)) { _ in place }
+    }
+
+    /// Starts the chosen way (1-based as listed; 0 = Neo's pick). False if nothing is listed.
+    func choose(_ number: Int) -> Bool {
+        guard case .choosing(let trip) = state, let here = lastLocation else { return false }
+        let index = number == 0 ? trip.recommended : number - 1
+        guard trip.choices.indices.contains(index) else { return false }
+        mode = .walking
+        minimal = false
+        startFollowing(trip.choices[index].route, at: here)
+        return true
     }
 
     /// "Shibuya, Tokyo" for a location; nil if Apple can't tell.
@@ -160,7 +155,7 @@ final class Navigator: ObservableObject {
     }
 
     /// One sentence for the AIs about what the Nav tab shows, so follow-ups
-    /// ("go there", "how far", "how much to get there") use the real place.
+    /// ("go there", "how far", "how much to get there", "number 2") use the real place.
     var summaryForAI: String? {
         let address = destination?.placemark.title.map { " (\($0))" } ?? ""
         let from = startArea.map { ", from the user's area \($0)" } ?? ""
@@ -168,14 +163,35 @@ final class Navigator: ObservableObject {
         case .place(let place):
             return "The Nav map shows \(place.name)\(address), \(Int(place.walkingMeters)) m away\(from), "
                 + "about \(place.walkingMinutes) min on foot; not navigating there yet"
+        case .choosing(let trip):
+            let list = trip.choices.enumerated().map { index, choice in
+                "\(index + 1)) \(Self.describe(choice))"
+            }.joined(separator: "; ")
+            return "Ways to \(trip.destinationName)\(address) are listed: \(list). The app recommends "
+                + "\(trip.recommended + 1). Waiting for the user to pick one (chooseRoute)"
         case .active(let progress):
-            return "Navigating (\(mode.rawValue)) to \(progress.destinationName)\(address)\(from), "
-                + "\(Int(progress.remainingMeters)) m and about \(progress.remainingMinutes) min left"
+            let riding = progress.ride.map { "; now on \(TransitService.rideName($0)), get off at \($0.toStop)" } ?? ""
+            return "Navigating to \(progress.destinationName)\(address)\(from), "
+                + "\(Int(progress.remainingMeters)) m and about \(progress.remainingMinutes) min left\(riding)"
         case .finding(let query):
             return "Searching the map for \(query)"
         default:
             return nil
         }
+    }
+
+    /// "Train 11 min, ¥180, JR Yamanote" (English, for the AI).
+    private static func describe(_ choice: RouteChoice) -> String {
+        let kind: String
+        switch choice.kind {
+        case .walk: kind = "Walk"
+        case .train: kind = "Train"
+        case .bus: kind = "Bus"
+        case .mixed: kind = "Train and bus"
+        }
+        let fare = choice.kind == .walk ? ", free" : choice.fare.map { ", \($0)" } ?? ""
+        let lines = choice.route.rides.map(\.line).joined(separator: " > ")
+        return "\(kind) \(choice.minutes) min\(fare)\(lines.isEmpty ? "" : ", \(lines)")"
     }
 
     func stop() {
@@ -209,11 +225,39 @@ final class Navigator: ObservableObject {
         drawMiniMap(at: here)
     }
 
+    // MARK: - Planning
+
+    /// What to do once the place is found: follow one route, or list the ways.
+    private enum Plan {
+        case follow(NavRoute, DirectionsMode)
+        case choose(TripChoices)
+    }
+
+    private func plan(for mode: TripMode) -> @MainActor (MKMapItem, CLLocation, String) async throws -> Plan {
+        switch mode {
+        case .walking, .driving:
+            let apple: DirectionsMode = mode == .driving ? .driving : .walking
+            return { [directions] place, _, _ in
+                .follow(NavRoute(apple: try await directions.route(to: place, mode: apple)), apple)
+            }
+        case .transit, .choose:
+            return { [planner] place, here, name in
+                let trip = try await planner.choices(to: place, from: here, name: name, transitOnly: mode == .transit)
+                // Asked for the train / bus, or only one way exists: just go.
+                if mode == .transit || trip.choices.count == 1 {
+                    return .follow(trip.choices[trip.recommended].route, .walking)
+                }
+                return .choose(trip)
+            }
+        }
+    }
+
     /// Finds the place first; only then replaces what's on the map. If the
     /// search fails while a map is up, that map stays and a notice is shown.
     /// `find` picks the destination; the task ends with nil, or the error text.
     private func begin(
-        label query: String, mode: DirectionsMode, placeMode: Bool,
+        label query: String, placeMode: Bool,
+        plan: @escaping @MainActor (MKMapItem, CLLocation, String) async throws -> Plan,
         find: @escaping @MainActor (CLLocation) async throws -> MKMapItem
     ) -> Task<String?, Never> {
         let mapIsUp = route != nil
@@ -222,19 +266,24 @@ final class Navigator: ObservableObject {
             do {
                 let here = try await location.currentLocation()
                 let place = try await find(here)
-                let route = try await directions.route(to: place, mode: mode)
+                let name = place.name ?? query
+                let planned = try await plan(place, here, name)
                 stop()
-                self.mode = mode
                 isPlaceMode = placeMode
                 minimal = false
                 destination = place
-                destinationName = place.name ?? query
+                destinationName = name
+                lastLocation = here
                 startArea = nil
                 Task { [weak self] in self?.startArea = await Self.area(of: here) }
                 if placeMode { placeFit = Self.fit(user: here.coordinate, place: place.placemark.coordinate) }
-                use(route, at: here)
-                location.startUpdates { [weak self] update in self?.follow(update) }
-                heading.start { [weak self] degrees in self?.turned(to: degrees) }
+                switch planned {
+                case .follow(let route, let appleMode):
+                    mode = appleMode
+                    startFollowing(route, at: here)
+                case .choose(let trip):
+                    state = .choosing(trip)
+                }
                 return nil
             } catch {
                 if mapIsUp { onNotice?(error.localizedDescription) } else { state = .failed(error.localizedDescription) }
@@ -245,21 +294,21 @@ final class Navigator: ObservableObject {
 
     // MARK: - Route
 
-    private func loadRoute(from here: CLLocation) async throws {
-        guard let destination else { return }
-        use(try await directions.route(to: destination, mode: mode), at: here)
+    private func startFollowing(_ route: NavRoute, at here: CLLocation) {
+        use(route, at: here)
+        location.startUpdates { [weak self] update in self?.follow(update) }
+        heading.start { [weak self] degrees in self?.turned(to: degrees) }
     }
 
-    private func use(_ route: MKRoute, at here: CLLocation) {
+    private func loadRoute(from here: CLLocation) async throws {
+        guard let destination else { return }
+        use(NavRoute(apple: try await directions.route(to: destination, mode: mode)), at: here)
+    }
+
+    private func use(_ route: NavRoute, at here: CLLocation) {
         self.route = route
         steps = route.steps
-        stepEnds = steps.map { step in
-            let end = DirectionsService.coordinates(of: step.polyline).last ?? step.polyline.coordinate
-            return CLLocation(latitude: end.latitude, longitude: end.longitude)
-        }
-        routePoints = DirectionsService.coordinates(of: route.polyline).map {
-            CLLocation(latitude: $0.latitude, longitude: $0.longitude)
-        }
+        routePoints = route.points
         stepIndex = 0
         miniMapDrawnAt = .distantPast  // new route: draw it right away
         lastLocation = here
@@ -269,7 +318,7 @@ final class Navigator: ObservableObject {
     // MARK: - Following
 
     private func follow(_ here: CLLocation) {
-        guard route != nil, let destination else { return }
+        guard let route, let destination else { return }
         lastLocation = here
 
         if !isPlaceMode {
@@ -281,12 +330,15 @@ final class Navigator: ObservableObject {
                 onArrived?(destinationName)
                 return
             }
-            // Advance past every step end we've reached.
-            while stepIndex < stepEnds.count - 1,
-                  here.distance(from: stepEnds[stepIndex]) <= HudConstants.navStepAdvanceMeters {
-                stepIndex += 1
+            // Jump past the furthest step end reached (GPS can skip steps,
+            // e.g. no signal underground until the arrival station).
+            if stepIndex < steps.count - 1,
+               let reached = (stepIndex ..< steps.count - 1).last(where: {
+                   here.distance(from: steps[$0].end) <= steps[$0].endRadiusMeters
+               }) {
+                stepIndex = reached + 1
             }
-            if isOffRoute(here) { reroute(from: here) }
+            if route.canReroute, isOffRoute(here) { reroute(from: here) }
         }
         publishProgress(at: here)
     }
@@ -302,7 +354,8 @@ final class Navigator: ObservableObject {
     }
 
     private func isOffRoute(_ here: CLLocation) -> Bool {
-        guard let nearest = routePoints.map({ here.distance(from: $0) }).min() else { return false }
+        let nearest = routePoints.map { here.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude)) }.min()
+        guard let nearest else { return false }
         return nearest > HudConstants.navOffRouteMeters + max(here.horizontalAccuracy, 0)
     }
 
@@ -363,9 +416,9 @@ final class Navigator: ObservableObject {
         miniMap = MiniMapRenderer.png(
             background: background?.matches(frame) == true ? background : nil,
             frame: frame,
-            route: routePoints.map(\.coordinate),
+            route: routePoints,
             user: here.coordinate,
-            nextTurn: !isPlaceMode && stepIndex < stepEnds.count - 1 ? stepEnds[stepIndex].coordinate : nil,
+            nextTurn: !isPlaceMode && stepIndex < steps.count - 1 ? steps[stepIndex].end.coordinate : nil,
             destination: destination.placemark.coordinate,
             headingDegrees: useCompass() ? headingDegrees : nil
         )
@@ -378,7 +431,7 @@ final class Navigator: ObservableObject {
         guard !isFetchingBackground else { return }
         isFetchingBackground = true
         Task {
-            if let fresh = await StreetBackground.make(for: frame, route: routePoints.map(\.coordinate)) {
+            if let fresh = await StreetBackground.make(for: frame, route: routePoints) {
                 background = fresh
                 mapStatus = "Apple Maps"
                 miniMapDrawnAt = .distantPast
@@ -390,6 +443,7 @@ final class Navigator: ObservableObject {
         }
     }
 
+
     private func publishProgress(at here: CLLocation) {
         guard let route, !steps.isEmpty else { return }
         drawMiniMap(at: here)
@@ -397,43 +451,37 @@ final class Navigator: ObservableObject {
         if isPlaceMode {
             state = .place(PlaceInfo(
                 name: destinationName,
-                walkingMeters: route.distance,
-                walkingMinutes: max(Int((route.expectedTravelTime / 60).rounded(.up)), 1)
+                walkingMeters: route.distanceMeters,
+                walkingMinutes: max(Int((route.seconds / 60).rounded(.up)), 1)
             ))
             return
         }
 
-        let toStepEnd = here.distance(from: stepEnds[stepIndex])
-        let laterSteps = steps.dropFirst(stepIndex + 1).reduce(0) { $0 + $1.distance }
-        let remaining = toStepEnd + laterSteps
-        let minutes = route.distance > 0 ? Int((route.expectedTravelTime * remaining / route.distance / 60).rounded(.up)) : 0
+        let step = steps[stepIndex]
+        let toStepEnd = here.distance(from: step.end)
+        let later = steps.dropFirst(stepIndex + 1)
+        let remaining = toStepEnd + later.reduce(0) { $0 + $1.distanceMeters }
+        // Time left: the unfinished part of this step plus the later steps.
+        let stepShare = step.distanceMeters > 0 ? min(toStepEnd / step.distanceMeters, 1) : 0
+        let seconds = step.seconds * stepShare + later.reduce(0) { $0 + $1.seconds }
 
-        let upcoming = steps.dropFirst(stepIndex + 1).filter { !$0.instructions.isEmpty }
+        let upcoming = later.filter { !$0.instruction.isEmpty }
         var relative: Double?
         if useCompass(), let headingDegrees {
-            let bearing = HeadingService.bearing(from: here.coordinate, to: stepEnds[stepIndex].coordinate)
+            let bearing = HeadingService.bearing(from: here.coordinate, to: step.end.coordinate)
             relative = (bearing - headingDegrees + 360).truncatingRemainder(dividingBy: 360)
         }
         state = .active(NavProgress(
             destinationName: destinationName,
             remainingMeters: remaining,
-            remainingMinutes: max(minutes, 1),
-            totalMeters: route.distance,
-            nextTurn: upcoming.first?.instructions,
+            remainingMinutes: max(Int((seconds / 60).rounded(.up)), 1),
+            totalMeters: route.distanceMeters,
+            nextTurn: upcoming.first?.instruction,
             metersToNextTurn: toStepEnd,
-            turnAfter: upcoming.dropFirst().first?.instructions,
+            turnAfter: upcoming.dropFirst().first?.instruction,
             relativeBearing: relative,
-            rerouting: isRerouting
+            rerouting: isRerouting,
+            ride: step.ride
         ))
     }
-}
-
-/// What the map shows: `center` drawn at `anchorYFraction` of the height
-/// (horizontally centered), with `radiusMeters` from there to the side edge.
-struct MapFrame {
-    let center: CLLocationCoordinate2D
-    let radiusMeters: Double
-    let anchorYFraction: CGFloat
-
-    var metersPerPixel: Double { radiusMeters / (Double(HudConstants.navMapWidthPx) / 2) }
 }

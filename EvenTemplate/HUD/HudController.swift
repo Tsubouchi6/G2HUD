@@ -60,8 +60,10 @@ final class HudController: ObservableObject {
         // Without glasses connected, the phone's compass drives the directions arrow.
         let locationService = LocationService()
         let weather = WeatherService(location: locationService)
+        let directions = DirectionsService()
+        let planner = RoutePlanner(directions: directions, transit: TransitService(settings: settings))
         let navigator = Navigator(
-            location: locationService, directions: DirectionsService(), heading: HeadingService(),
+            location: locationService, directions: directions, planner: planner, heading: HeadingService(),
             useCompass: { [weak session] in session?.glasses.connected != true }
         )
 
@@ -139,6 +141,11 @@ final class HudController: ObservableObject {
                 lens?.select(id: "nav")
                 let failure = await task.value
                 return failure.map { "Failed: \($0)" } ?? navigator.summaryForAI ?? "Started."
+            },
+            chooseRoute: { [weak lens] number in
+                guard navigator.choose(number) else { return "Failed: no ways are listed, or no such number." }
+                lens?.select(id: "nav")
+                return navigator.summaryForAI ?? "Started."
             },
             stopDirections: {
                 guard case .idle = navigator.state else {

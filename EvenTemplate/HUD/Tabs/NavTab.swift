@@ -1,6 +1,9 @@
 // NavTab.swift
 //
-// Lens tab: turn-by-turn directions, or "where is X", from Navigator. Two views:
+// Lens tab: turn-by-turn directions, the ways to get somewhere ("[2]* Train
+// 11min ¥180 JR Yamanote", Neo's pick marked *), or "where is X", from Navigator.
+// On a train / bus it shows the line, direction, stops and where to get off.
+// Two views:
 //   full    — map (400x200, MiniMapRenderer: Apple Maps streets, north-up, route,
 //             user arrow; the biggest picture the glasses take) with two lines under it: next turn; distance/time · destination
 //   minimal — one line at the top ("120m 左折 ..."), the rest of the lens clear;
@@ -34,9 +37,14 @@ final class NavTab: LensTab {
     }
 
     func page() -> LensPage {
+        // "I want to go to X": the ways to get there, Neo's pick marked with *.
+        if case .choosing(let trip) = navigator.state {
+            return LensPage(lines: choiceLines(trip), anchor: .top, header: "@ \(trip.destinationName)")
+        }
         if navigator.minimal {
             // Exact turn direction (phone compass): rotating arrow top-left + angle beside it.
-            if case .active(let progress) = navigator.state, let degrees = progress.relativeBearing,
+            // Not while riding a train / bus: then it's about the stop, not a direction.
+            if case .active(let progress) = navigator.state, progress.ride == nil, let degrees = progress.relativeBearing,
                let arrow = ArrowRenderer.png(degrees: (degrees / 5).rounded() * 5) {
                 return LensPage(lines: angleLines(progress, degrees: degrees), anchor: .top,
                                 picture: arrow, pictureSpot: .corner)
@@ -57,6 +65,31 @@ final class NavTab: LensTab {
 
     // MARK: - Views
 
+    /// "[2]* Train  11min  ¥180  JR Yamanote"
+    private func choiceLines(_ trip: TripChoices) -> [String] {
+        trip.choices.enumerated().map { index, choice in
+            let mark = index == trip.recommended ? "*" : " "
+            let kind: String
+            switch choice.kind {
+            case .walk: kind = HudText.t(.navWalk)
+            case .train: kind = HudText.t(.navTrain)
+            case .bus: kind = HudText.t(.navBus)
+            case .mixed: kind = HudText.t(.navMixed)
+            }
+            let fare = choice.kind == .walk ? HudText.t(.navFree) : choice.fare ?? ""
+            let lines = choice.route.rides.map(\.line).joined(separator: ">")
+            return LensTextLayout.truncate(
+                "[\(index + 1)]\(mark) \(kind)  \(choice.minutes)min  \(fare)  \(lines)", units: HudConstants.lensLineUnits
+            )
+        }
+    }
+
+    /// On a train / bus: what you're on, then where to get off.
+    private func rideLines(_ ride: RideInfo) -> [String] {
+        let getOff = HudText.t(.navGetOff, ride.toStop) + (ride.arrives.map { " (\($0))" } ?? "")
+        return [">> \(TransitService.rideName(ride)) | " + HudText.t(.navStops, ride.stopCount), "   " + getOff]
+    }
+
     private func fullLines() -> [String] {
         switch navigator.state {
         case .idle:
@@ -69,10 +102,12 @@ final class NavTab: LensTab {
             return [HudText.t(.navArrived, name)]
         case .place(let place):
             return placeLines(place)
+        case .choosing(let trip):
+            return choiceLines(trip)
         case .active(let progress):
-            // Next turn first (biggest need), then the overview, like the G2 Navigate screen.
-            var lines = [">> \(turnLine(progress))"]
-            if let after = progress.turnAfter { lines.append("   " + HudText.t(.navThen, after)) }
+            // Next turn (or the ride) first, then the overview, like the G2 Navigate screen.
+            var lines = progress.ride.map(rideLines) ?? [">> \(turnLine(progress))"]
+            if progress.ride == nil, let after = progress.turnAfter { lines.append("   " + HudText.t(.navThen, after)) }
             lines += [
                 "   \(Self.progressBar(progress))  "
                     + HudText.t(.navRemaining, Self.distance(progress.remainingMeters), progress.remainingMinutes),
@@ -85,6 +120,10 @@ final class NavTab: LensTab {
 
     /// The line under the map: the next turn, then the minutes left.
     private func mapLines(_ progress: NavProgress) -> [String] {
+        if let ride = progress.ride {
+            let line = ">> \(ride.line) | " + HudText.t(.navGetOff, ride.toStop)
+            return [LensTextLayout.truncate(line, units: HudConstants.lensLineUnits)]
+        }
         let left = progress.rerouting ? HudText.t(.navRerouting) : "\(progress.remainingMinutes)min"
         return [LensTextLayout.truncate(">> \(turnLine(progress)) | \(left)", units: HudConstants.lensLineUnits)]
     }
@@ -113,7 +152,12 @@ final class NavTab: LensTab {
     private func minimalLines() -> [String] {
         switch navigator.state {
         case .active(let progress):
+            if let ride = progress.ride {
+                return [LensTextLayout.truncate(">> \(ride.line) | " + HudText.t(.navGetOff, ride.toStop), units: HudConstants.lensLineUnits)]
+            }
             return [LensTextLayout.truncate(">> \(turnLine(progress))", units: HudConstants.lensLineUnits)]
+        case .choosing(let trip):
+            return Array(choiceLines(trip).prefix(1))
         case .place(let place):
             return [LensTextLayout.truncate("@ \(place.name) | \(Self.distance(place.walkingMeters))", units: HudConstants.lensLineUnits)]
         case .arrived(let name):
