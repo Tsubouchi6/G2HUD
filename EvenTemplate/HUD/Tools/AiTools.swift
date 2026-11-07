@@ -18,6 +18,7 @@
 //     directionsView — map / minimal / zoom in / zoom out
 //     calculate    — exact arithmetic (the model writes the formula, the app computes)
 //     convert      — units (Apple) or currency (live Yahoo rate)
+//     openTab      — shows one of the HUD's tabs (e.g. the Saved list)
 //   Failures are returned to the model as "Failed: ..." text, not thrown.
 
 import Foundation
@@ -45,6 +46,7 @@ enum AiTools {
             DirectionsViewTool(change: actions.directionsView),
             CalculateTool(calculate: actions.calculate),
             ConvertTool(convert: actions.convert),
+            OpenTabTool(open: actions.openTab),
         ]
     }
 
@@ -376,5 +378,32 @@ private struct ShowPlaceTool: Tool {
     func call(arguments: Arguments) async throws -> String {
         await show(arguments.query)
         return "Shown on the map."
+    }
+}
+
+// MARK: - Tabs
+
+private struct OpenTabTool: Tool {
+    let name = "openTab"
+    let description = """
+    Shows one of the HUD's tabs on the glasses: captions (live subtitles), ai (this chat), \
+    search (web results), calc (calculator and conversions), notes, remind (reminders), \
+    saved (saved chats and listening recordings, with translate), nav (map and directions). \
+    Use when the user wants to see, open or go to one of them.
+    """
+    let open: @MainActor @Sendable (_ id: String) -> Bool
+
+    @Generable
+    enum TabID: String {
+        case captions, ai, search, calc, notes, remind, saved, nav
+    }
+
+    @Generable
+    struct Arguments {
+        let tab: TabID
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        await open(arguments.tab.rawValue) ? "Shown on the glasses." : "No such tab."
     }
 }

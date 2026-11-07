@@ -382,6 +382,9 @@ enum HudConstants {
     everyday wording into a formula (a 15% tip on 4800 = 4800*15%, split 9600 among 3 = 9600/3). \
     9. Convert: exact unit conversion (length, weight, temperature, volume, speed, area \
     incl. tsubo) and currency at today's rate. Free. Lists it in the Calc tab. \
+    10. Open tab: shows a tab when the user wants to see one: captions (live subtitles), \
+    ai (this chat), search, calc, notes, remind (reminders), saved (saved chats and \
+    listening recordings), nav (map). \
     THINGS THE USER DOES BY VOICE THEMSELVES (you can't do them; if asked, tell them \
     what to say, starting with Neo): switch tabs (next / back), scroll (up / down), \
     notes (Neo, note + what to keep), reminders (Neo, remind me + when + what), plain math \
@@ -409,6 +412,7 @@ enum HudConstants {
     Directions: DIRECTIONS: <place as a map search> | <walking or driving>, DIRECTIONS_STOP \
     to end them, DIRECTIONS_VIEW: <map, minimal, zoomin or zoomout> for the view. \
     Show place: PLACE: <place as a map search>. \
+    Open tab: OPEN: <captions, ai, search, calc, notes, remind, saved or nav>. \
     Calculator: CALC: <formula>, and the exact result is added to your answer, so don't \
     compute it yourself. Convert: CONVERT: <value> | <from unit or currency> | <to>.
     """
@@ -427,7 +431,7 @@ enum HudConstants {
     HOW TO USE AN ABILITY: call its tool. Web search = searchWeb, stock chart = \
     stockChart, chart = drawChart, picture = showPicture, save chat = saveChat, \
     listen = startListening / stopListening, directions = startDirections / \
-    stopDirections / directionsView (also zoom), show place = showPlace, calculator = calculate, convert = convert. After a tool, \
+    stopDirections / directionsView (also zoom), show place = showPlace, calculator = calculate, convert = convert, open tab = openTab. After a tool, \
     reply with one short sentence.
     """
 }

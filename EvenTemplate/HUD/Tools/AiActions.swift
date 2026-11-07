@@ -16,6 +16,7 @@
 //   directionsView(view) -> Bool   — "map" / "minimal" / "zoomIn" / "zoomOut" (false = no map running)
 //   calculate(expression) -> String              — exact result line, also in the Calc tab
 //   convert(value, from, to) async -> String     — units or live currency, also in the Calc tab
+//   openTab(id) -> Bool                           — shows a tab (false = unknown tab)
 
 import Foundation
 
@@ -31,4 +32,5 @@ struct AiActions: Sendable {
     let directionsView: @MainActor @Sendable (_ view: String) -> Bool
     let calculate: @MainActor @Sendable (_ expression: String) -> String
     let convert: @MainActor @Sendable (_ value: Double, _ from: String, _ to: String) async -> String
+    let openTab: @MainActor @Sendable (_ id: String) -> Bool
 }
