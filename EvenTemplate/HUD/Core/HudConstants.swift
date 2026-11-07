@@ -31,6 +31,10 @@ enum HudConstants {
     /// Source: design choice (HUD mockup: "name flashes ~1 s").
     static let lensBannerSeconds: Double = 1.2
 
+    /// How long "what time is it" / "what's the date" answers stay up, in seconds.
+    /// Source: design choice (long enough to glance twice).
+    static let clockBannerSeconds: Double = 6
+
     /// How long a reminder alert stays on the lens, in seconds.
     static let reminderAlertSeconds: Double = 10
 
@@ -151,6 +155,11 @@ enum HudConstants {
 
     /// Request timeout for web searches, in seconds.
     static let searchTimeoutSeconds: Double = 10
+
+    /// Tavily writes its answer in English and can run long (its `language`
+    /// param only boosts result pages; source: docs.tavily.com search.md), so
+    /// the on-device AI rewrites it in the HUD language to at most this many characters.
+    static let searchSummaryMaxChars: Int = 120
 
     // MARK: - Charts (stocks / statistics)
 

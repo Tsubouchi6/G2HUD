@@ -45,6 +45,18 @@ enum VoicePhrases {
                                  "apagar todas as notas", "apaga todas as notas"]
     static let deleteAllReminders = ["リマインダーを全部消して", "リマインダー全部消して", "delete all reminders", "clear reminders",
                                      "apagar todos os lembretes", "apaga todos os lembretes"]
+    /// Clock questions, answered from the phone's clock (no web, no AI).
+    /// "What time is it in London" doesn't match, so it still goes to Search.
+    static let timeQuestions = ["今何時", "いま何時", "何時", "今何時ですか", "何時ですか", "今なんじ", "なんじ",
+                                "what time is it", "what time is it now", "what's the time", "whats the time",
+                                "what is the time", "time", "current time", "the time",
+                                "que horas são", "que horas sao", "que horas são agora", "que horas sao agora",
+                                "que horas é", "que hora é", "que horas", "horas"]
+    static let dateQuestions = ["今日何日", "今日は何日", "何日", "何曜日", "今日何曜日", "今日は何曜日", "今日の日付", "日付",
+                                "what's the date", "whats the date", "what is the date", "what day is it",
+                                "what's today's date", "today's date", "date", "what day is today",
+                                "que dia é hoje", "que dia e hoje", "qual a data", "qual é a data", "que data é hoje",
+                                "que dia é", "data de hoje"]
     static let clearCaptions = ["字幕をクリア", "字幕クリア", "字幕を消して", "clear captions", "limpar legendas"]
 
     static let notePrefixes = ["メモして", "メモ", "めも", "note", "take a note", "write down",

@@ -91,7 +91,7 @@ final class ChartService {
 
     func statsChart(for command: String) async throws -> RenderedChart {
         guard ai.availabilityMessage == nil else { throw ChartError.noData }
-        let outcome = try await search.search(command)
+        let outcome = try await search.search(command, condense: false)
         guard !outcome.isOffline else { throw ChartError.noData }   // offline AI has no real numbers
 
         let sourceText = ([outcome.summary ?? ""] + outcome.results.map(\.snippet)).joined(separator: "\n")

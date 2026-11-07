@@ -10,6 +10,7 @@
 //   availabilityMessage: String?     // nil when the model is ready
 //   ask(_ question: String) async throws -> String
 //   answerOffline(query:language:) async throws -> String   // search fallback, no web, no chat history
+//   condense(answer:query:language:) async throws -> String  // web answer -> short, in the HUD language
 //   englishAssetName(_ subject: String) async throws -> String // "トヨタ" -> "Toyota" (for ticker lookup)
 //   extractSeries(question:text:) async throws -> ExtractedSeries // numbers from search text, for charts
 //   reset()
@@ -92,6 +93,19 @@ final class OnDeviceAI {
         """
         let session = LanguageModelSession(instructions: instructions)
         let response = try await session.respond(to: query)
+        return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Rewrites a web answer (Tavily replies in English, sometimes at length)
+    /// as a short answer in the HUD language. Fresh session, no chat history.
+    func condense(answer: String, query: String, language: HudLanguage) async throws -> String {
+        let instructions = """
+        Rewrite the given search answer so it directly answers the question in \
+        \(language.englishName), in at most \(HudConstants.searchSummaryMaxChars) characters. \
+        Keep only what the question asks for. Keep numbers exactly. Plain text only.
+        """
+        let session = LanguageModelSession(instructions: instructions)
+        let response = try await session.respond(to: "Question: \(query)\n\nAnswer: \(answer)")
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

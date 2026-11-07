@@ -1,13 +1,15 @@
 // WebSearchService.swift
 //
 // Runs a search and makes sure it comes back with a short answer:
-//   1. Tavily (search + its own AI answer) — free 1,000 searches/month.
+//   1. Tavily (search + its own AI answer) — free 1,000 searches/month. Its
+//      answer is English and can be long, so the on-device AI rewrites it
+//      short, in the HUD language.
 //   2. If Tavily fails or the free quota is used up: the on-device AI answers
 //      from its own knowledge, marked "offline" (it can't see the live web).
 //
 // Public API:
 //   WebSearchService(settings:ai:)
-//   search(_ query: String, includeImages: Bool) async throws -> SearchOutcome
+//   search(_ query: String, includeImages: Bool, condense: Bool) async throws -> SearchOutcome
 //   findImage(_ terms: String) async -> Data?      // first web photo for the terms, downloaded
 //   struct SearchOutcome, struct SearchResult, enum SearchError
 
@@ -60,12 +62,14 @@ final class WebSearchService {
         self.ai = ai
     }
 
-    func search(_ query: String, includeImages: Bool = false) async throws -> SearchOutcome {
+    /// `condense: false` keeps Tavily's full answer (charts need every number).
+    func search(_ query: String, includeImages: Bool = false, condense: Bool = true) async throws -> SearchOutcome {
         let tavilyKey = settings.tavilyApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !tavilyKey.isEmpty else { throw SearchError.missingApiKey }
 
+        let outcome: SearchOutcome
         do {
-            return try await TavilySearchClient.search(
+            outcome = try await TavilySearchClient.search(
                 query, apiKey: tavilyKey, languageCode: settings.language.rawValue, includeImages: includeImages
             )
         } catch {
@@ -76,6 +80,20 @@ final class WebSearchService {
             else { throw error }
             return SearchOutcome(summary: answer, results: [], imageURLs: [], provider: "offline AI", isOffline: true)
         }
+        return condense ? await condensed(outcome, query: query) : outcome
+    }
+
+    /// Tavily's answer is English and can be long; the on-device AI rewrites it
+    /// short and in the HUD language. Keeps the original if the AI is unavailable.
+    private func condensed(_ outcome: SearchOutcome, query: String) async -> SearchOutcome {
+        guard let summary = outcome.summary, ai.availabilityMessage == nil,
+              let short = try? await ai.condense(answer: summary, query: query, language: settings.language),
+              !short.isEmpty
+        else { return outcome }
+        return SearchOutcome(
+            summary: short, results: outcome.results, imageURLs: outcome.imageURLs,
+            provider: outcome.provider, isOffline: outcome.isOffline
+        )
     }
 
     // MARK: - Images
