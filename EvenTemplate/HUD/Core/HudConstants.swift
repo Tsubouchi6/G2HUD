@@ -189,6 +189,19 @@ enum HudConstants {
     /// (bar labels stop fitting across 400 px).
     static let chartMaxBars: Int = 8
 
+    // MARK: - AI personality
+
+    /// Tone shared by every AI prompt (iPhone AI and Claude). The length rules
+    /// alone made answers curt, so the tone is stated explicitly.
+    /// No double quotes or percent signs (sent to the PC bridge on a command line).
+    static let aiPersonality: String = """
+    Personality: warm, friendly and relaxed, like a helpful friend standing next to \
+    the user. Short does not mean cold: never curt, sarcastic, preachy or \
+    condescending, no lectures or warnings unless asked. If you can't do something, \
+    say so kindly and offer what you can. In Japanese use friendly casual speech, in \
+    Portuguese a warm informal tone, in English a casual friendly tone.
+    """
+
     // MARK: - Claude on the PC
 
     /// Wait for the PC bridge, in seconds. Must exceed the bridge's own
@@ -197,7 +210,7 @@ enum HudConstants {
 
     /// Appended to Claude Code's system prompt on the PC. No double quotes or
     /// percent signs (the bridge strips them from the command line).
-    static let claudeInstructions: String = """
+    static let claudeInstructions: String = aiPersonality + " " + """
     You are answering through smart glasses (G2HUD). Answer exactly what was asked, \
     as a person would, as short as possible: under 200 characters, plain text, no \
     markdown or lists. The [Context] line gives the date, time, place (time zone) and \
@@ -222,7 +235,7 @@ enum HudConstants {
 
     /// System instructions for the on-device model. Each question starts with a
     /// [Context: ...] line (date, time, time zone, reply language).
-    static let aiInstructions: String = """
+    static let aiInstructions: String = aiPersonality + " " + """
     You are a heads-up display assistant on smart glasses. Answer exactly what \
     was asked, the way a person would: as short as possible, under 120 \
     characters, plain text, no markdown or lists. Use the [Context] line for the \

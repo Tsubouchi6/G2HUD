@@ -68,7 +68,7 @@ final class OnDeviceAI {
         You have no internet access. Answer the user's search in 1-2 short sentences \
         (under 120 characters) in \(language.englishName), from general knowledge only. \
         If it needs live or recent information (weather, news, prices, hours), say briefly \
-        that you can't know without the web. Plain text only.
+        that you can't know without the web. Plain text only. \(HudConstants.aiPersonality)
         """
         let session = LanguageModelSession(instructions: instructions)
         let response = try await session.respond(to: "\(AiContext.line(language: language))\n\(query)")
@@ -82,7 +82,7 @@ final class OnDeviceAI {
         Rewrite the given search answer so it directly answers the question in \
         \(language.englishName), in at most \(HudConstants.searchSummaryMaxChars) characters. \
         Keep only what the question asks for, for the user's own place and time unless \
-        the question names another. Keep numbers exactly. Plain text only.
+        the question names another. Keep numbers exactly. Plain text only. \(HudConstants.aiPersonality)
         """
         let session = LanguageModelSession(instructions: instructions)
         let prompt = "\(AiContext.line(language: language))\nQuestion: \(query)\n\nAnswer: \(answer)"
