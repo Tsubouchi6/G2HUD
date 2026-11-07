@@ -2,8 +2,9 @@
 //
 // Draws the navigation mini-map, in the style of the G2's own Navigate mini
 // map: a small game-style map around the user that turns with the direction
-// they face (heading-up), showing only the route (thick), the next turn
-// point, the destination ring, and the user's arrow. White on black (black
+// they face (heading-up): nearby streets as thin lines (OpenStreetMap), the
+// route thick on top, the next turn point, the destination ring, and the
+// user's arrow. White on black (black
 // is see-through on the lens). Without a heading it is drawn north-up and
 // the arrow shows the direction of travel instead.
 //
@@ -12,7 +13,7 @@
 // ("Equirectangular approximation").
 //
 // Public API:
-//   MiniMapRenderer.png(route:user:nextTurn:destination:headingDegrees:) -> Data?
+//   MiniMapRenderer.png(route:streets:user:nextTurn:destination:headingDegrees:) -> Data?
 
 import CoreLocation
 import UIKit
@@ -24,6 +25,7 @@ enum MiniMapRenderer {
 
     static func png(
         route: [CLLocationCoordinate2D],
+        streets: [Street],
         user: CLLocationCoordinate2D,
         nextTurn: CLLocationCoordinate2D?,
         destination: CLLocationCoordinate2D,
@@ -57,6 +59,19 @@ enum MiniMapRenderer {
             cg.setStrokeColor(UIColor.white.withAlphaComponent(0.5).cgColor)
             cg.setLineWidth(2)
             cg.stroke(CGRect(origin: .zero, size: size).insetBy(dx: 1, dy: 1))
+
+            // Streets: thin and dimmer, so the route stands out on top.
+            cg.setLineJoin(.round)
+            cg.setLineCap(.round)
+            for street in streets {
+                cg.setStrokeColor(UIColor.white.withAlphaComponent(street.isMajor ? 0.6 : 0.4).cgColor)
+                cg.setLineWidth(street.isMajor ? HudConstants.navMapMajorStreetWidthPx : HudConstants.navMapMinorStreetWidthPx)
+                for (index, coordinate) in street.points.enumerated() {
+                    let p = point(coordinate)
+                    if index == 0 { cg.move(to: p) } else { cg.addLine(to: p) }
+                }
+                cg.strokePath()
+            }
 
             // Route
             cg.setStrokeColor(UIColor.white.cgColor)

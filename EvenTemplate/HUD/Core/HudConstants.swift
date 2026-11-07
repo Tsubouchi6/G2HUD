@@ -198,6 +198,22 @@ enum HudConstants {
     static let navMiniMapUserYFraction: CGFloat = 0.62
     static let navMiniMapRefreshSeconds: Double = 2
 
+    /// Street lines for the mini-map from OpenStreetMap (Overpass API, free).
+    /// Streets are fetched for this radius around the user, refetched only after
+    /// moving this far from where they were fetched, and after a refused request
+    /// (HTTP 429/406) not retried for this long. Source: Overpass usage policy
+    /// (wiki.openstreetmap.org/wiki/Overpass_API): cache, ≤100 queries/day, wait 30 s.
+    static let overpassEndpoint: String = "https://overpass-api.de/api/interpreter"
+    static let overpassUserAgent: String = "G2HUD/1.0 (personal navigation mini-map)"
+    static let overpassTimeoutSeconds: Double = 20
+    static let streetsFetchRadiusMeters: Double = 600
+    static let streetsRefetchMeters: Double = 300
+    static let overpassRetrySeconds: Double = 30
+
+    /// Mini-map street line widths, in pixels (route is navMapRouteWidthPx).
+    static let navMapMajorStreetWidthPx: CGFloat = 2.5
+    static let navMapMinorStreetWidthPx: CGFloat = 1.2
+
     /// Nearest-place search: try these radii in order until something is found,
     /// in meters (500, 1000, ... 5000), with results restricted to the area
     /// (MKLocalSearch regionPriority .required, iOS 18; without it Apple may

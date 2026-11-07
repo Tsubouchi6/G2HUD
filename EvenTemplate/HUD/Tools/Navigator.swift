@@ -74,6 +74,11 @@ final class Navigator: ObservableObject {
     private var lastRerouteAt = Date.distantPast
     private var isRerouting = false
     private var miniMapDrawnAt = Date.distantPast
+    /// Streets around `streetsCenter` (OpenStreetMap), refetched after moving away.
+    private var streets: [Street] = []
+    private var streetsCenter: CLLocation?
+    private var streetsBlockedUntil = Date.distantPast
+    private var isFetchingStreets = false
 
     init(location: LocationService, directions: DirectionsService, heading: HeadingService, useCompass: @escaping () -> Bool) {
         self.location = location
@@ -111,6 +116,8 @@ final class Navigator: ObservableObject {
         route = nil
         destination = nil
         miniMap = nil
+        streets = []
+        streetsCenter = nil
         state = .idle
     }
 
@@ -192,13 +199,37 @@ final class Navigator: ObservableObject {
               let destination
         else { return }
         miniMapDrawnAt = Date()
+        fetchStreetsIfNeeded(around: here)
         miniMap = MiniMapRenderer.png(
             route: routePoints.map(\.coordinate),
+            streets: streets,
             user: here.coordinate,
             nextTurn: stepIndex < stepEnds.count - 1 ? stepEnds[stepIndex].coordinate : nil,
             destination: destination.placemark.coordinate,
             headingDegrees: useCompass() ? headingDegrees : nil
         )
+    }
+
+    /// Gets streets for the mini-map when there are none yet or the user has
+    /// moved streetsRefetchMeters from where they were fetched (Overpass policy:
+    /// cache, few requests, back off after 429/406). Redraws when they arrive.
+    private func fetchStreetsIfNeeded(around here: CLLocation) {
+        if let center = streetsCenter, here.distance(from: center) < HudConstants.streetsRefetchMeters { return }
+        guard !isFetchingStreets, Date() >= streetsBlockedUntil else { return }
+        isFetchingStreets = true
+        Task {
+            do {
+                streets = try await StreetMapClient.streets(
+                    around: here.coordinate, radiusMeters: HudConstants.streetsFetchRadiusMeters
+                )
+                streetsCenter = here
+                miniMapDrawnAt = .distantPast
+                if let latest = lastLocation { drawMiniMap(at: latest) }
+            } catch {
+                streetsBlockedUntil = Date().addingTimeInterval(HudConstants.overpassRetrySeconds)
+            }
+            isFetchingStreets = false
+        }
     }
 
     private func publishProgress(at here: CLLocation) {
