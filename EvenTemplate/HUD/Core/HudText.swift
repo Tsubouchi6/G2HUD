@@ -54,10 +54,10 @@ enum HudText {
         case startHudToBegin, clearTranscript, transcriptHeader, recordStart, recordStop
         case testRecordings, recordingsFooter
         // Phone: Settings screen
-        case voice, requireWakeWord, usePhoneMic, voiceFooter, search, braveKeyPlaceholder
+        case voice, requireWakeWord, usePhoneMic, voiceFooter, search
         case searchFooter, glassesControls, touchControls, touchHelp, headTilt, headTiltToggle
         case swapLeftRight, tiltReadout, calibrate, headTiltFooter, notesHeader, remindersHeader
-        case tavilyKeyPlaceholder, noSearchKey
+        case tavilyKeyPlaceholder, noSearchKey, offlineTag
     }
 
     // MARK: - Table (ja, en, pt)
@@ -145,13 +145,13 @@ enum HudText {
                        "With the wake word off, only navigation (next / back / up / down) runs without it. Change the mic while the HUD is stopped.",
                        "Sem a palavra de ativação, só navegação (próximo / anterior / subir / descer) funciona. Troque o microfone com o HUD parado."),
         .search: ("検索", "Search", "Pesquisa"),
-        .braveKeyPlaceholder: ("Brave Search APIキー (予備)", "Brave Search API key (backup)", "Chave da API Brave Search (reserva)"),
-        .searchFooter: ("Tavily (tavily.com、無料 月1000回) が検索してAIが要約。使い切ったら Brave (brave.com/search/api) + iPhone内のAIで要約。キーはこのiPhoneにだけ保存。",
-                        "Tavily (tavily.com, free 1,000/month) searches and writes an AI summary. When it runs out, Brave (brave.com/search/api) + the iPhone's on-device AI take over. Keys stay on this iPhone.",
-                        "Tavily (tavily.com, grátis 1.000/mês) pesquisa e resume com IA. Quando acabar, Brave (brave.com/search/api) + a IA do iPhone assumem. As chaves ficam só neste iPhone."),
-        .tavilyKeyPlaceholder: ("Tavily APIキー (メイン)", "Tavily API key (main)", "Chave da API Tavily (principal)"),
-        .noSearchKey: ("設定で Tavily か Brave のキーを入れてください", "Add a Tavily or Brave key in Settings",
-                       "Adicione uma chave Tavily ou Brave nos Ajustes"),
+        .searchFooter: ("Tavily (tavily.com、無料 月1000回) が検索してAIが要約。使い切ったらiPhone内のAIが知識だけで答えます (オフライン表示)。キーはこのiPhoneにだけ保存。",
+                        "Tavily (tavily.com, free 1,000/month) searches and writes an AI summary. When it runs out, the iPhone's on-device AI answers from memory (marked offline). The key stays on this iPhone.",
+                        "Tavily (tavily.com, grátis 1.000/mês) pesquisa e resume com IA. Quando acabar, a IA do iPhone responde de memória (marcado offline). A chave fica só neste iPhone."),
+        .tavilyKeyPlaceholder: ("Tavily APIキー", "Tavily API key", "Chave da API Tavily"),
+        .noSearchKey: ("設定で Tavily のキーを入れてください", "Add a Tavily key in Settings",
+                       "Adicione uma chave Tavily nos Ajustes"),
+        .offlineTag: ("(オフライン)", "(offline)", "(offline)"),
         .glassesControls: ("メガネの操作", "Glasses controls", "Controles dos óculos"),
         .touchControls: ("タッチパッド / リング操作", "Touchpad / ring controls", "Touchpad / anel"),
         .touchHelp: ("タップ=次のタブ · ダブルタップ=前 · スワイプ=スクロール",

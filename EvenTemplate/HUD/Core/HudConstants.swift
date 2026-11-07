@@ -110,9 +110,6 @@ enum HudConstants {
     /// "advanced" costs 2. Source: same docs page.
     static let tavilySearchDepth: String = "basic"
 
-    /// Brave Search web endpoint (fallback when Tavily is unavailable).
-    /// Source: api-dashboard.search.brave.com/documentation/services/web-search
-    static let braveSearchEndpoint: String = "https://api.search.brave.com/res/v1/web/search"
 
     /// Results requested per search.
     static let searchResultCount: Int = 5

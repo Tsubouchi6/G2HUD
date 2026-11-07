@@ -1,24 +1,50 @@
 // WebSearchService.swift
 //
-// Picks the search provider and makes sure every search comes with a short
-// AI summary:
-//   1. Tavily (search + its own AI answer) when a Tavily key is set.
-//   2. If Tavily fails or its free quota is used up: Brave Search, then the
-//      on-device AI summarizes Brave's snippets.
+// Runs a search and makes sure it comes back with a short answer:
+//   1. Tavily (search + its own AI answer) — free 1,000 searches/month.
+//   2. If Tavily fails or the free quota is used up: the on-device AI answers
+//      from its own knowledge, marked "offline" (it can't see the live web).
 //
 // Public API:
 //   WebSearchService(settings:ai:)
 //   search(_ query: String) async throws -> SearchOutcome
+//   struct SearchOutcome, struct SearchResult, enum SearchError
 
 import Foundation
+
+// MARK: - Shared types
+
+struct SearchResult: Equatable {
+    let title: String
+    let url: String
+    let snippet: String
+}
 
 /// One search's result: an optional AI summary plus the raw results.
 struct SearchOutcome {
     let summary: String?
     let results: [SearchResult]
-    /// Shown on the phone for debugging, e.g. "Tavily".
+    /// Which path answered, e.g. "Tavily" or "offline AI".
     let provider: String
+    /// True when the answer came from the on-device AI's memory, not the web.
+    let isOffline: Bool
 }
+
+enum SearchError: LocalizedError {
+    case missingApiKey
+    case quotaExceeded
+    case badResponse(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingApiKey: return "Add a Tavily API key in Settings"
+        case .quotaExceeded: return "Search quota used up"
+        case .badResponse(let code): return "Search failed (HTTP \(code))"
+        }
+    }
+}
+
+// MARK: - Service
 
 @MainActor
 final class WebSearchService {
@@ -33,22 +59,19 @@ final class WebSearchService {
 
     func search(_ query: String) async throws -> SearchOutcome {
         let tavilyKey = settings.tavilyApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        let braveKey = settings.braveApiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !tavilyKey.isEmpty else { throw SearchError.missingApiKey }
 
-        if !tavilyKey.isEmpty {
-            do {
-                return try await TavilySearchClient.search(
-                    query, apiKey: tavilyKey, languageCode: settings.language.rawValue
-                )
-            } catch {
-                // Quota used up, network or server error: fall back if possible.
-                guard !braveKey.isEmpty else { throw error }
-            }
+        do {
+            return try await TavilySearchClient.search(
+                query, apiKey: tavilyKey, languageCode: settings.language.rawValue
+            )
+        } catch {
+            // Quota used up, network or server error: answer offline if the
+            // on-device AI is available, otherwise report the original error.
+            guard ai.availabilityMessage == nil,
+                  let answer = try? await ai.answerOffline(query: query, language: settings.language)
+            else { throw error }
+            return SearchOutcome(summary: answer, results: [], provider: "offline AI", isOffline: true)
         }
-
-        guard !braveKey.isEmpty else { throw SearchError.missingApiKey }
-        let results = try await BraveSearchClient.search(query, apiKey: braveKey)
-        let summary = try? await ai.summarize(query: query, results: results, language: settings.language)
-        return SearchOutcome(summary: summary, results: results, provider: "Brave + on-device AI")
     }
 }

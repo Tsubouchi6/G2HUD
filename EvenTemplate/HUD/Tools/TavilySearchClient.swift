@@ -65,6 +65,8 @@ enum TavilySearchClient {
             SearchResult(title: $0.title ?? "", url: $0.url ?? "", snippet: $0.content ?? "")
         }
         let answer = decoded.answer?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return SearchOutcome(summary: answer?.isEmpty == false ? answer : nil, results: results, provider: "Tavily")
+        return SearchOutcome(
+            summary: answer?.isEmpty == false ? answer : nil, results: results, provider: "Tavily", isOffline: false
+        )
     }
 }

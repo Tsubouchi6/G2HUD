@@ -1,7 +1,7 @@
 // SearchTab.swift
 //
 // Lens tab: web search. Shows the query, a short AI summary (from Tavily, or
-// from the on-device AI when falling back to Brave), then result titles.
+// the on-device AI's offline answer when Tavily is unavailable), then result titles.
 //
 // Public API: SearchTab(service:)  — LensTab with id "search"; search(_ query:)
 
@@ -53,7 +53,7 @@ final class SearchTab: LensTab {
     private static func format(query: String, outcome: SearchOutcome) -> [String] {
         var result = [HudText.t(.searchLabel, query)]
         if let summary = outcome.summary {
-            result.append(summary)
+            result.append(outcome.isOffline ? "\(HudText.t(.offlineTag)) \(summary)" : summary)
         }
         guard !outcome.results.isEmpty else {
             if outcome.summary == nil { result.append(HudText.t(.noResults)) }

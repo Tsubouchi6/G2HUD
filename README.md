@@ -13,7 +13,7 @@ Personal HUD app for Even Realities G2 glasses, built on top of
 | `EvenTemplate/HUD/Captions/` | `CaptionController` (mic -> engine -> transcript), `RawAudioRecorder` (test .wav files) |
 | `EvenTemplate/HUD/Lens/` | `LensController` (tabs, scrolling, banners), `LensPusher` (rate-limited sends), `LensTab` protocol |
 | `EvenTemplate/HUD/Tabs/` | One file per lens tab: Captions, AI, Search, Calc, Notes, Remind |
-| `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily -> Brave + on-device AI fallback), on-device AI |
+| `EvenTemplate/HUD/Tools/` | Calculator, reminder parsing/service, notes store, web search (Tavily, offline on-device AI fallback), on-device AI |
 | `EvenTemplate/HUD/Voice/` | `VoiceCommandRouter` (wake word -> key phrases -> AI) and `VoicePhrases` tables |
 | `EvenTemplate/HUD/Input/` | Touchpad/ring mapping, head-tilt detection |
 | `EvenTemplate/HUD/Screens/` | Phone UI: HUD (preview + typed commands), Captions, Settings |
@@ -33,7 +33,7 @@ in `HUD/Core/HudText.swift`; voice phrases in `HUD/Voice/VoicePhrases.swift`.
 | 上 / 下 | up / down | subir / descer | scroll |
 | 字幕, AI, 検索, 計算, メモ, リマインダー | captions, ai, search, calc, notes, reminders | legendas, ia, pesquisa, calculadora, notas, lembretes | open tab |
 | メモ 牛乳買う | note buy milk | anota comprar leite | add note |
-| 天気を検索 | search weather | pesquisar tempo | web search + AI summary (Tavily key in Settings; Brave key = fallback) |
+| 天気を検索 | search weather | pesquisar tempo | web search + AI summary (Tavily key in Settings) |
 | 計算 12かける35 | calculate 12 times 35 | calcular 12 vezes 35 | calculator |
 | 5時にロット確認 | remind me at 5 to check | me lembra às 5 de conferir | reminder |
 | 最後のメモを消して | delete last note | apagar última nota | asks yes/no first |
