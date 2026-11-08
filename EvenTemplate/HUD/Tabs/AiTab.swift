@@ -92,8 +92,13 @@ final class AiTab: LensTab {
         animateThinking()
         Task {
             let answer = await answer(question)
-            if lines.last == "..." { lines.removeLast() }
-            append([answer])
+            // The dots may no longer be last (a direction step said meanwhile): replace them where they are.
+            if let pending = lines.lastIndex(of: "...") {
+                lines[pending] = answer
+                onChange?()
+            } else {
+                append([answer])
+            }
             onAnswered?()
         }
     }
@@ -123,7 +128,13 @@ final class AiTab: LensTab {
 
     /// A message from Neo nobody asked for yet (the next direction step).
     func say(_ text: String) {
-        append([text])
+        // While an answer is pending, keep the "..." last so it stays under the question.
+        if lines.last == "..." {
+            lines.insert(text, at: lines.count - 1)
+            onChange?()
+        } else {
+            append([text])
+        }
     }
 
     func addPicture(_ png: Data, caption: String) {

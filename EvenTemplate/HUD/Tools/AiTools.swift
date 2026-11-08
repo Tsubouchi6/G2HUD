@@ -309,7 +309,7 @@ private struct StartDirectionsTool: Tool {
         let destination: String
         @Guide(description: "kind = a type of place (pet shop), brand = a chain (Wendy's), exact = one place or address (Tokyo Station), shown = the place already on the Nav map (go there)")
         let match: Match
-        @Guide(description: "choose unless the user said how: walking, driving, or transit for train or bus")
+        @Guide(description: "choose by default (the app compares walking, train and bus). walking, driving or transit ONLY when the user's own words in this request say walk, car or train/bus")
         let mode: Mode
     }
 

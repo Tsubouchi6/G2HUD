@@ -309,9 +309,12 @@ final class Navigator: ObservableObject {
         lastLocation = here
         publishProgress(at: here)
         if !isPlaceMode {
-            // First thing to do: step 0's instruction ("Head north", "Walk to Shibuya"), or step 1's.
+            // First thing to do. Apple's step 0 is often "Proceed to the route" with 0 m,
+            // which tells nothing, so the first step that actually goes somewhere.
             announcedStep = nil
-            if let first = steps.indices.first(where: { !steps[$0].instruction.isEmpty }) { announce(first) }
+            if let first = steps.indices.first(where: { !steps[$0].instruction.isEmpty && steps[$0].distanceMeters >= 1 }) {
+                announce(first)
+            }
         }
     }
 

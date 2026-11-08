@@ -443,7 +443,9 @@ enum HudConstants {
     to go, mode choose lists the ways (walk, train, bus, mixed, with time and fare) and \
     the app recommends one: tell them the options briefly with the recommendation, then \
     start the one they pick (chooseRoute; 0 = recommended when they say go or ok). \
-    Walking, driving or transit (train or bus) start right away when the user says so. \
+    Walking, driving or transit (train or bus) start right away only when the user's own words \
+    in that request name the way; otherwise always choose, even if an earlier trip was on foot. \
+    Never claim one way is fastest unless the listed times show it. \
     Directions show turn-by-turn in the Nav tab with a street map, and for trains and \
     buses the line, direction, stops and where to get off. Only if the user asks for no map or \
     a clear screen, switch the view to minimal (one line at the top); map brings it back. \
